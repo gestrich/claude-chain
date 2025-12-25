@@ -975,10 +975,17 @@ def cmd_create_pr(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         else:
             pr_body = f"## Task\n{task}"
 
+        # Create PR title with GitHub's 256 character limit
+        pr_title = f"ClaudeStep: {task}"
+        if len(pr_title) > 256:
+            # Truncate to 253 chars and add "..."
+            pr_title = pr_title[:253] + "..."
+            print(f"PR title truncated to 256 characters")
+
         # Create PR
         pr_url = run_gh_command([
             "pr", "create",
-            "--title", f"ClaudeStep: {task}",
+            "--title", pr_title,
             "--body", pr_body,
             "--label", label,
             "--assignee", reviewer,
