@@ -2,10 +2,10 @@
 
 ## Steps
 
-- [x] **Set up a test repo** - Get the default Claude Code GitHub Action running with a manual workflow trigger.
-- [ ] **Get workflow creating PRs** - Validate infrastructure: GitHub token permissions, Claude token, action setup.
-- [ ] **Build trigger logic** - Label detection, max PRs per user, per-user assignment.
+- [ ] **Test creation logic** - Label detection, max PRs per user, per-user assignment.
 - [ ] **Create folder structure & config schema** - `/refactor` folder, `config.json`, `plan.md` template.
+- [ ] Slack Action and metrics
+- [ ] **Convert to reusable Github Action**
 - [ ] **Record video walkthrough** - "Chain Refactors" tutorial.
 - [ ] **Write blog post** - Written guide explaining the approach.
 - [ ] **Open source the repo** - Complete setup others can use.

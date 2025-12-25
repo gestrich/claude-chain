@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       task: ${{ steps.parse-plan.outputs.task }}
-      task_id: ${{ steps.parse-plan.outputs.task_id }}
+      task_index: ${{ steps.parse-plan.outputs.task_index }}
       has_task: ${{ steps.parse-plan.outputs.has_task }}
     steps:
       - uses: actions/checkout@v4
@@ -72,10 +72,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Find next unchecked task
+      - name: Find next available task
         id: parse-plan
         env:
+          GH_TOKEN: ${{ github.token }}
           PROJECT_PATH: ${{ needs.setup.outputs.project_path }}
+          PROJECT: ${{ github.event.inputs.project }}
+          LABEL: ${{ needs.setup.outputs.label }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: python .github/workflows/scripts/refactor_chain.py find-task
 
   create-pr:
@@ -93,10 +97,11 @@ jobs:
       - name: Create branch
         id: branch
         env:
-          BRANCH_PREFIX: ${{ needs.setup.outputs.branch_prefix }}
-          TASK_ID: ${{ needs.find-task.outputs.task_id }}
+          PROJECT: ${{ github.event.inputs.project }}
+          TASK_INDEX: ${{ needs.find-task.outputs.task_index }}
         run: |
-          BRANCH_NAME="${BRANCH_PREFIX}-${TASK_ID}"
+          DATE_PREFIX=$(date +%Y-%m)
+          BRANCH_NAME="${DATE_PREFIX}-${PROJECT}-${TASK_INDEX}"
           git checkout -b "$BRANCH_NAME"
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
@@ -130,12 +135,25 @@ jobs:
           fi
 
       - name: Push branch and create PR
+        id: create-pr
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH_NAME: ${{ steps.branch.outputs.branch_name }}
           LABEL: ${{ needs.setup.outputs.label }}
           REVIEWER: ${{ needs.check-capacity.outputs.reviewer }}
           TASK: ${{ needs.find-task.outputs.task }}
+          TASK_INDEX: ${{ needs.find-task.outputs.task_index }}
+          PROJECT: ${{ github.event.inputs.project }}
           PROJECT_PATH: ${{ needs.setup.outputs.project_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
         run: python .github/workflows/scripts/refactor_chain.py create-pr
+
+      - name: Upload task metadata artifact
+        if: success() && steps.create-pr.outputs.artifact_path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.create-pr.outputs.artifact_name }}
+          path: ${{ steps.create-pr.outputs.artifact_path }}
+          retention-days: 90
+          if-no-files-found: warn
