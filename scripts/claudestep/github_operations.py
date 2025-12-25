@@ -7,9 +7,9 @@ import tempfile
 import zipfile
 from typing import Any, Dict, List, Optional
 
-from lib.exceptions import GitHubAPIError
-from lib.git_operations import run_command
-from lib.github_actions import GitHubActionsHelper
+from claudestep.exceptions import GitHubAPIError
+from claudestep.git_operations import run_command
+from claudestep.github_actions import GitHubActionsHelper
 
 
 def run_gh_command(args: List[str]) -> str:

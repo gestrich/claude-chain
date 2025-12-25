@@ -87,7 +87,9 @@ runs:
         PR_TEMPLATE_PATH: ${{ inputs.pr_template_path }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         ACTION_PATH: ${{ github.action_path }}
-      run: python3 "$ACTION_PATH/scripts/refactor_chain.py" prepare
+      run: |
+        export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
+        python3 -m claudestep prepare
 
     - name: Run Claude Code
       if: steps.prepare.outputs.has_capacity == 'true' && steps.prepare.outputs.has_task == 'true'
@@ -121,7 +123,9 @@ runs:
         HAS_CAPACITY: ${{ steps.prepare.outputs.has_capacity }}
         HAS_TASK: ${{ steps.prepare.outputs.has_task }}
         ACTION_PATH: ${{ github.action_path }}
-      run: python3 "$ACTION_PATH/scripts/refactor_chain.py" finalize
+      run: |
+        export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
+        python3 -m claudestep finalize
 
     - name: Upload task metadata artifact
       if: steps.finalize.outputs.artifact_path != ''

@@ -5,7 +5,7 @@ import os
 import re
 from typing import Any, Dict
 
-from lib.exceptions import ConfigurationError, FileNotFoundError
+from claudestep.exceptions import ConfigurationError, FileNotFoundError
 
 
 def load_json(file_path: str) -> Dict[str, Any]:

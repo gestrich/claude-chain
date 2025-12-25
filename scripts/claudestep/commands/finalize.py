@@ -5,12 +5,12 @@ import json
 import os
 from datetime import datetime
 
-from lib.config import substitute_template
-from lib.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
-from lib.git_operations import run_git_command
-from lib.github_actions import GitHubActionsHelper
-from lib.github_operations import run_gh_command
-from lib.task_management import mark_task_complete
+from claudestep.config import substitute_template
+from claudestep.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
+from claudestep.git_operations import run_git_command
+from claudestep.github_actions import GitHubActionsHelper
+from claudestep.github_operations import run_gh_command
+from claudestep.task_management import mark_task_complete
 
 
 def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:

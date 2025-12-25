@@ -5,14 +5,14 @@ import json
 import os
 from datetime import datetime
 
-from lib.config import load_json, validate_spec_format
-from lib.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
-from lib.git_operations import run_git_command
-from lib.github_actions import GitHubActionsHelper
-from lib.github_operations import ensure_label_exists
-from lib.project_detection import detect_project_from_pr, detect_project_paths
-from lib.reviewer_management import find_available_reviewer
-from lib.task_management import find_next_available_task, get_in_progress_task_indices
+from claudestep.config import load_json, validate_spec_format
+from claudestep.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
+from claudestep.git_operations import run_git_command
+from claudestep.github_actions import GitHubActionsHelper
+from claudestep.github_operations import ensure_label_exists
+from claudestep.project_detection import detect_project_from_pr, detect_project_paths
+from claudestep.reviewer_management import find_available_reviewer
+from claudestep.task_management import find_next_available_task, get_in_progress_task_indices
 
 
 def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:

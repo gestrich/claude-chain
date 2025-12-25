@@ -2,16 +2,16 @@
 """
 ClaudeStep - GitHub Actions Helper Script
 
-This script coordinates automated refactoring workflows by delegating to
-modular components in the lib package.
+Entry point for the ClaudeStep automation tool.
+Run with: python3 -m claudestep <command>
 """
 
 import argparse
 import sys
 
-from lib.commands.finalize import cmd_finalize
-from lib.commands.prepare import cmd_prepare
-from lib.github_actions import GitHubActionsHelper
+from claudestep.commands.finalize import cmd_finalize
+from claudestep.commands.prepare import cmd_prepare
+from claudestep.github_actions import GitHubActionsHelper
 
 
 def main():

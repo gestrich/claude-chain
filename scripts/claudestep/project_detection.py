@@ -5,8 +5,8 @@ import json
 import os
 from typing import Optional, Tuple
 
-from lib.config import load_json
-from lib.github_operations import run_gh_command
+from claudestep.config import load_json
+from claudestep.github_operations import run_gh_command
 
 
 def detect_project_from_pr(pr_number: str, repo: str) -> Optional[str]:

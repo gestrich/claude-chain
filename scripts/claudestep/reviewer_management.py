@@ -4,9 +4,9 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 
-from lib.exceptions import GitHubAPIError
-from lib.github_operations import download_artifact_json, gh_api_call, run_gh_command
-from lib.models import ReviewerCapacityResult
+from claudestep.exceptions import GitHubAPIError
+from claudestep.github_operations import download_artifact_json, gh_api_call, run_gh_command
+from claudestep.models import ReviewerCapacityResult
 
 
 def find_available_reviewer(reviewers: List[Dict[str, Any]], label: str, project: str) -> tuple[Optional[str], ReviewerCapacityResult]:

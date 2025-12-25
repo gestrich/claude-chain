@@ -3,7 +3,7 @@
 import subprocess
 from typing import List
 
-from lib.exceptions import GitError
+from claudestep.exceptions import GitError
 
 
 def run_command(cmd: List[str], check: bool = True, capture_output: bool = True) -> subprocess.CompletedProcess:

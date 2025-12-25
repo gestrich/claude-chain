@@ -5,8 +5,8 @@ import os
 import re
 from typing import Optional
 
-from lib.exceptions import FileNotFoundError, GitHubAPIError
-from lib.github_operations import gh_api_call, run_gh_command
+from claudestep.exceptions import FileNotFoundError, GitHubAPIError
+from claudestep.github_operations import gh_api_call, run_gh_command
 
 
 def generate_task_id(task: str, max_length: int = 30) -> str:
