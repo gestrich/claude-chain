@@ -66,6 +66,13 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         # === STEP 1: Commit Any Uncommitted Changes ===
         print("=== Step 1/3: Committing changes ===")
 
+        # Remove .action directory if it exists (checked out action code, not part of user's repo)
+        action_dir = os.path.join(os.getcwd(), ".action")
+        if os.path.exists(action_dir):
+            import shutil
+            shutil.rmtree(action_dir)
+            print("Removed .action directory (checked-out action code)")
+
         # Configure git user for commits
         run_git_command(["config", "user.name", "github-actions[bot]"])
         run_git_command(["config", "user.email", "github-actions[bot]@users.noreply.github.com"])
