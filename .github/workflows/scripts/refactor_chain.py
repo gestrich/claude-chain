@@ -395,58 +395,52 @@ def find_available_reviewer(reviewers: List[Dict[str, Any]], label: str, project
 
     print(f"Found {len(prs)} open PR(s) with label '{label}'")
 
-    # Count PRs per reviewer from artifact metadata
-    for pr in prs:
-        branch = pr["headRefName"]
-        pr_number = pr["number"]
+    # Build a map of PR numbers from all open PRs
+    pr_numbers = {pr["number"] for pr in prs}
 
-        # Get workflow runs for this branch
-        try:
-            api_response = gh_api_call(
-                f"/repos/{repo}/actions/runs?branch={branch}&status=completed&per_page=10"
-            )
-            runs = api_response.get("workflow_runs", [])
-        except GitHubAPIError as e:
-            print(f"Warning: Failed to get runs for PR #{pr_number}: {e}")
+    # Get recent successful workflow runs (they run on default branch, not feature branches)
+    # We'll check all recent runs and match artifacts to PRs by PR number in metadata
+    try:
+        api_response = gh_api_call(
+            f"/repos/{repo}/actions/runs?status=completed&per_page=50"
+        )
+        runs = api_response.get("workflow_runs", [])
+    except GitHubAPIError as e:
+        print(f"Warning: Failed to get workflow runs: {e}")
+        runs = []
+
+    # Check artifacts from recent runs to find reviewer assignments
+    for run in runs:
+        if run.get("conclusion") != "success":
             continue
 
-        # Check most recent successful run for artifact
-        reviewer_found = False
-        for run in runs:
-            if run.get("conclusion") == "success":
-                try:
-                    artifacts_data = gh_api_call(
-                        f"/repos/{repo}/actions/runs/{run['id']}/artifacts"
-                    )
-                    artifacts = artifacts_data.get("artifacts", [])
+        try:
+            artifacts_data = gh_api_call(
+                f"/repos/{repo}/actions/runs/{run['id']}/artifacts"
+            )
+            artifacts = artifacts_data.get("artifacts", [])
 
-                    for artifact in artifacts:
-                        name = artifact["name"]
-                        if name.startswith(f"task-metadata-{project}-"):
-                            # Download and parse the artifact JSON
-                            artifact_id = artifact["id"]
-                            metadata = download_artifact_json(repo, artifact_id)
+            for artifact in artifacts:
+                name = artifact["name"]
+                if name.startswith(f"task-metadata-{project}-"):
+                    # Download and parse the artifact JSON
+                    artifact_id = artifact["id"]
+                    metadata = download_artifact_json(repo, artifact_id)
 
-                            if metadata and "reviewer" in metadata:
-                                assigned_reviewer = metadata["reviewer"]
-                                if assigned_reviewer in reviewer_pr_counts:
-                                    reviewer_pr_counts[assigned_reviewer] += 1
-                                    print(f"PR #{pr_number}: reviewer={assigned_reviewer} (from artifact)")
-                                    reviewer_found = True
-                                else:
-                                    print(f"Warning: PR #{pr_number} has unknown reviewer: {assigned_reviewer}")
+                    if metadata and "pr_number" in metadata and "reviewer" in metadata:
+                        pr_num = metadata["pr_number"]
+                        # Only count if this PR is in our open PRs list
+                        if pr_num in pr_numbers:
+                            assigned_reviewer = metadata["reviewer"]
+                            if assigned_reviewer in reviewer_pr_counts:
+                                reviewer_pr_counts[assigned_reviewer] += 1
+                                print(f"PR #{pr_num}: reviewer={assigned_reviewer} (from artifact)")
                             else:
-                                print(f"Warning: Could not parse reviewer from artifact for PR #{pr_number}")
-                            break
+                                print(f"Warning: PR #{pr_num} has unknown reviewer: {assigned_reviewer}")
 
-                    if reviewer_found:
-                        break
-
-                except GitHubAPIError as e:
-                    print(f"Warning: Failed to get artifacts for run {run['id']}: {e}")
-                    continue
-
-                break  # Only check first successful run
+        except GitHubAPIError as e:
+            print(f"Warning: Failed to get artifacts for run {run['id']}: {e}")
+            continue
 
     # Print counts and find first available reviewer
     for reviewer in reviewers:
