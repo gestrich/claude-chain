@@ -202,11 +202,13 @@ jobs:
           TASK: ${{ needs.find-task.outputs.task }}
           PROJECT_PATH: ${{ needs.setup.outputs.project_path }}
         run: |
-          # Check if there are changes to commit
-          if git diff --quiet && git diff --staged --quiet; then
+          # Check if there are commits to push (Claude commits changes, so check log not diff)
+          COMMITS_AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+          if [ "$COMMITS_AHEAD" -eq "0" ]; then
             echo "::warning::No changes made by Claude, skipping PR creation"
             exit 0
           fi
+          echo "Found $COMMITS_AHEAD commit(s) to push"
 
           # Push the branch
           git push -u origin "$BRANCH_NAME"
