@@ -1,0 +1,10 @@
+{
+  "label": "my-refactor",
+  "branchPrefix": "refactor/my-project",
+  "reviewers": [
+    {
+      "username": "your-github-username",
+      "maxOpenPRs": 1
+    }
+  ]
+}

@@ -4,9 +4,45 @@
 
 An automated system for performing ongoing code refactoring using AI (Claude Code) and GitHub Actions. The system continuously generates pull requests for incremental refactoring work, reducing the manual burden and maintaining momentum on large-scale codebase improvements.
 
+## 🎉 Now Available as a Reusable GitHub Action!
+
+This repository can now be used as a reusable GitHub Action in any repository. You have two options:
+
+### Option 1: Use as a GitHub Action (Recommended)
+
+Add the action to your workflow:
+
+```yaml
+- uses: gestrich/continuous-ai-refactor-action@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    project_name: 'your-project-name'
+```
+
+**Benefits:**
+- ✅ No workflow files to maintain
+- ✅ Automatic updates with `@v1` tag
+- ✅ Simpler setup
+- ✅ Works with any repository
+
+**Quick Start:**
+1. See [ACTION_README.md](ACTION_README.md) for complete documentation
+2. Check [examples/basic/workflow.yml](examples/basic/workflow.yml) for a simple example
+3. See [examples/advanced/workflow.yml](examples/advanced/workflow.yml) for all features
+
+### Option 2: Fork This Repository
+
+Clone this repo and customize the workflows directly.
+
+**When to use this approach:**
+- You want to heavily customize the workflow logic
+- You need features not exposed by the action inputs
+- You're developing enhancements to contribute back
+
 ## TODO
 
-- [ ] **Create folder structure & config schema**
+- [x] **Create folder structure & config schema**
 
 Create `/refactor` folder structure with `configuration.json` and `spec.md`:
 
@@ -20,14 +56,18 @@ Create `/refactor` folder structure with `configuration.json` and `spec.md`:
 
 Instructions can live as Claude Code commands in your `.claude/commands/` directory for long-term reuse.
 
-- [ ] **Convert to reusable Github Action**
+- [x] **Convert to reusable Github Action**
 
-Package the system as a reusable GitHub Action that others can integrate.
+✅ Complete! See [ACTION_README.md](ACTION_README.md) and the [action.yml](action.yml) file. This repository can now be used as a reusable GitHub Action.
+
+- [ ] **Create Labels**
+
+The action should create the new label when it does not exist.
 
 - [ ] **Implement PR rejection handling**
 
 Options for handling bad PRs:
-- Check out the branch, mark item as skipped in `plan.md`
+- Check out the branch, mark item as skipped in `spec.md`
 - (Future/Bonus) Use Claude Code mentions to close or update the PR automatically
 
 - [ ] **Slack Action and metrics**

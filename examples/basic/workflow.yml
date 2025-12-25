@@ -1,0 +1,37 @@
+# Basic Example: Scheduled Daily Refactoring
+#
+# This workflow runs once per day and creates one PR at a time for your refactor project.
+# Perfect for getting started with continuous AI refactoring.
+
+name: Continuous AI Refactoring
+
+on:
+  # Run daily at 9 AM UTC
+  schedule:
+    - cron: '0 9 * * *'
+
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      project:
+        description: 'Project name (folder under /refactor)'
+        required: true
+        default: 'swift-migration'
+
+permissions:
+  contents: write        # Push branches
+  pull-requests: write   # Create PRs
+  actions: read         # Read workflow artifacts
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Continuous AI Refactoring
+        uses: ./  # Change to: your-username/continuous-ai-refactor-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_name: ${{ github.event.inputs.project || 'swift-migration' }}
