@@ -2,7 +2,7 @@
 
 ## Steps
 
-- [ ] **Set up a test repo** - Use a personal/work repo with Objective-C files. Get the default Claude Code GitHub Action running with a manual workflow trigger.
+- [x] **Set up a test repo** - Get the default Claude Code GitHub Action running with a manual workflow trigger.
 
 - [ ] **First milestone** - Get a workflow that runs Claude Code and creates a PR. This validates infrastructure: GitHub token permissions, Claude token, action setup.
 
