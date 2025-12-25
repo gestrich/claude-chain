@@ -8,14 +8,14 @@ An automated system for performing ongoing code refactoring using AI (Claude Cod
 
 - [ ] **Create folder structure & config schema**
 
-Create `/refactor` folder structure with `config.json` and `plan.md` template:
+Create `/refactor` folder structure with `configuration.json` and `spec.md`:
 
 ```
 /refactor
   /<refactor-name>/
-    plan.md           # Checklist of items to refactor
-    pr-template.md    # Template for PR descriptions
-    config.json       # Settings (see Configuration)
+    spec.md              # Combined instructions and checklist
+    pr-template.md       # Template for PR descriptions
+    configuration.json   # Settings (see Configuration)
 ```
 
 Instructions can live as Claude Code commands in your `.claude/commands/` directory for long-term reuse.
@@ -120,12 +120,12 @@ gh label create "your-refactor-label" --description "Automated refactor PRs" --c
 
 ### 5. Configuration
 
-A `config.json` file per refactor project:
+A `configuration.json` file per refactor project:
 
 ```json
 {
   "label": "swift-migration",
-  "branchFormat": "refactor/swift-migration-{item}",
+  "branchPrefix": "refactor/swift-migration",
   "reviewers": [
     { "username": "alice", "maxOpenPRs": 1 },
     { "username": "bob", "maxOpenPRs": 1 }
@@ -134,8 +134,44 @@ A `config.json` file per refactor project:
 ```
 
 - **label** - GitHub tag used to identify PRs for this refactor
-- **branchFormat** - Pattern for branch names
+- **branchPrefix** - Prefix for branch names (actual format: YYYY-MM-{project}-{index})
 - **reviewers** - List of GitHub usernames and how many PRs each can have open at once
+
+### 6. spec.md Format
+
+The `spec.md` file combines instructions and checklist in a single document. Format requirements:
+
+**Checklist Items:**
+- Use `- [ ]` for unchecked items (tasks to do)
+- Use `- [x]` for checked items (completed tasks)
+- Items can appear anywhere in the file (not limited to a specific section)
+- At least one checklist item must be present
+
+**Example Structure:**
+
+```markdown
+# Migration Instructions
+
+[Your detailed instructions here - can be multiple sections]
+
+## Guidelines
+- Rule 1
+- Rule 2
+
+## Checklist
+- [ ] First task
+  - Additional details for this task can go here
+- [ ] Second task
+- [x] Completed task
+
+## More Information
+[Additional context...]
+
+- [ ] Another task (checklist items can appear anywhere!)
+```
+
+**Validation:**
+The GitHub Action validates that `spec.md` contains at least one checklist item (`- [ ]` or `- [x]`). If none are found, the workflow will fail with a clear error message.
 
 ## Background
 
@@ -170,33 +206,40 @@ Recommendation: Start with immediate trigger for faster feedback, switch to sche
 
 ### How It Works
 
-#### 1. Define the Plan
+#### 1. Create the Specification
 
-Create `plan.md` with a checklist:
+Create `spec.md` combining instructions and checklist:
 ```markdown
-## Swift Migration Plan
+# Swift Migration
+
+Convert Objective-C files to Swift following these guidelines:
+
+- Use Swift naming conventions (camelCase for methods, PascalCase for types)
+- Replace `NSString` with `String`, `NSArray` with `[Type]`
+- Use guard statements instead of nested if-let
+- Add appropriate access control (public/private/internal)
+
+## Before/After Example
+[... detailed examples ...]
+
+## Checklist
 
 - [ ] Convert UserManager.m
 - [ ] Convert NetworkClient.m
 - [x] Convert Logger.m (completed)
 ```
 
-#### 2. Create the Specification
+The `- [ ]` items can appear anywhere in the file—they don't need to be in a specific section. This allows you to include detailed instructions under each item if needed.
 
-Write detailed rules for the refactor:
-- Coding patterns to follow
-- Before/after examples
-- Edge cases
-- Can be a Claude Code command for reuse
-
-#### 3. Continuous AI Refactoring (GitHub Action)
+#### 2. Continuous AI Refactoring (GitHub Action)
 
 Runs on schedule or merge trigger:
 1. Check for open PRs with the label
 2. If under max, create a new PR for the next item
-3. Apply the label and use the PR template
+3. Claude reads the entire `spec.md` file to understand both what to do and how to do it
+4. Apply the label and use the PR template
 
-#### 4. Human Review & Refinement
+#### 3. Human Review & Refinement
 
 When notified:
 - Review and merge if good

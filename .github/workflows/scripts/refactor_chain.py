@@ -245,21 +245,21 @@ def find_next_available_task(plan_file: str, skip_indices: Optional[set] = None)
     """Find first unchecked task not in skip_indices
 
     Args:
-        plan_file: Path to plan.md file
+        plan_file: Path to spec.md file
         skip_indices: Set of task indices to skip (in-progress tasks)
 
     Returns:
         Tuple of (task_index, task_text) or None if no available task found
-        task_index is 1-based position in plan.md
+        task_index is 1-based position in spec.md
 
     Raises:
-        FileNotFoundError: If plan file doesn't exist
+        FileNotFoundError: If spec file doesn't exist
     """
     if skip_indices is None:
         skip_indices = set()
 
     if not os.path.exists(plan_file):
-        raise FileNotFoundError(f"Plan file not found: {plan_file}")
+        raise FileNotFoundError(f"Spec file not found: {plan_file}")
 
     with open(plan_file, "r") as f:
         task_index = 1
@@ -280,17 +280,17 @@ def find_next_available_task(plan_file: str, skip_indices: Optional[set] = None)
 
 
 def mark_task_complete(plan_file: str, task: str) -> None:
-    """Mark a task as complete in the plan file
+    """Mark a task as complete in the spec file
 
     Args:
-        plan_file: Path to plan.md file
+        plan_file: Path to spec.md file
         task: Task description to mark complete
 
     Raises:
-        FileNotFoundError: If plan file doesn't exist
+        FileNotFoundError: If spec file doesn't exist
     """
     if not os.path.exists(plan_file):
-        raise FileNotFoundError(f"Plan file not found: {plan_file}")
+        raise FileNotFoundError(f"Spec file not found: {plan_file}")
 
     with open(plan_file, "r") as f:
         content = f.read()
@@ -303,6 +303,40 @@ def mark_task_complete(plan_file: str, task: str) -> None:
 
     with open(plan_file, "w") as f:
         f.write(updated_content)
+
+
+def validate_spec_format(spec_file: str) -> bool:
+    """Validate that spec.md contains checklist items in the correct format
+
+    Args:
+        spec_file: Path to spec.md file
+
+    Returns:
+        True if valid format (contains at least one checklist item)
+
+    Raises:
+        FileNotFoundError: If spec file doesn't exist
+        ConfigurationError: If spec file has invalid format
+    """
+    if not os.path.exists(spec_file):
+        raise FileNotFoundError(f"Spec file not found: {spec_file}")
+
+    has_checklist_item = False
+
+    with open(spec_file, "r") as f:
+        for line in f:
+            # Check for unchecked or checked task items
+            if re.match(r'^\s*- \[[xX ]\]', line):
+                has_checklist_item = True
+                break
+
+    if not has_checklist_item:
+        raise ConfigurationError(
+            f"Invalid spec.md format: No checklist items found. "
+            f"The file must contain at least one '- [ ]' or '- [x]' item."
+        )
+
+    return True
 
 
 def download_artifact_json(repo: str, artifact_id: int) -> Optional[Dict[str, Any]]:
@@ -639,6 +673,7 @@ def cmd_setup(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         project = args.project
         project_path = f"refactor/{project}"
         config_file = f"{project_path}/configuration.json"
+        spec_file = f"{project_path}/spec.md"
 
         # Load and validate configuration
         config = load_json(config_file)
@@ -650,6 +685,9 @@ def cmd_setup(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 
         if not label or not branch_prefix or not reviewers:
             raise ConfigurationError("Missing required fields: label, branchPrefix, or reviewers")
+
+        # Validate spec.md format
+        validate_spec_format(spec_file)
 
         # Convert reviewers to JSON string for passing to next job
         reviewers_json = json.dumps(reviewers)
@@ -665,6 +703,7 @@ def cmd_setup(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         gh.write_step_summary(f"- Project: {project}")
         gh.write_step_summary(f"- Label: {label}")
         gh.write_step_summary(f"- Branch prefix: {branch_prefix}")
+        gh.write_step_summary(f"- Spec file: ✅ Valid format")
 
         return 0
 
@@ -748,7 +787,7 @@ def cmd_find_task(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         if not all([project_path, label, project, repo]):
             raise ConfigurationError("Missing required environment variables: PROJECT_PATH, LABEL, PROJECT, GITHUB_REPOSITORY")
 
-        plan_file = f"{project_path}/plan.md"
+        spec_file = f"{project_path}/spec.md"
 
         # Get in-progress task indices from open PRs
         print("Checking for in-progress tasks...")
@@ -758,7 +797,7 @@ def cmd_find_task(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
             print(f"Found in-progress tasks: {sorted(in_progress_indices)}")
 
         # Find next available task
-        result = find_next_available_task(plan_file, in_progress_indices)
+        result = find_next_available_task(spec_file, in_progress_indices)
 
         if result:
             task_index, task = result
@@ -828,28 +867,28 @@ def cmd_create_pr(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         remote_url = f"https://x-access-token:{gh_token}@github.com/{github_repository}.git"
         run_git_command(["remote", "set-url", "origin", remote_url])
 
-        # Mark task as complete in plan.md before pushing
-        plan_file = f"{project_path}/plan.md"
+        # Mark task as complete in spec.md before pushing
+        spec_file = f"{project_path}/spec.md"
         try:
-            mark_task_complete(plan_file, task)
-            print(f"Marked task complete in {plan_file}")
+            mark_task_complete(spec_file, task)
+            print(f"Marked task complete in {spec_file}")
 
-            # Add the updated plan to the same commit
-            run_git_command(["add", plan_file])
+            # Add the updated spec to the same commit
+            run_git_command(["add", spec_file])
 
             # Check if there are changes to commit
             try:
                 status_output = run_git_command(["status", "--porcelain"])
                 if status_output.strip():
-                    # Amend the last commit to include the plan update
+                    # Amend the last commit to include the spec update
                     run_git_command(["commit", "--amend", "--no-edit"])
-                    print("Added plan.md update to commit")
+                    print("Added spec.md update to commit")
             except GitError:
                 # If amending fails, create a new commit
                 run_git_command(["commit", "-m", f"Mark task complete: {task}"])
-                print("Created separate commit for plan.md update")
+                print("Created separate commit for spec.md update")
         except (GitError, FileNotFoundError) as e:
-            gh.set_warning(f"Failed to mark task complete in plan: {str(e)}")
+            gh.set_warning(f"Failed to mark task complete in spec: {str(e)}")
 
         # Push the branch with all changes
         # Use --force since we may have amended the commit
