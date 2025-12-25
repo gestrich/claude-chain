@@ -3,6 +3,10 @@ name: Claude Code
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   claude:
     runs-on: ubuntu-latest
@@ -13,5 +17,3 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           prompt: "Print 'Hello world' and nothing else."
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
