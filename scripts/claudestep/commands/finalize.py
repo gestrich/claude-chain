@@ -145,16 +145,26 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
             actions_url = f"https://github.com/{github_repository}/actions/runs/{github_run_id}"
             pr_body += f"\n\n---\n\n*Created by [ClaudeStep run]({actions_url})*"
 
-        # Create PR
-        pr_url = run_gh_command([
-            "pr", "create",
-            "--title", f"ClaudeStep: {task}",
-            "--body", pr_body,
-            "--label", label,
-            "--assignee", reviewer,
-            "--head", branch_name,
-            "--base", base_branch
-        ])
+        # Create PR using temp file for body to avoid command-line length/escaping issues
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+            f.write(pr_body)
+            pr_body_file = f.name
+
+        try:
+            pr_url = run_gh_command([
+                "pr", "create",
+                "--title", f"ClaudeStep: {task}",
+                "--body-file", pr_body_file,
+                "--label", label,
+                "--assignee", reviewer,
+                "--head", branch_name,
+                "--base", base_branch
+            ])
+        finally:
+            # Clean up temp file
+            if os.path.exists(pr_body_file):
+                os.remove(pr_body_file)
 
         print(f"✅ Created PR: {pr_url}")
 
