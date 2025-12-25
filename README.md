@@ -1,4 +1,4 @@
-# Refactor Loop: Continuous AI-Powered Code Refactoring
+# Continuous AI Refactoring
 
 ## Steps
 
@@ -6,17 +6,17 @@
 - [ ] **Create folder structure & config schema** - `/refactor` folder, `config.json`, `plan.md` template.
 - [ ] Slack Action and metrics
 - [ ] **Convert to reusable Github Action**
-- [ ] **Record video walkthrough** - "Chain Refactors" tutorial.
+- [ ] **Record video walkthrough** - "Continuous AI Refactoring" tutorial.
 - [ ] **Write blog post** - Written guide explaining the approach.
 - [ ] **Open source the repo** - Complete setup others can use.
 
 ## Overview
 
-An automated system for performing ongoing code refactoring using AI (Claude Code) and GitHub Actions. The core idea is to create a "refactor chain" that continuously generates pull requests for incremental refactoring work, reducing the manual burden and maintaining momentum on large-scale codebase improvements.
+An automated system for performing ongoing code refactoring using AI (Claude Code) and GitHub Actions. The system continuously generates pull requests for incremental refactoring work, reducing the manual burden and maintaining momentum on large-scale codebase improvements.
 
 ## Setup
 
-Before using the refactor chain, you need to configure a few things:
+Before using Continuous AI Refactoring, you need to configure a few things:
 
 ### 1. Install the Claude Code GitHub App
 
@@ -141,7 +141,7 @@ Write detailed rules for the refactor:
 - Edge cases
 - Can be a Claude Code command for reuse
 
-### 3. The Refactor Chain (GitHub Action)
+### 3. Continuous AI Refactoring (GitHub Action)
 
 Runs on schedule or merge trigger:
 1. Check for open PRs with the label

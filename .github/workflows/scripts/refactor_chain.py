@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Refactor Chain - GitHub Actions Helper Script
+Continuous AI Refactoring - GitHub Actions Helper Script
 
-This script handles all operations for the automated refactoring chain workflow.
+This script handles all operations for the automated refactoring workflow.
 It replaces bash scripts with a more maintainable Python implementation.
 """
 
@@ -17,27 +17,27 @@ from typing import Any, Dict, List, Optional
 
 
 # Custom Exceptions
-class RefactorChainError(Exception):
-    """Base exception for refactor chain operations"""
+class ContinuousRefactoringError(Exception):
+    """Base exception for continuous refactoring operations"""
     pass
 
 
-class ConfigurationError(RefactorChainError):
+class ConfigurationError(ContinuousRefactoringError):
     """Configuration file issues"""
     pass
 
 
-class FileNotFoundError(RefactorChainError):
+class FileNotFoundError(ContinuousRefactoringError):
     """Missing required files"""
     pass
 
 
-class GitError(RefactorChainError):
+class GitError(ContinuousRefactoringError):
     """Git operation failures"""
     pass
 
 
-class GitHubAPIError(RefactorChainError):
+class GitHubAPIError(ContinuousRefactoringError):
     """GitHub API call failures"""
     pass
 
@@ -866,7 +866,7 @@ def cmd_create_pr(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         # Create PR
         pr_url = run_gh_command([
             "pr", "create",
-            "--title", f"Refactor: {task}",
+            "--title", f"Continuous AI Refactor: {task}",
             "--body", pr_body,
             "--label", label,
             "--assignee", reviewer,
@@ -930,7 +930,7 @@ def cmd_create_pr(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 def main():
     """Main entry point for the script"""
     parser = argparse.ArgumentParser(
-        description="Refactor Chain - GitHub Actions Helper Script"
+        description="Continuous AI Refactoring - GitHub Actions Helper Script"
     )
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
 

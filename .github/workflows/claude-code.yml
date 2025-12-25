@@ -1,4 +1,4 @@
-name: Refactor Chain
+name: Continuous AI Refactoring
 
 on:
   workflow_dispatch:
@@ -7,6 +7,11 @@ on:
         description: 'Refactor project folder name (under refactor/)'
         required: true
         default: 'example'
+  schedule:
+    # Run daily at 9 AM UTC
+    - cron: '0 9 * * *'
+  pull_request:
+    types: [closed]
 
 permissions:
   contents: write
@@ -17,11 +22,15 @@ permissions:
 jobs:
   setup:
     runs-on: ubuntu-latest
+    # Skip if PR was closed without merging, or if PR doesn't match our branch pattern
+    if: github.event_name != 'pull_request' || (github.event.pull_request.merged == true && startsWith(github.head_ref, '20'))
     outputs:
       label: ${{ steps.config.outputs.label }}
       branch_prefix: ${{ steps.config.outputs.branch_prefix }}
       reviewers_json: ${{ steps.config.outputs.reviewers_json }}
       project_path: ${{ steps.config.outputs.project_path }}
+      project: ${{ steps.determine-project.outputs.project }}
+      should_run: ${{ steps.check-label.outputs.should_run }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,12 +39,65 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Determine project
+        id: determine-project
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PROJECT="${{ github.event.inputs.project }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Extract project from branch name (format: YYYY-MM-{project}-{index})
+            BRANCH="${{ github.head_ref }}"
+            PROJECT=$(echo "$BRANCH" | sed -E 's/^[0-9]{4}-[0-9]{2}-([^-]+)-[0-9]+$/\1/')
+          else
+            # Schedule trigger - default to 'example'
+            PROJECT="example"
+          fi
+          echo "project=$PROJECT" >> $GITHUB_OUTPUT
+          echo "Determined project: $PROJECT"
+
+      - name: Check PR label (for PR trigger only)
+        id: check-label
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # For non-PR events, always run
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Get the label from the project config
+          PROJECT="${{ steps.determine-project.outputs.project }}"
+          CONFIG_FILE="refactor/$PROJECT/config.json"
+
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "Config file not found for project: $PROJECT"
+            exit 0
+          fi
+
+          EXPECTED_LABEL=$(python3 -c "import json; print(json.load(open('$CONFIG_FILE'))['label'])")
+
+          # Check if PR has the expected label
+          PR_LABELS=$(gh pr view ${{ github.event.pull_request.number }} --json labels --jq '.labels[].name')
+
+          if echo "$PR_LABELS" | grep -q "^${EXPECTED_LABEL}$"; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+            echo "PR has matching label: $EXPECTED_LABEL"
+          else
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "PR does not have matching label: $EXPECTED_LABEL"
+          fi
+
       - name: Read configuration
         id: config
-        run: python .github/workflows/scripts/refactor_chain.py setup ${{ github.event.inputs.project }}
+        run: python .github/workflows/scripts/refactor_chain.py setup ${{ steps.determine-project.outputs.project }}
 
   check-capacity:
     needs: setup
+    if: needs.setup.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     outputs:
       reviewer: ${{ steps.find-reviewer.outputs.reviewer }}
@@ -54,7 +116,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           LABEL: ${{ needs.setup.outputs.label }}
           REVIEWERS_JSON: ${{ needs.setup.outputs.reviewers_json }}
-          PROJECT: ${{ github.event.inputs.project }}
+          PROJECT: ${{ needs.setup.outputs.project }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python .github/workflows/scripts/refactor_chain.py check-capacity
 
@@ -79,7 +141,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PROJECT_PATH: ${{ needs.setup.outputs.project_path }}
-          PROJECT: ${{ github.event.inputs.project }}
+          PROJECT: ${{ needs.setup.outputs.project }}
           LABEL: ${{ needs.setup.outputs.label }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python .github/workflows/scripts/refactor_chain.py find-task
@@ -99,7 +161,7 @@ jobs:
       - name: Create branch
         id: branch
         env:
-          PROJECT: ${{ github.event.inputs.project }}
+          PROJECT: ${{ needs.setup.outputs.project }}
           TASK_INDEX: ${{ needs.find-task.outputs.task_index }}
         run: |
           DATE_PREFIX=$(date +%Y-%m)
@@ -145,7 +207,7 @@ jobs:
           REVIEWER: ${{ needs.check-capacity.outputs.reviewer }}
           TASK: ${{ needs.find-task.outputs.task }}
           TASK_INDEX: ${{ needs.find-task.outputs.task_index }}
-          PROJECT: ${{ github.event.inputs.project }}
+          PROJECT: ${{ needs.setup.outputs.project }}
           PROJECT_PATH: ${{ needs.setup.outputs.project_path }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
