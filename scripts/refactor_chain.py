@@ -1012,6 +1012,11 @@ def cmd_create_pr(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         else:
             pr_body = f"## Task\n{task}"
 
+        # Add GitHub Actions run link for traceability
+        if github_run_id:
+            actions_url = f"https://github.com/{github_repository}/actions/runs/{github_run_id}"
+            pr_body += f"\n\n---\n\n*Created by [Continuous AI Refactoring run]({actions_url})*"
+
         # Create PR
         pr_url = run_gh_command([
             "pr", "create",
