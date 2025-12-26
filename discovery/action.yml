@@ -1,5 +1,5 @@
-name: 'ClaudeStep'
-description: 'Automate code refactoring with AI using Claude Code. Creates incremental PRs for systematic codebase improvements.'
+name: 'ClaudeStep Discovery'
+description: 'Automate code refactoring with AI using Claude Code. Automatically discovers and processes the next project that needs work.'
 author: 'gestrich'
 
 branding:
@@ -14,9 +14,6 @@ inputs:
     description: 'GitHub token for PR creation and API access'
     required: true
     default: ${{ github.token }}
-  project_name:
-    description: 'Project folder name under /refactor directory'
-    required: true
   merged_pr_number:
     description: 'PR number that was just merged (for auto-detecting project from labels)'
     required: false
@@ -65,6 +62,9 @@ outputs:
   all_tasks_done:
     description: 'Whether all tasks are complete (true/false)'
     value: ${{ steps.prepare.outputs.all_tasks_done }}
+  project_name:
+    description: 'Project name that was discovered and processed'
+    value: ${{ steps.prepare.outputs.project_name }}
 
 runs:
   using: 'composite'
@@ -74,19 +74,19 @@ runs:
       with:
         python-version: '3.11'
 
-    - name: Prepare for Claude Code execution
+    - name: Prepare for Claude Code execution (Discovery Mode)
       id: prepare
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       env:
         GH_TOKEN: ${{ inputs.github_token }}
-        PROJECT_NAME: ${{ inputs.project_name }}
+        # PROJECT_NAME is intentionally not set - triggers discovery mode
         MERGED_PR_NUMBER: ${{ inputs.merged_pr_number }}
         CONFIG_PATH: ${{ inputs.config_path }}
         SPEC_PATH: ${{ inputs.spec_path }}
         PR_TEMPLATE_PATH: ${{ inputs.pr_template_path }}
         GITHUB_REPOSITORY: ${{ github.repository }}
-        ACTION_PATH: ${{ github.action_path }}
+        ACTION_PATH: ${{ github.action_path }}/../
       run: |
         export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
         python3 -m claudestep prepare
@@ -134,7 +134,7 @@ runs:
         BASE_BRANCH: ${{ inputs.base_branch }}
         HAS_CAPACITY: ${{ steps.prepare.outputs.has_capacity }}
         HAS_TASK: ${{ steps.prepare.outputs.has_task }}
-        ACTION_PATH: ${{ github.action_path }}
+        ACTION_PATH: ${{ github.action_path }}/../
       run: |
         export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
         python3 -m claudestep finalize
