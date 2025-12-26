@@ -378,9 +378,9 @@ class StatisticsReport:
                 lines.append(fmt.header("🏆 Leaderboard", level=2))
                 lines.append("```")
                 # Table header with box-drawing characters
-                lines.append("┌──────┬─────────────────┬────────┬──────┐")
-                lines.append("│ Rank │ Username        │ Merged │ Open │")
-                lines.append("├──────┼─────────────────┼────────┼──────┤")
+                lines.append("┌──────┬─────────────────┬──────┬────────┐")
+                lines.append("│ Rank │ Username        │ Open │ Merged │")
+                lines.append("├──────┼─────────────────┼──────┼────────┤")
                 for idx, (username, stats) in enumerate(active_members):
                     # Get rank display - emojis are double-width
                     medals = ["🥇", "🥈", "🥉"]
@@ -392,8 +392,8 @@ class StatisticsReport:
                         rank_str = f" #{idx+1:<3}"
 
                     username_truncated = username[:15]
-                    lines.append(f"│{rank_str}│ {username_truncated:<15} │   {stats.merged_count:>4} │  {stats.open_count:>3} │")
-                lines.append("└──────┴─────────────────┴────────┴──────┘")
+                    lines.append(f"│{rank_str}│ {username_truncated:<15} │  {stats.open_count:>3} │   {stats.merged_count:>4} │")
+                lines.append("└──────┴─────────────────┴──────┴────────┘")
                 lines.append("```")
                 lines.append("")
 
@@ -402,9 +402,9 @@ class StatisticsReport:
             lines.append(fmt.header("📊 Project Progress", level=2))
             lines.append("```")
             # Table header with box-drawing characters
-            lines.append("┌──────────────────────┬───────┬──────┬─────┬──────┬──────────────┐")
-            lines.append("│ Project              │ Total │ Done │ WIP │ Todo │   Progress   │")
-            lines.append("├──────────────────────┼───────┼──────┼─────┼──────┼──────────────┤")
+            lines.append("┌──────────────────────┬──────┬────────┬───────┬──────────────┐")
+            lines.append("│ Project              │ Open │ Merged │ Total │   Progress   │")
+            lines.append("├──────────────────────┼──────┼────────┼───────┼──────────────┤")
             for project_name in sorted(self.project_stats.keys()):
                 stats = self.project_stats[project_name]
                 name = project_name[:20]
@@ -414,8 +414,8 @@ class StatisticsReport:
                 filled = int((pct / 100) * bar_width)
                 bar = "█" * filled + "░" * (bar_width - filled)
                 # Format: " bar  40% " = 1 + 10 (bar) + 2 spaces + 4 (pct) = ~14 chars visual
-                lines.append(f"│ {name:<20} │  {stats.total_tasks:>4} │  {stats.completed_tasks:>3} │ {stats.in_progress_tasks:>3} │  {stats.pending_tasks:>3} │ {bar}  {pct:>3.0f}% │")
-            lines.append("└──────────────────────┴───────┴──────┴─────┴──────┴──────────────┘")
+                lines.append(f"│ {name:<20} │  {stats.in_progress_tasks:>3} │   {stats.completed_tasks:>4} │  {stats.total_tasks:>4} │ {bar}  {pct:>3.0f}% │")
+            lines.append("└──────────────────────┴──────┴────────┴───────┴──────────────┘")
             lines.append("```")
             lines.append("")
         else:
