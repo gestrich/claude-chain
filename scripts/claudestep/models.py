@@ -1,6 +1,7 @@
 """Data models for ClaudeStep operations"""
 
 from typing import Any, Dict, List, Optional
+from claudestep.table_formatter import TableFormatter
 
 
 class MarkdownFormatter:
@@ -377,23 +378,24 @@ class StatisticsReport:
             if active_members:
                 lines.append(fmt.header("🏆 Leaderboard", level=2))
                 lines.append("```")
-                # Table header with box-drawing characters
-                lines.append("┌──────┬─────────────────┬──────┬────────┐")
-                lines.append("│ Rank │ Username        │ Open │ Merged │")
-                lines.append("├──────┼─────────────────┼──────┼────────┤")
-                for idx, (username, stats) in enumerate(active_members):
-                    # Get rank display - emojis are double-width
-                    medals = ["🥇", "🥈", "🥉"]
-                    if idx < 3:
-                        # Emoji is double-width, add 1 space after to total 4 chars
-                        rank_str = f" {medals[idx]}  "
-                    else:
-                        # Regular text #4, #5 etc - pad to 4 chars
-                        rank_str = f" #{idx+1:<3}"
 
-                    username_truncated = username[:15]
-                    lines.append(f"│{rank_str}│ {username_truncated:<15} │  {stats.open_count:>3} │   {stats.merged_count:>4} │")
-                lines.append("└──────┴─────────────────┴──────┴────────┘")
+                # Build table using TableFormatter
+                table = TableFormatter(
+                    headers=["Rank", "Username", "Open", "Merged"],
+                    align=['left', 'left', 'right', 'right']
+                )
+
+                medals = ["🥇", "🥈", "🥉"]
+                for idx, (username, stats) in enumerate(active_members):
+                    rank_display = medals[idx] if idx < 3 else f"#{idx+1}"
+                    table.add_row([
+                        rank_display,
+                        username[:15],
+                        str(stats.open_count),
+                        str(stats.merged_count)
+                    ])
+
+                lines.append(table.format())
                 lines.append("```")
                 lines.append("")
 
@@ -401,21 +403,32 @@ class StatisticsReport:
         if self.project_stats:
             lines.append(fmt.header("📊 Project Progress", level=2))
             lines.append("```")
-            # Table header with box-drawing characters
-            lines.append("┌──────────────────────┬──────┬────────┬───────┬──────────────┐")
-            lines.append("│ Project              │ Open │ Merged │ Total │   Progress   │")
-            lines.append("├──────────────────────┼──────┼────────┼───────┼──────────────┤")
+
+            # Build table using TableFormatter
+            table = TableFormatter(
+                headers=["Project", "Open", "Merged", "Total", "Progress"],
+                align=['left', 'right', 'right', 'right', 'left']
+            )
+
             for project_name in sorted(self.project_stats.keys()):
                 stats = self.project_stats[project_name]
-                name = project_name[:20]
                 pct = stats.completion_percentage
-                # Create compact progress bar (5 blocks wide, displays as 10 chars since double-width)
-                bar_width = 5
+
+                # Create progress bar
+                bar_width = 10
                 filled = int((pct / 100) * bar_width)
                 bar = "█" * filled + "░" * (bar_width - filled)
-                # Format: " bar  40% " = 1 + 10 (bar) + 2 spaces + 4 (pct) = ~14 chars visual
-                lines.append(f"│ {name:<20} │  {stats.in_progress_tasks:>3} │   {stats.completed_tasks:>4} │  {stats.total_tasks:>4} │ {bar}  {pct:>3.0f}% │")
-            lines.append("└──────────────────────┴──────┴────────┴───────┴──────────────┘")
+                progress_display = f"{bar} {pct:>3.0f}%"
+
+                table.add_row([
+                    project_name[:20],
+                    str(stats.in_progress_tasks),
+                    str(stats.completed_tasks),
+                    str(stats.total_tasks),
+                    progress_display
+                ])
+
+            lines.append(table.format())
             lines.append("```")
             lines.append("")
         else:
