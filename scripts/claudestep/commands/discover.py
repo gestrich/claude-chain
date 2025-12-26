@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import List
 
-from claudestep.github_actions import set_output
+from claudestep.github_actions import GitHubActionsHelper
 
 
 def find_all_projects(base_dir: str = "refactor") -> List[str]:
@@ -53,8 +53,9 @@ def main():
         projects_json = json.dumps(projects)
 
     # Output for GitHub Actions
-    set_output("projects", projects_json)
-    set_output("project_count", str(len(projects)))
+    gh = GitHubActionsHelper()
+    gh.write_output("projects", projects_json)
+    gh.write_output("project_count", str(len(projects)))
 
     print(f"\nProjects JSON: {projects_json}")
 
