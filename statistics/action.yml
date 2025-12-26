@@ -54,5 +54,7 @@ runs:
         STATS_FORMAT: 'slack'
         ACTION_PATH: ${{ github.action_path }}
       run: |
-        export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
+        # ACTION_PATH points to statistics/ subdir, need parent for scripts/
+        ACTION_ROOT=$(dirname "$ACTION_PATH")
+        export PYTHONPATH="$ACTION_ROOT/scripts:$PYTHONPATH"
         python3 -m claudestep statistics
