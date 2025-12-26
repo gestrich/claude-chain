@@ -3,6 +3,55 @@
 from typing import Any, Dict, List, Optional
 
 
+class MarkdownFormatter:
+    """Helper class for formatting text in both Slack mrkdwn and GitHub markdown"""
+
+    def __init__(self, for_slack: bool = False):
+        self.for_slack = for_slack
+
+    def bold(self, text: str) -> str:
+        """Format text as bold"""
+        if self.for_slack:
+            return f"*{text}*"
+        return f"**{text}**"
+
+    def italic(self, text: str) -> str:
+        """Format text as italic"""
+        return f"_{text}_"
+
+    def header(self, text: str, level: int = 2) -> str:
+        """Format text as a header
+
+        Args:
+            text: Header text
+            level: Header level (1-6 for GitHub, 1-2 for Slack)
+        """
+        if self.for_slack:
+            # Slack only has bold for headers
+            return f"*{text}*"
+        return f"{'#' * level} {text}"
+
+    def code(self, text: str) -> str:
+        """Format text as inline code"""
+        return f"`{text}`"
+
+    def code_block(self, text: str, language: str = "") -> str:
+        """Format text as code block"""
+        if self.for_slack:
+            return f"```{text}```"
+        return f"```{language}\n{text}\n```"
+
+    def link(self, text: str, url: str) -> str:
+        """Format text as a link"""
+        if self.for_slack:
+            return f"<{url}|{text}>"
+        return f"[{text}]({url})"
+
+    def list_item(self, text: str, bullet: str = "-") -> str:
+        """Format text as a list item"""
+        return f"{bullet} {text}"
+
+
 class ReviewerCapacityResult:
     """Result of reviewer capacity check with detailed information"""
 
@@ -93,8 +142,13 @@ class TeamMemberStats:
         """Number of open PRs"""
         return len(self.open_prs)
 
-    def format_summary(self) -> str:
-        """Format for GitHub/Slack markdown output"""
+    def format_summary(self, for_slack: bool = False) -> str:
+        """Format for GitHub/Slack markdown output
+
+        Args:
+            for_slack: If True, use Slack mrkdwn format; otherwise use standard markdown
+        """
+        fmt = MarkdownFormatter(for_slack)
         lines = []
 
         # Emoji status indicator
@@ -104,7 +158,7 @@ class TeamMemberStats:
             status_emoji = "💤"
 
         # Member header
-        lines.append(f"{status_emoji} **@{self.username}**")
+        lines.append(f"{status_emoji} {fmt.bold(f'@{self.username}')}")
 
         # Activity summary
         lines.append(f"- Merged: {self.merged_count} PR(s)")
@@ -148,21 +202,26 @@ class ProjectStats:
         bar = "█" * filled + "░" * empty
         return f"{bar} {self.completion_percentage:.0f}%"
 
-    def format_summary(self) -> str:
-        """Format for GitHub/Slack markdown with progress bar"""
+    def format_summary(self, for_slack: bool = False) -> str:
+        """Format for GitHub/Slack markdown with progress bar
+
+        Args:
+            for_slack: If True, use Slack mrkdwn format; otherwise use standard markdown
+        """
+        fmt = MarkdownFormatter(for_slack)
         lines = []
 
         # Project header
-        lines.append(f"### 📊 **{self.project_name}**")
+        lines.append(fmt.header(f"📊 {self.project_name}", level=3))
         lines.append("")
 
         # Progress bar
-        lines.append(f"**Progress:** {self.format_progress_bar()}")
-        lines.append(f"**Tasks:** {self.completed_tasks}/{self.total_tasks} complete")
+        lines.append(f"{fmt.bold('Progress:')} {self.format_progress_bar()}")
+        lines.append(f"{fmt.bold('Tasks:')} {self.completed_tasks}/{self.total_tasks} complete")
         lines.append("")
 
         # Task breakdown
-        lines.append("**Details:**")
+        lines.append(fmt.bold("Details:"))
         lines.append(f"- ✅ Completed: {self.completed_tasks}")
         lines.append(f"- 🔄 In Progress: {self.in_progress_tasks}")
         lines.append(f"- ⏸️ Pending: {self.pending_tasks}")
@@ -186,12 +245,16 @@ class StatisticsReport:
         """Add project statistics"""
         self.project_stats[stats.project_name] = stats
 
-    def format_leaderboard(self) -> str:
+    def format_leaderboard(self, for_slack: bool = False) -> str:
         """Format leaderboard showing top contributors with rankings
 
+        Args:
+            for_slack: If True, use Slack mrkdwn format; otherwise use standard markdown
+
         Returns:
-            Markdown formatted leaderboard with medals and rankings
+            Formatted leaderboard with medals and rankings
         """
+        fmt = MarkdownFormatter(for_slack)
         lines = []
 
         if not self.team_stats:
@@ -210,7 +273,8 @@ class StatisticsReport:
         if not active_members:
             return ""
 
-        lines.append("## 🏆 Leaderboard")
+        # Header
+        lines.append(fmt.header("🏆 Leaderboard", level=2))
         lines.append("")
 
         # Medal emojis for top 3
@@ -233,53 +297,59 @@ class StatisticsReport:
             max_merged = active_members[0][1].merged_count if active_members else 1
             bar_width = 10
             filled = int((merged / max_merged) * bar_width) if max_merged > 0 else 0
-            bar = "█" * filled + "░" * (bar_width - filled)
 
-            lines.append(f"{rank_display} **@{username}** - {merged} PR(s) merged")
+            # Use lighter squares for Slack, full blocks for GitHub
+            if for_slack:
+                bar = "▓" * filled + "░" * (bar_width - filled)
+            else:
+                bar = "█" * filled + "░" * (bar_width - filled)
+
+            lines.append(f"{rank_display} {fmt.bold(f'@{username}')} - {merged} PR(s) merged")
             lines.append(f"   {bar}")
             if open_prs > 0:
-                lines.append(f"   _({open_prs} open PR(s))_")
+                lines.append(f"   {fmt.italic(f'({open_prs} open PR(s))')}")
             lines.append("")
 
         return "\n".join(lines)
 
     def format_for_slack(self) -> str:
         """Complete report in Slack mrkdwn format"""
+        fmt = MarkdownFormatter(for_slack=True)
         lines = []
 
         # Header
-        lines.append("# 🤖 ClaudeStep Statistics Report")
+        lines.append(fmt.header("🤖 ClaudeStep Statistics Report", level=1))
         lines.append("")
 
         if self.generated_at:
             from datetime import datetime
             timestamp = self.generated_at.strftime("%Y-%m-%d %H:%M UTC")
-            lines.append(f"*Generated: {timestamp}*")
+            lines.append(fmt.italic(f"Generated: {timestamp}"))
             lines.append("")
 
         # Leaderboard (show first, it's the most engaging!)
-        leaderboard = self.format_leaderboard()
+        leaderboard = self.format_leaderboard(for_slack=True)
         if leaderboard:
             lines.append(leaderboard)
             lines.append("")
 
         # Project Statistics
         if self.project_stats:
-            lines.append("## 📊 Project Progress")
+            lines.append(fmt.header("📊 Project Progress", level=2))
             lines.append("")
             for project_name in sorted(self.project_stats.keys()):
                 stats = self.project_stats[project_name]
-                lines.append(stats.format_summary())
+                lines.append(stats.format_summary(for_slack=True))
                 lines.append("")
         else:
-            lines.append("## 📊 Project Progress")
+            lines.append(fmt.header("📊 Project Progress", level=2))
             lines.append("")
-            lines.append("*No projects found*")
+            lines.append(fmt.italic("No projects found"))
             lines.append("")
 
         # Team Member Statistics (detailed view)
         if self.team_stats:
-            lines.append("## 👥 Team Activity (Detailed)")
+            lines.append(fmt.header("👥 Team Activity (Detailed)", level=2))
             lines.append("")
             # Sort by activity level (merged PRs desc, then username)
             sorted_members = sorted(
@@ -287,12 +357,12 @@ class StatisticsReport:
                 key=lambda x: (-x[1].merged_count, x[0])
             )
             for username, stats in sorted_members:
-                lines.append(stats.format_summary())
+                lines.append(stats.format_summary(for_slack=True))
                 lines.append("")
         else:
-            lines.append("## 👥 Team Activity")
+            lines.append(fmt.header("👥 Team Activity", level=2))
             lines.append("")
-            lines.append("*No team member activity found*")
+            lines.append(fmt.italic("No team member activity found"))
             lines.append("")
 
         return "\n".join(lines)
