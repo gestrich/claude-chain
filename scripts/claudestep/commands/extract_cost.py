@@ -36,23 +36,18 @@ def cmd_extract_cost(args, gh):
         with open(execution_file, 'r') as f:
             data = json.load(f)
 
-        # Debug: Check if data is a list or dict
+        # Check if data is a list or dict
         if isinstance(data, list):
-            print(f"Execution file contains a list with {len(data)} items")
-
             # Filter to only items that have cost information
             items_with_cost = [item for item in data if isinstance(item, dict) and 'total_cost_usd' in item]
-            print(f"Found {len(items_with_cost)} items with cost information")
 
             # Get the execution index from environment (default to -1 for last)
             exec_index = int(os.environ.get("EXECUTION_INDEX", "-1"))
-            print(f"Using execution index: {exec_index} from items with cost")
 
             # If we have items with cost, get the one at the specified index
             if items_with_cost:
                 try:
                     data = items_with_cost[exec_index]
-                    print(f"Selected item at index {exec_index} from cost items")
                 except IndexError:
                     print(f"::warning::Index {exec_index} out of range, using last cost item")
                     data = items_with_cost[-1]
@@ -61,18 +56,11 @@ def cmd_extract_cost(args, gh):
                 print("::warning::No items with cost found, using last item in list")
                 data = data[-1]
 
-        if isinstance(data, dict):
-            print(f"Execution file top-level keys: {list(data.keys())[:20]}")
-            if 'total_cost_usd' in data:
-                print(f"Found total_cost_usd at top level: {data['total_cost_usd']}")
-
         # Extract cost from the execution data
         cost = extract_cost_from_execution(data)
 
         if cost is None:
             print("::warning::Could not find cost information in execution file")
-            print("::debug::Execution file structure (first 500 chars):")
-            print(f"::debug::{json.dumps(data, indent=2)[:500]}")
             gh.write_output("cost_usd", "0")
             return 0
 
