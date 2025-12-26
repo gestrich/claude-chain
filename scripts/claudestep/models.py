@@ -400,14 +400,15 @@ class StatisticsReport:
             lines.append(fmt.header("📊 Project Progress", level=2))
             lines.append("```")
             # Table header with box-drawing characters
-            lines.append("┌──────────────────────┬───────┬──────┬─────┬──────┐")
-            lines.append("│ Project              │ Total │ Done │ WIP │ Todo │")
-            lines.append("├──────────────────────┼───────┼──────┼─────┼──────┤")
+            lines.append("┌──────────────────────┬───────┬──────┬─────┬──────┬──────┐")
+            lines.append("│ Project              │ Total │ Done │ WIP │ Todo │   %  │")
+            lines.append("├──────────────────────┼───────┼──────┼─────┼──────┼──────┤")
             for project_name in sorted(self.project_stats.keys()):
                 stats = self.project_stats[project_name]
                 name = project_name[:20]
-                lines.append(f"│ {name:<20} │  {stats.total_tasks:>4} │  {stats.completed_tasks:>3} │ {stats.in_progress_tasks:>3} │  {stats.pending_tasks:>3} │")
-            lines.append("└──────────────────────┴───────┴──────┴─────┴──────┘")
+                pct = stats.completion_percentage
+                lines.append(f"│ {name:<20} │  {stats.total_tasks:>4} │  {stats.completed_tasks:>3} │ {stats.in_progress_tasks:>3} │  {stats.pending_tasks:>3} │ {pct:>3.0f}% │")
+            lines.append("└──────────────────────┴───────┴──────┴─────┴──────┴──────┘")
             lines.append("```")
             lines.append("")
         else:
