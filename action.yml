@@ -108,6 +108,7 @@ runs:
       continue-on-error: true
 
     - name: Run Claude Code
+      id: claude_code
       if: steps.prepare.outputs.has_capacity == 'true' && steps.prepare.outputs.has_task == 'true'
       uses: anthropics/claude-code-action@v1
       with:
@@ -177,14 +178,11 @@ runs:
 
     - name: Extract cost from main task
       id: extract_main_cost
-      if: steps.finalize.outputs.pr_number != ''
+      if: steps.finalize.outputs.pr_number != '' && steps.claude_code.outputs.execution_file != ''
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       env:
-        GH_TOKEN: ${{ inputs.github_token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        GITHUB_RUN_ID: ${{ github.run_id }}
-        STEP_NAME: 'Run Claude Code'
+        EXECUTION_FILE: ${{ steps.claude_code.outputs.execution_file }}
         ACTION_PATH: ${{ github.action_path }}
       run: |
         export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
@@ -195,14 +193,12 @@ runs:
       id: extract_summary_cost
       if: |
         inputs.add_pr_summary == 'true' &&
-        steps.finalize.outputs.pr_number != ''
+        steps.finalize.outputs.pr_number != '' &&
+        steps.pr_summary.outputs.execution_file != ''
       shell: bash
       working-directory: ${{ inputs.working_directory }}
       env:
-        GH_TOKEN: ${{ inputs.github_token }}
-        GITHUB_REPOSITORY: ${{ github.repository }}
-        GITHUB_RUN_ID: ${{ github.run_id }}
-        STEP_NAME: 'Generate and post PR summary'
+        EXECUTION_FILE: ${{ steps.pr_summary.outputs.execution_file }}
         ACTION_PATH: ${{ github.action_path }}
       run: |
         export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"

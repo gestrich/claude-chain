@@ -1,60 +1,46 @@
 """
-Extract cost information from Claude Code action output in workflow logs.
+Extract cost information from Claude Code action execution file.
 """
 
+import json
 import os
-import re
-import subprocess
-import sys
 from typing import Optional
 
 
 def cmd_extract_cost(args, gh):
     """
-    Extract cost from a Claude Code action step in the current workflow run.
+    Extract cost from a Claude Code action execution file.
 
     Reads from environment:
-    - GITHUB_REPOSITORY: Repository in format owner/repo
-    - GITHUB_RUN_ID: Current workflow run ID
-    - STEP_NAME: Name of the step to extract cost from
+    - EXECUTION_FILE: Path to the Claude Code execution output file
 
     Outputs:
     - cost_usd: The total cost in USD (or "0" if not found)
     """
-    # Get required environment variables
-    repo = os.environ.get("GITHUB_REPOSITORY")
-    run_id = os.environ.get("GITHUB_RUN_ID")
-    step_name = os.environ.get("STEP_NAME", "")
+    # Get required environment variable
+    execution_file = os.environ.get("EXECUTION_FILE", "").strip()
 
-    if not repo:
-        gh.set_error("GITHUB_REPOSITORY environment variable is required")
-        return 1
-
-    if not run_id:
-        gh.set_error("GITHUB_RUN_ID environment variable is required")
-        return 1
-
-    if not step_name:
-        gh.set_error("STEP_NAME environment variable is required")
+    if not execution_file:
+        gh.set_error("EXECUTION_FILE environment variable is required")
         return 1
 
     try:
-        # Fetch workflow run logs
-        print(f"Fetching logs for step '{step_name}' from run {run_id}...")
-        result = subprocess.run(
-            ["gh", "run", "view", run_id, "--repo", repo, "--log"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        # Read and parse the execution file
+        print(f"Reading execution file: {execution_file}")
 
-        logs = result.stdout
+        if not os.path.exists(execution_file):
+            print(f"::warning::Execution file not found: {execution_file}")
+            gh.write_output("cost_usd", "0")
+            return 0
 
-        # Extract cost from logs
-        cost = extract_cost_from_logs(logs, step_name)
+        with open(execution_file, 'r') as f:
+            data = json.load(f)
+
+        # Extract cost from the execution data
+        cost = extract_cost_from_execution(data)
 
         if cost is None:
-            print(f"::warning::Could not find cost information for step '{step_name}'")
+            print("::warning::Could not find cost information in execution file")
             gh.write_output("cost_usd", "0")
             return 0
 
@@ -64,57 +50,38 @@ def cmd_extract_cost(args, gh):
 
         return 0
 
-    except subprocess.CalledProcessError as e:
-        gh.set_error(f"Failed to fetch workflow logs: {e.stderr}")
-        return 1
+    except json.JSONDecodeError as e:
+        gh.set_error(f"Failed to parse execution file as JSON: {str(e)}")
+        gh.write_output("cost_usd", "0")
+        return 0  # Don't fail the workflow, just default to 0
     except Exception as e:
         gh.set_error(f"Error extracting cost: {str(e)}")
-        return 1
+        gh.write_output("cost_usd", "0")
+        return 0  # Don't fail the workflow, just default to 0
 
 
-def extract_cost_from_logs(logs: str, step_name: str) -> Optional[float]:
+def extract_cost_from_execution(data: dict) -> Optional[float]:
     """
-    Parse workflow logs to find the total_cost_usd value.
-
-    Since Claude Code action runs appear in the logs under the main workflow step,
-    we need to find cost entries and distinguish between main task and PR summary.
-
-    Strategy:
-    - Search for "total_cost_usd" pattern
-    - For "Run Claude Code": Return the FIRST occurrence (main task)
-    - For "Generate and post PR summary": Return the SECOND occurrence (if it exists)
+    Extract total_cost_usd from Claude Code execution data.
 
     Args:
-        logs: Complete workflow run logs
-        step_name: Name of the step to find cost for (for identification purposes)
+        data: Parsed JSON data from the execution file
 
     Returns:
         Cost in USD as float, or None if not found
     """
-    # Find all cost entries in the logs
-    cost_pattern = re.compile(r'"total_cost_usd":\s*([\d.]+)')
-    costs = []
+    # Try to get total_cost_usd from the top level
+    if 'total_cost_usd' in data:
+        try:
+            return float(data['total_cost_usd'])
+        except (ValueError, TypeError):
+            pass
 
-    for line in logs.split('\n'):
-        match = cost_pattern.search(line)
-        if match:
-            try:
-                cost = float(match.group(1))
-                costs.append(cost)
-            except ValueError:
-                continue
+    # Try to get it from a nested structure if needed
+    if 'usage' in data and 'total_cost_usd' in data['usage']:
+        try:
+            return float(data['usage']['total_cost_usd'])
+        except (ValueError, TypeError):
+            pass
 
-    # Now determine which cost to return based on the step name
-    if not costs:
-        return None
-
-    # If this is for the main Claude Code run, return the first cost
-    if 'Run Claude Code' in step_name or 'Claude Code' in step_name:
-        return costs[0] if costs else None
-
-    # If this is for the PR summary, return the second cost
-    if 'summary' in step_name.lower() or 'Summary' in step_name:
-        return costs[1] if len(costs) > 1 else None
-
-    # Default: return the first cost
-    return costs[0] if costs else None
+    return None
