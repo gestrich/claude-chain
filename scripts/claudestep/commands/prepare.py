@@ -60,12 +60,14 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         # === STEP 2: Load and Validate Configuration ===
         print("\n=== Step 2/6: Loading configuration ===")
         config = load_json(config_path)
-        label = config.get("label")
         branch_prefix = config.get("branchPrefix")
         reviewers = config.get("reviewers")
 
-        if not label or not branch_prefix or not reviewers:
-            raise ConfigurationError("Missing required fields: label, branchPrefix, or reviewers")
+        if not branch_prefix or not reviewers:
+            raise ConfigurationError("Missing required fields: branchPrefix or reviewers")
+
+        # Use single 'claudestep' label for all projects
+        label = "claudestep"
 
         # Ensure label exists
         ensure_label_exists(label, gh)

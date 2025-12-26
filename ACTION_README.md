@@ -28,7 +28,6 @@ Create a directory structure in your repository:
 **configuration.json**:
 ```json
 {
-  "label": "swift-migration",
   "branchPrefix": "refactor/swift-migration",
   "reviewers": [
     {

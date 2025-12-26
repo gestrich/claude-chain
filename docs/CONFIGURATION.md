@@ -50,12 +50,8 @@ refactor/
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["label", "branchPrefix", "reviewers"],
+  "required": ["branchPrefix", "reviewers"],
   "properties": {
-    "label": {
-      "type": "string",
-      "description": "GitHub label to apply to all PRs"
-    },
     "branchPrefix": {
       "type": "string",
       "description": "Prefix for branch names (not used directly, branches use YYYY-MM-{project}-{index} format)"
@@ -86,26 +82,7 @@ refactor/
 
 ### Fields
 
-#### label (required)
-
-The GitHub label to apply to all PRs created for this project.
-
-**Requirements:**
-- Must be lowercase alphanumeric with dashes
-- Label must exist in your repository before first run
-- Used to filter PRs when checking reviewer capacity
-
-**Example:**
-```json
-"label": "swift-migration"
-```
-
-**Create the label:**
-```bash
-gh label create "swift-migration" \
-  --description "Automated Swift migration PRs" \
-  --color "0E8A16"
-```
+**Note:** All PRs created by ClaudeStep are automatically labeled with `claudestep`. This label is created automatically on first run and is used to filter PRs when checking reviewer capacity.
 
 #### branchPrefix (required)
 
@@ -156,7 +133,6 @@ Array of reviewer configurations. Each reviewer can have multiple PRs open simul
 
 ```json
 {
-  "label": "typescript-migration",
   "branchPrefix": "refactor/typescript",
   "reviewers": [
     {
@@ -571,7 +547,6 @@ with:
 ```json
 // configuration.json
 {
-  "label": "swift-migration",
   "branchPrefix": "refactor/swift",
   "reviewers": [
     { "username": "you", "maxOpenPRs": 1 }
@@ -605,7 +580,6 @@ Convert Objective-C to Swift.
 ```json
 // configuration.json
 {
-  "label": "typescript-conversion",
   "branchPrefix": "refactor/typescript",
   "reviewers": [
     { "username": "lead-dev", "maxOpenPRs": 3 },

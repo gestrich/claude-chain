@@ -1,5 +1,4 @@
 {
-  "label": "my-refactor",
   "branchPrefix": "refactor/my-project",
   "reviewers": [
     {

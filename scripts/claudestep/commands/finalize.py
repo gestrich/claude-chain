@@ -31,7 +31,6 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         task = os.environ.get("TASK", "")
         task_index = os.environ.get("TASK_INDEX", "")
         reviewer = os.environ.get("REVIEWER", "")
-        label = os.environ.get("LABEL", "")
         project = os.environ.get("PROJECT", "")
         spec_path = os.environ.get("SPEC_PATH", "")
         pr_template_path = os.environ.get("PR_TEMPLATE_PATH", "")
@@ -41,6 +40,9 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         base_branch = os.environ.get("BASE_BRANCH", "main")
         has_capacity = os.environ.get("HAS_CAPACITY", "")
         has_task = os.environ.get("HAS_TASK", "")
+
+        # Use single 'claudestep' label for all projects
+        label = "claudestep"
 
         # === Generate Summary Early (for all cases) ===
         print("\n=== Generating workflow summary ===")
@@ -60,7 +62,7 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
             return 0
 
         # Validate required environment variables
-        if not all([branch_name, task, task_index, reviewer, label, project, spec_path, gh_token, github_repository]):
+        if not all([branch_name, task, task_index, reviewer, project, spec_path, gh_token, github_repository]):
             raise ConfigurationError("Missing required environment variables")
 
         # === STEP 1: Commit Any Uncommitted Changes ===

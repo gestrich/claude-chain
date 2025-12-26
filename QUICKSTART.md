@@ -19,7 +19,6 @@ Create `refactor/my-refactor/configuration.json`:
 
 ```json
 {
-  "label": "ai-refactor",
   "branchPrefix": "refactor/ai-refactor",
   "reviewers": [
     {

@@ -143,7 +143,6 @@ A `configuration.json` file per refactor project:
 
 ```json
 {
-  "label": "swift-migration",
   "branchPrefix": "refactor/swift-migration",
   "reviewers": [
     { "username": "alice", "maxOpenPRs": 1 },
@@ -152,7 +151,8 @@ A `configuration.json` file per refactor project:
 }
 ```
 
-- **label** - GitHub tag used to identify PRs for this refactor
+All PRs are automatically labeled with `claudestep` for tracking purposes.
+
 - **branchPrefix** - Prefix for branch names (actual format: YYYY-MM-{project}-{index})
 - **reviewers** - List of GitHub usernames and how many PRs each can have open at once
 

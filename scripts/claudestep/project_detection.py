@@ -10,7 +10,7 @@ from claudestep.github_operations import run_gh_command
 
 
 def detect_project_from_pr(pr_number: str, repo: str) -> Optional[str]:
-    """Detect project from merged PR labels
+    """Detect project from merged PR artifact metadata
 
     Args:
         pr_number: PR number to check
@@ -21,29 +21,55 @@ def detect_project_from_pr(pr_number: str, repo: str) -> Optional[str]:
     """
     print(f"Detecting project from merged PR #{pr_number}...")
     try:
+        # First get the branch name from the PR
         pr_output = run_gh_command([
             "pr", "view", pr_number,
             "--repo", repo,
-            "--json", "labels"
+            "--json", "headRefName"
         ])
         pr_data = json.loads(pr_output)
-        pr_labels = [label["name"] for label in pr_data.get("labels", [])]
-        print(f"PR labels: {pr_labels}")
+        branch_name = pr_data.get("headRefName")
 
-        # Search for matching refactor project
-        for config_file in glob.glob("refactor/*/configuration.json"):
-            if os.path.isfile(config_file):
+        if not branch_name:
+            print(f"Failed to get branch name for PR #{pr_number}")
+            return None
+
+        print(f"PR branch: {branch_name}")
+
+        # Get workflow runs for this branch
+        from claudestep.github_operations import gh_api_call, download_artifact_json
+
+        api_response = gh_api_call(
+            f"/repos/{repo}/actions/runs?branch={branch_name}&status=completed&per_page=10"
+        )
+        runs = api_response.get("workflow_runs", [])
+
+        # Check most recent successful runs for artifact metadata
+        for run in runs:
+            if run.get("conclusion") == "success":
                 try:
-                    config = load_json(config_file)
-                    label = config.get("label")
-                    if label in pr_labels:
-                        detected_project = config_file.split("/")[1]
-                        print(f"✅ Found matching project: {detected_project} (label: {label})")
-                        return detected_project
-                except Exception as e:
-                    print(f"Warning: Failed to read {config_file}: {e}")
+                    artifacts_data = gh_api_call(
+                        f"/repos/{repo}/actions/runs/{run['id']}/artifacts"
+                    )
+                    artifacts = artifacts_data.get("artifacts", [])
 
-        print(f"No refactor project found with matching label for PR #{pr_number}")
+                    # Look for task metadata artifacts
+                    for artifact in artifacts:
+                        name = artifact["name"]
+                        if name.startswith("task-metadata-"):
+                            # Download and parse the artifact
+                            artifact_id = artifact["id"]
+                            metadata = download_artifact_json(repo, artifact_id)
+
+                            if metadata and "project" in metadata:
+                                project = metadata["project"]
+                                print(f"✅ Found project from artifact: {project}")
+                                return project
+                except Exception as e:
+                    print(f"Warning: Failed to check artifacts for run {run['id']}: {e}")
+                    continue
+
+        print(f"No artifact metadata found for PR #{pr_number}")
         return None
     except Exception as e:
         print(f"Failed to detect project from PR: {str(e)}")

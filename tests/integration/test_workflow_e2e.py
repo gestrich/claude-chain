@@ -149,7 +149,6 @@ class TestProjectManager:
         self.project_id = project_id
         self.project_name = f"test-project-{project_id}"
         self.project_path = repo_path / "refactor" / self.project_name
-        self.label = f"claudestep-{self.project_name}"
 
     def create_project(self):
         """Create test project files"""
@@ -183,7 +182,6 @@ Create simple text files with the specified content.
 
         # Create configuration.json
         config_content = {
-            "label": self.label,
             "branchPrefix": f"refactor/{self.project_name}",
             "reviewers": [
                 {"username": "gestrich", "maxOpenPRs": 2}
@@ -386,7 +384,7 @@ def test_claudestep_workflow_e2e(gh, test_project, cleanup_prs):
     print(f"  ✓ PR #{pr_2_number} created: {pr_2['title']}")
 
     # Verify both PRs are open (reviewer at capacity)
-    all_prs = gh.get_prs_by_label(test_project.label)
+    all_prs = gh.get_prs_by_label("claudestep")
     open_prs = [pr for pr in all_prs if pr["state"] == "OPEN"]
     assert len(open_prs) == 2, f"Expected 2 open PRs, found {len(open_prs)}"
     print(f"  ✓ Reviewer at capacity with 2 open PRs")
