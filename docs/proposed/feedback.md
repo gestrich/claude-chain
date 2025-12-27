@@ -131,7 +131,14 @@ Current implementation uses `project_name` as a required input parameter. This d
 - Document both trigger methods (PR-based and manual)
 - Explain project name derivation
 
-## Step 6: Update Input/Output Sections and Configuration
+## ✅ Step 6: Update Input/Output Sections and Configuration (COMPLETED)
+
+**Technical Notes:**
+- Updated `add_pr_summary` description to clarify summary is posted "when the PR is created" not "on each PR" (README.md:269)
+- Removed `label` field from configuration.yml table in Configuration Reference section (README.md:331-334)
+- Removed note "All PRs are automatically labeled with `claudestep` for tracking purposes" (README.md:353)
+- `pr_label` remains in inputs section with default value 'claude-step' (already correct in README.md:237)
+- Configuration section now only contains `branchPrefix` and `reviewers` fields as intended
 
 ### Input Section Changes
 - `add_pr_summary`: Clarify that summary is created right after PR is created (not on every change to PR)

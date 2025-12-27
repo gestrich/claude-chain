@@ -266,7 +266,7 @@ claude_allowed_tools: 'Write,Read,Bash,Edit,Glob,Grep'
 **Security note:** Only add tools that are safe for your use case. More tools = more power but also more potential for unintended changes.
 
 **add_pr_summary:**
-Controls whether an AI-generated summary comment is posted on each PR. The summary analyzes the PR diff and explains what was changed and why in under 200 words.
+Controls whether an AI-generated summary comment is posted when the PR is created. The summary analyzes the PR diff and explains what was changed and why in under 200 words.
 
 - `true` (default) - Automatically post summary comments
 - `false` - Skip summary generation
@@ -330,7 +330,6 @@ Get your API key from [console.anthropic.com](https://console.anthropic.com), th
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `label` | string | ✅ | GitHub label for PRs |
 | `branchPrefix` | string | ❌ | Prefix for branch names (see Branch Naming below) |
 | `reviewers` | array | ✅ | List of reviewers with capacity |
 
@@ -351,8 +350,6 @@ reviewers:
   - username: bob
     maxOpenPRs: 2
 ```
-
-All PRs are automatically labeled with `claudestep` for tracking purposes.
 
 ### spec.md Format
 
