@@ -37,26 +37,52 @@ def detect_project_from_pr(pr_number: str, repo: str) -> Optional[str]:
         print(f"PR branch: {branch_name}")
 
         # Extract project name from branch name
-        # Branch format: YYYY-MM-{project}-{index}
-        # Example: 2025-12-test-project-d324087d-1 -> test-project-d324087d
-        parts = branch_name.split("-")
-        if len(parts) >= 4:
-            # Remove YYYY, MM, and index (last part)
-            # Join the remaining parts to get the project name
-            project = "-".join(parts[2:-1])
-            print(f"✅ Extracted project from branch name: {project}")
+        # Branch formats:
+        # 1. Default: YYYY-MM-{project}-{index} (e.g., 2025-12-test-project-d324087d-1)
+        # 2. Custom prefix: {branchPrefix}-{index} (e.g., refactor/swift-migration-1)
 
-            # Verify the project exists (check for .yml first, then .json for backwards compat)
+        # Strategy: Find all existing project directories and check which one matches the branch
+        project_dirs = glob.glob("claude-step/*/")
+        project_names = [os.path.basename(os.path.dirname(p)) for p in project_dirs]
+
+        print(f"Found {len(project_names)} project(s): {project_names}")
+
+        # Check each project to see if its branch prefix matches
+        for project in project_names:
+            # Check for config file to get branchPrefix
             config_path_yml = f"claude-step/{project}/configuration.yml"
             config_path_json = f"claude-step/{project}/configuration.json"
-            if os.path.exists(config_path_yml) or os.path.exists(config_path_json):
-                return project
-            else:
-                print(f"Warning: Project config not found at {config_path_yml} or {config_path_json}")
-                return None
-        else:
-            print(f"Branch name '{branch_name}' doesn't match expected format")
-            return None
+
+            config_path = None
+            if os.path.exists(config_path_yml):
+                config_path = config_path_yml
+            elif os.path.exists(config_path_json):
+                config_path = config_path_json
+
+            if config_path:
+                from claudestep.config import load_config
+                config = load_config(config_path)
+                branch_prefix = config.get("branchPrefix")
+
+                # Check if branch matches this project's pattern
+                if branch_prefix:
+                    # Custom prefix format: {branchPrefix}-{index}
+                    # Branch should start with the prefix
+                    if branch_name.startswith(f"{branch_prefix}-"):
+                        print(f"✅ Matched project '{project}' with branchPrefix '{branch_prefix}'")
+                        return project
+                else:
+                    # Default format: YYYY-MM-{project}-{index}
+                    # Extract using the old logic
+                    parts = branch_name.split("-")
+                    if len(parts) >= 4:
+                        extracted_project = "-".join(parts[2:-1])
+                        if extracted_project == project:
+                            print(f"✅ Matched project '{project}' using default format")
+                            return project
+
+        print(f"Could not match branch '{branch_name}' to any existing project")
+        return None
 
     except Exception as e:
         print(f"Failed to detect project from PR: {str(e)}")

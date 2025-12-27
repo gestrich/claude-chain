@@ -385,7 +385,7 @@ def test_claudestep_workflow_e2e(gh, test_project, cleanup_prs):
 
     # Check that PR was created
     time.sleep(5)  # Give GitHub API a moment to index the PR
-    pr_1 = gh.get_pr_by_branch(f"2025-12-{test_project.project_name}-1")
+    pr_1 = gh.get_pr_by_branch(f"refactor/{test_project.project_name}-1")
     assert pr_1 is not None, "First PR was not created"
     assert pr_1["state"] == "OPEN", f"First PR is not open: {pr_1['state']}"
     assert "test-file-1" in pr_1["title"].lower(), f"First PR has wrong title: {pr_1['title']}"
@@ -419,7 +419,7 @@ def test_claudestep_workflow_e2e(gh, test_project, cleanup_prs):
 
     # Check that second PR was created (different task) - this is what matters
     time.sleep(5)
-    pr_2 = gh.get_pr_by_branch(f"2025-12-{test_project.project_name}-2")
+    pr_2 = gh.get_pr_by_branch(f"refactor/{test_project.project_name}-2")
     assert pr_2 is not None, "Second PR was not created"
     assert pr_2["state"] == "OPEN", f"Second PR is not open: {pr_2['state']}"
     assert "test-file-2" in pr_2["title"].lower(), f"Second PR has wrong title: {pr_2['title']}"
@@ -485,7 +485,7 @@ def test_claudestep_workflow_e2e(gh, test_project, cleanup_prs):
 
     # Check that third PR was created - this validates the merge trigger worked
     time.sleep(5)
-    pr_3 = gh.get_pr_by_branch(f"2025-12-{test_project.project_name}-3")
+    pr_3 = gh.get_pr_by_branch(f"refactor/{test_project.project_name}-3")
     assert pr_3 is not None, "Third PR was not created by merge trigger"
     assert pr_3["state"] == "OPEN", f"Third PR is not open: {pr_3['state']}"
     assert "test-file-3" in pr_3["title"].lower(), f"Third PR has wrong title: {pr_3['title']}"
