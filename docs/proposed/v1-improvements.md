@@ -127,27 +127,26 @@ Configuration and workflow improvements for V1 release.
 - The codebase is now simpler with only YAML support
 - Migration path: rename `configuration.json` to `configuration.yml` and convert format
 
-- [ ] **Make Slack webhook an action input**
+- [x] **Make Slack webhook an action input**
 
-**Status:** PENDING
+**Status:** COMPLETED
 
-**Goal:**
-- Move Slack webhook configuration from YAML config to action input parameter
-- Allow clients to manage webhook storage (e.g., GitHub secrets)
-- Provide better security practices for sensitive webhook URLs
-
-**Changes needed:**
-- Add `slack_webhook_url` input to `action.yml`
-- Remove `slackWebhook` field from configuration schema in `config.py`
-- Update all code that uses the Slack webhook to read from the action input instead
-- Update demo project at /Users/bill/Developer/personal/claude-step-demo to pass `SLACK_WEBHOOK_URL` secret as input to the action
-- Update README.md to document the new input parameter
-- Update example configurations to remove the `slackWebhook` field
+**Changes made:**
+- Added `slack_webhook_url` input to `action.yml` with description and optional flag
+- Updated `prepare.py` to read Slack webhook URL from `SLACK_WEBHOOK_URL` environment variable (passed from action input) instead of config file
+- Removed `slackWebhookUrl` field from `examples/configuration.yml`
+- Updated README.md:
+  - Added `slack_webhook_url` to the inputs table
+  - Added detailed documentation for the new input in the "Input Details" section with setup instructions
+  - Removed `slackWebhookUrl` from the configuration reference table
+  - Removed `slackWebhookUrl` from the configuration example
+- All Python files compile successfully
 
 **Technical notes:**
-- Demo project currently uses `SLACK_WEBHOOK_URL` secret, needs to be passed as input
-- This allows better separation of concerns: config for project settings, inputs for secrets
-- More aligned with GitHub Actions best practices
+- This is a breaking change - projects must now pass the Slack webhook URL as an action input instead of in the config file
+- Better security practice: secrets should be stored in GitHub Secrets and passed as inputs, not committed in config files
+- More aligned with GitHub Actions best practices for handling sensitive data
+- Demo project at /Users/bill/Developer/personal/claude-step-demo will need to be updated to pass `slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}` as an action input
 
 - [ ] **Make PR label an action input**
 

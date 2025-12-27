@@ -40,6 +40,10 @@ inputs:
     description: 'Add AI-generated summary comment to PR (true/false)'
     required: false
     default: 'true'
+  slack_webhook_url:
+    description: 'Slack webhook URL for PR notifications (optional)'
+    required: false
+    default: ''
 
 outputs:
   pr_number:
@@ -83,6 +87,7 @@ runs:
         MERGED_PR_NUMBER: ${{ inputs.merged_pr_number }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         ACTION_PATH: ${{ github.action_path }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
       run: |
         export PYTHONPATH="$ACTION_PATH/scripts:$PYTHONPATH"
         python3 -m claudestep prepare

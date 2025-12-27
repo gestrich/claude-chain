@@ -300,6 +300,7 @@ The action uses artifacts to track PR assignments. If assignment seems wrong:
 | `base_branch` | ❌ | `main` | Base branch for PRs |
 | `working_directory` | ❌ | `.` | Working directory |
 | `add_pr_summary` | ❌ | `true` | Add AI-generated summary comment to PR |
+| `slack_webhook_url` | ❌ | - | Slack webhook URL for PR notifications |
 
 ### Outputs
 
@@ -348,6 +349,23 @@ Example to disable:
     add_pr_summary: false
 ```
 
+**slack_webhook_url:**
+Optional Slack webhook URL for PR notifications. When provided, ClaudeStep posts a message to Slack whenever a new PR is created.
+
+To set up:
+1. Create a Slack webhook at [api.slack.com/messaging/webhooks](https://api.slack.com/messaging/webhooks)
+2. Add the webhook URL as a GitHub secret (e.g., `SLACK_WEBHOOK_URL`)
+3. Pass it to the action:
+
+```yaml
+- uses: gestrich/claude-step@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    project_name: 'my-refactor'
+    slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
 **anthropic_api_key:**
 Get your API key from [console.anthropic.com](https://console.anthropic.com), then:
 1. Go to Settings > Secrets and variables > Actions
@@ -363,7 +381,6 @@ Get your API key from [console.anthropic.com](https://console.anthropic.com), th
 | `label` | string | ✅ | GitHub label for PRs |
 | `branchPrefix` | string | ❌ | Prefix for branch names (see Branch Naming below) |
 | `reviewers` | array | ✅ | List of reviewers with capacity |
-| `slackWebhookUrl` | string | ❌ | Slack webhook URL for PR notifications (optional) |
 
 **Branch Naming:**
 - **With `branchPrefix`**: Branches are named `{branchPrefix}-{task_index}` (e.g., `refactor/swift-migration-1`, `refactor/swift-migration-2`)
@@ -381,7 +398,6 @@ reviewers:
     maxOpenPRs: 1
   - username: bob
     maxOpenPRs: 2
-slackWebhookUrl: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 ```
 
 All PRs are automatically labeled with `claudestep` for tracking purposes.

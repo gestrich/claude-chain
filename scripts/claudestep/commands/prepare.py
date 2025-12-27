@@ -57,7 +57,7 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         config = load_config(config_path)
         branch_prefix = config.get("branchPrefix")  # Optional
         reviewers = config.get("reviewers")
-        slack_webhook_url = config.get("slackWebhookUrl", "")  # Optional
+        slack_webhook_url = os.environ.get("SLACK_WEBHOOK_URL", "")  # From action input
 
         if not reviewers:
             raise ConfigurationError("Missing required field: reviewers")
