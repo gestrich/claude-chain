@@ -2,37 +2,17 @@
 
 ## Overview
 
-An automated system for performing ongoing code refactoring using AI (Claude Code) and GitHub Actions. The system continuously generates pull requests for incremental refactoring work, reducing the manual burden and maintaining momentum on large-scale codebase improvements.
+ClaudeStep automates the tedious refactoring work that never gets prioritized. Define your cleanup tasks once, and it steadily generates PRs -- migrations, code cleanup, and documentation that would otherwise sit on the backlog forever.
 
-**Best for:** Tedious, repeatable tasks that you can define well. Ideal for async work like code cleanup, migrations, and documentation—slow burn work that may otherwise not happen.
+Built on Claude Code and GitHub Actions, it delivers one small PR at a time, keeping review burden manageable while maintaining momentum on large-scale improvements.
 
 ## Features
 
-- 🤖 **AI-Powered Refactoring** - Uses Claude Code to perform refactoring tasks
-- 📋 **Checklist-Driven** - Works through tasks in your spec.md file systematically
-- 👥 **Multi-Reviewer Support** - Distributes PRs across team members
-- 🔄 **Multiple Trigger Modes** - Scheduled, manual, or automatic on PR merge
-- 📊 **Progress Tracking** - Track completed vs remaining tasks
-- 💬 **Slack Integration** - Post statistics and progress reports to Slack channels
-- ⚡ **Incremental PRs** - One small PR at a time for easier review
-- 🤖 **AI-Generated PR Summaries** - Automatic summary comments explaining what was changed and why
-
-## Use as a GitHub Action
-
-Add the action to your workflow:
-
-```yaml
-- uses: gestrich/claude-step@v1
-  with:
-    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    project_name: 'your-project-name'
-```
-
-**Quick Start:**
-1. See [Quick Start](#quick-start) below for a 5-minute setup guide
-2. Check [examples/basic/workflow.yml](examples/basic/workflow.yml) for a simple example
-3. See [examples/advanced/workflow.yml](examples/advanced/workflow.yml) for all features
+- 📋 **Define once, run forever** - Write your refactor spec, get automated PRs
+- ⚡ **Manageable review burden** - One small PR at a time, distributed across team
+- 🔄 **Set and forget** - Daily scheduled runs or trigger on PR merge
+- 💬 **Context for reviewers** - AI-generated summaries explain each change
+- 📊 **Visibility** - Track progress, team stats, and completion rates
 
 ## Quick Start
 
@@ -43,7 +23,7 @@ Get up and running with ClaudeStep in 5 minutes.
 - GitHub repository with code to refactor
 - Anthropic API key ([get one here](https://console.anthropic.com))
 
-### Step 1: Create Refactor Project (2 min)
+### Step 1: Create Refactor Project
 
 Create this directory structure in your repo:
 
@@ -84,7 +64,7 @@ Include:
 - [ ] Third task to refactor
 ```
 
-### Step 2: Configure GitHub (1 min)
+### Step 2: Configure GitHub
 
 #### Add API Key
 
@@ -107,7 +87,7 @@ Include:
 gh label create "ai-refactor" --color "0E8A16"
 ```
 
-### Step 3: Add Workflow (1 min)
+### Step 3: Add Workflow
 
 Create `.github/workflows/ai-refactor.yml`:
 
@@ -137,7 +117,7 @@ jobs:
           project_name: 'my-refactor'
 ```
 
-### Step 4: Run & Test (1 min)
+### Step 4: Run & Test
 
 #### Manual Test
 
