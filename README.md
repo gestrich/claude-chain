@@ -52,14 +52,30 @@ Include:
 - Before/after code examples
 - Any edge cases or special handling
 
-## Checklist
+## Steps
 
-Checklist items are formatted with a dash followed by open brackets (e.g., `- [ ]`). You can have any content between the brackets. ClaudeStep will process these checklist items in order as it finds them throughout the markdown document, so plan on every single item being processed.
+Add your steps using markdown checkbox syntax (e.g., `- [ ]`). ClaudeStep will process these steps in order as it finds them throughout the markdown document.
 
 - [ ] First step to refactor
 - [ ] Second step to refactor
 - [ ] Third step to refactor
 ```
+
+**About the spec.md file:**
+
+The spec.md file combines instructions and steps in a single document. The entire file content is provided to Claude as context when working on each step.
+
+**Requirements:**
+- Must be valid Markdown
+- Must contain at least one `- [ ]` or `- [x]` step
+- Steps can appear anywhere in the file
+- Each step should be specific and actionable
+
+**Step Lifecycle:**
+1. **Unchecked (`- [ ]`)**: Step is pending
+2. **Action picks step**: Creates PR for it
+3. **PR merged**: Action automatically marks as `- [x]`
+4. **Checked (`- [x]`)**: Step is skipped in future runs
 
 ### Step 2: Add Workflow
 
@@ -353,12 +369,12 @@ reviewers:
 
 ### spec.md Format
 
-The `spec.md` file combines instructions and checklist in a single document.
+The `spec.md` file combines instructions and steps in a single document.
 
 **Requirements:**
 - Must be valid Markdown
-- Must contain at least one `- [ ]` or `- [x]` checklist item
-- Checklist items can appear anywhere in the file
+- Must contain at least one `- [ ]` or `- [x]` step
+- Steps can appear anywhere in the file
 - The entire file content is provided to Claude as context
 
 **Example:**
@@ -371,7 +387,7 @@ The `spec.md` file combines instructions and checklist in a single document.
 - Rule 1
 - Rule 2
 
-## Checklist
+## Steps
 - [ ] First step
   - Additional details for this step can go here
 - [ ] Second step
@@ -380,7 +396,7 @@ The `spec.md` file combines instructions and checklist in a single document.
 ## More Information
 [Additional context...]
 
-- [ ] Another step (checklist items can appear anywhere!)
+- [ ] Another step (steps can appear anywhere!)
 ```
 
 **Step Lifecycle:**
@@ -388,67 +404,6 @@ The `spec.md` file combines instructions and checklist in a single document.
 2. **Action picks step**: Creates PR for it
 3. **PR merged**: Action automatically marks as `- [x]`
 4. **Checked (`- [x]`)**: Step is skipped in future runs
-
-**Writing Effective Instructions:**
-
-Be specific with step descriptions:
-```markdown
-# Bad
-- [ ] Update the user service
-
-# Good
-- [ ] Convert UserService.getUserById() to use async/await instead of callbacks
-```
-
-The entire spec.md is provided to Claude, so include context:
-- **Before/After Examples** - Show exactly what code should look like
-- **Coding Patterns** - Document conventions to follow
-- **Edge Cases** - Explain special handling needed
-
-**Iterative Improvement:**
-
-Start with basic instructions and refine based on PR reviews:
-
-1. Initial:
-   ```markdown
-   Convert to TypeScript
-   - [ ] Convert user.js
-   ```
-
-2. After first PR, update:
-   ```markdown
-   Convert to TypeScript
-   - Use strict mode (`strict: true`)
-   - Add explicit return types
-   - Don't use `any` type
-   - [ ] Convert auth.js
-   ```
-
-3. Continue refining as you learn what works.
-
-**Common Patterns for Organizing Steps:**
-
-Group related steps:
-```markdown
-## Database Layer
-- [ ] Convert UserRepository
-- [ ] Convert ProductRepository
-
-## API Layer
-- [ ] Convert UserController
-- [ ] Convert ProductController
-```
-
-Progressive complexity:
-```markdown
-## Phase 1: Simple Components
-- [ ] Convert Button component
-- [ ] Convert Input component
-
-## Phase 2: Complex Components
-- [ ] Convert UserProfile (uses context)
-- [ ] Convert DataTable (uses custom hooks)
-```
 
 ### pr-template.md (Optional)
 
@@ -465,7 +420,7 @@ Template for PR descriptions with `{{TASK_DESCRIPTION}}` placeholder.
 ## Changes
 This PR was automatically created by ClaudeStep.
 
-## Review Checklist
+## Review Steps
 - [ ] Code follows project conventions
 - [ ] Tests pass
 - [ ] No unintended changes
@@ -585,7 +540,7 @@ The action validates your configuration at runtime:
 
 **spec.md:**
 - ✅ File exists
-- ✅ Contains at least one checklist item (`- [ ]` or `- [x]`)
+- ✅ Contains at least one step (`- [ ]` or `- [x]`)
 
 If validation fails, the workflow will error with a descriptive message.
 
