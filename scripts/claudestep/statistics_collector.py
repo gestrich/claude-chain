@@ -58,13 +58,21 @@ def collect_project_costs(
             "--label", label,
             "--state", "merged",
             "--limit", "100",
-            "--json", "number,title,body,comments"
+            "--json", "number,title,body,comments,headRefName"
         ])
 
         prs = json.loads(pr_output) if pr_output else []
 
-        # Filter PRs for this specific project (check title contains project name)
-        project_prs = [pr for pr in prs if project_name in pr.get("title", "")]
+        # Filter PRs for this specific project
+        # Check if project name appears in branch name or PR body
+        project_prs = []
+        for pr in prs:
+            branch_name = pr.get("headRefName", "")
+            body = pr.get("body", "")
+
+            # Match by branch name (e.g., "refactor/project-name-1") or body (e.g., "Project: project-name")
+            if project_name in branch_name or f"Project: {project_name}" in body:
+                project_prs.append(pr)
 
         print(f"  Found {len(project_prs)} merged PR(s) for {project_name}")
 
