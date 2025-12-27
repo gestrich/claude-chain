@@ -3,13 +3,13 @@
 import argparse
 import json
 import os
-from datetime import datetime
 
 from claudestep.config import load_config, validate_spec_format
 from claudestep.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
 from claudestep.git_operations import run_git_command
 from claudestep.github_actions import GitHubActionsHelper
 from claudestep.github_operations import ensure_label_exists
+from claudestep.pr_operations import format_branch_name
 from claudestep.project_detection import detect_project_from_pr, detect_project_paths
 from claudestep.reviewer_management import find_available_reviewer
 from claudestep.task_management import find_next_available_task, get_in_progress_task_indices
@@ -109,14 +109,8 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 
         # === STEP 5: Create Branch ===
         print("\n=== Step 5/6: Creating branch ===")
-        # Use branch_prefix if provided, otherwise use YYYY-MM date format
-        if branch_prefix:
-            # If branch_prefix is provided, use it with the task index
-            branch_name = f"{branch_prefix}-{task_index}"
-        else:
-            # Default to YYYY-MM/project/index format
-            date_prefix = datetime.now().strftime("%Y-%m")
-            branch_name = f"{date_prefix}-{detected_project}-{task_index}"
+        # Use standard ClaudeStep branch format: claude-step-{project}-{index}
+        branch_name = format_branch_name(detected_project, task_index)
 
         try:
             run_git_command(["checkout", "-b", branch_name])

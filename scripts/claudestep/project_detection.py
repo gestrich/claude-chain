@@ -1,11 +1,10 @@
 """Project detection logic"""
 
-import glob
 import json
-import os
 from typing import Optional, Tuple
 
 from claudestep.github_operations import run_gh_command
+from claudestep.pr_operations import parse_branch_name
 
 
 def detect_project_from_pr(pr_number: str, repo: str) -> Optional[str]:
@@ -35,46 +34,17 @@ def detect_project_from_pr(pr_number: str, repo: str) -> Optional[str]:
 
         print(f"PR branch: {branch_name}")
 
-        # Extract project name from branch name
-        # Branch formats:
-        # 1. Default: YYYY-MM-{project}-{index} (e.g., 2025-12-test-project-d324087d-1)
-        # 2. Custom prefix: {branchPrefix}-{index} (e.g., refactor/swift-migration-1)
+        # Extract project name from branch name using standard format
+        # Expected format: claude-step-{project}-{index}
+        result = parse_branch_name(branch_name)
 
-        # Strategy: Find all existing project directories and check which one matches the branch
-        project_dirs = glob.glob("claude-step/*/")
-        project_names = [os.path.basename(os.path.dirname(p)) for p in project_dirs]
-
-        print(f"Found {len(project_names)} project(s): {project_names}")
-
-        # Check each project to see if its branch prefix matches
-        for project in project_names:
-            # Check for config file to get branchPrefix
-            config_path = f"claude-step/{project}/configuration.yml"
-
-            if os.path.exists(config_path):
-                from claudestep.config import load_config
-                config = load_config(config_path)
-                branch_prefix = config.get("branchPrefix")
-
-                # Check if branch matches this project's pattern
-                if branch_prefix:
-                    # Custom prefix format: {branchPrefix}-{index}
-                    # Branch should start with the prefix
-                    if branch_name.startswith(f"{branch_prefix}-"):
-                        print(f"✅ Matched project '{project}' with branchPrefix '{branch_prefix}'")
-                        return project
-                else:
-                    # Default format: YYYY-MM-{project}-{index}
-                    # Extract using the old logic
-                    parts = branch_name.split("-")
-                    if len(parts) >= 4:
-                        extracted_project = "-".join(parts[2:-1])
-                        if extracted_project == project:
-                            print(f"✅ Matched project '{project}' using default format")
-                            return project
-
-        print(f"Could not match branch '{branch_name}' to any existing project")
-        return None
+        if result:
+            project_name, _ = result
+            print(f"✅ Detected project '{project_name}' from branch '{branch_name}'")
+            return project_name
+        else:
+            print(f"Could not parse branch '{branch_name}' - not in expected format claude-step-{{project}}-{{index}}")
+            return None
 
     except Exception as e:
         print(f"Failed to detect project from PR: {str(e)}")

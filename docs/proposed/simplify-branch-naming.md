@@ -95,11 +95,24 @@ All code that fetches PRs will use this centralized function instead of duplicat
 - All existing tests continue to pass (107 passed)
 - The 5 test failures in `test_prepare_summary.py` are pre-existing and unrelated to this refactoring
 
-### Phase 3: Update Branch Creation and Project Detection
-- [ ] Update `prepare.py` branch creation to use `format_branch_name()`
-- [ ] Update `project_detection.py` to use `parse_branch_name()` and new format
-- [ ] Remove date-based and custom prefix logic from branch creation
-- [ ] Update project detection to only check `claude-step-{project}` format
+### Phase 3: Update Branch Creation and Project Detection ✅
+- [x] Update `prepare.py` branch creation to use `format_branch_name()`
+- [x] Update `project_detection.py` to use `parse_branch_name()` and new format
+- [x] Remove date-based and custom prefix logic from branch creation
+- [x] Update project detection to only check `claude-step-{project}` format
+
+**Technical Notes:**
+- Updated `prepare.py` to use `format_branch_name()` from `pr_operations.py`
+- Removed old branch creation logic that supported both date-based format (`YYYY-MM-{project}-{index}`) and custom prefix format (`{branchPrefix}-{index}`)
+- All branch creation now uses the single standard format: `claude-step-{project}-{index}`
+- Removed unused `datetime` import from `prepare.py`
+- Updated `project_detection.py` to use `parse_branch_name()` utility for extracting project names from branch names
+- Simplified `detect_project_from_pr()` to directly parse branch names instead of checking multiple formats and scanning config files
+- Removed complex logic that checked for `branchPrefix` in config files and tried multiple parsing strategies
+- Removed unused imports from `project_detection.py` (`glob`, `os`)
+- All existing tests continue to pass (107 passed)
+- The 5 test failures in `test_prepare_summary.py` are pre-existing and unrelated to this refactoring
+- All module imports verified successfully
 
 ### Phase 4: Remove branchPrefix Configuration
 - [ ] Remove `branchPrefix` field from configuration.yml schema
