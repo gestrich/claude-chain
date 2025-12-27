@@ -35,7 +35,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `.github/workflows/test.yml` - CI workflow for unit tests
 - `pyproject.toml` - Package configuration with test dependencies
 - Tests run on every push and PR to main branch
-- **372 tests passing** with 0 failures (up from 352)
+- **388 tests passing** with 0 failures (up from 372)
 
 ### Existing Tests (Organized by Layer)
 **Domain Layer:**
@@ -699,10 +699,23 @@ Before committing a test, verify:
     - All tests follow the style guide with Arrange-Act-Assert structure
     - Tests use `mock_open()` for file operations and proper environment variable mocking
 
-- [ ] **Test discover.py** (`tests/unit/cli/commands/test_discover.py`)
-  - Mock file system operations
-  - Test finding all projects in claude-step/, filtering valid projects (must have spec.md)
-  - Test output formatting (JSON), empty directory and invalid project structure handling
+- [x] **Test discover.py** ✅ COMPLETE (December 27, 2025) (`tests/unit/cli/commands/test_discover.py`)
+  - 16 comprehensive tests covering project discovery functionality
+  - Tests for `find_all_projects()` - finding projects with configuration.yml files
+  - Tests for `main()` - command orchestration and JSON output
+  - Tests for base directory handling (default, environment variable, explicit argument)
+  - Tests for project filtering (valid projects with config, excluding directories without config, excluding files)
+  - Tests for output formatting (sorted list, JSON array, project count)
+  - Tests for edge cases (empty directory, missing base directory, nested files)
+  - **Technical Notes:**
+    - All 16 tests pass (total test count increased from 372 to 388)
+    - Tests use tmp_path fixture for file system operations (no mocking of I/O)
+    - Tests verify project discovery requires configuration.yml (not spec.md as initially planned)
+    - Tests verify alphabetical sorting of project names
+    - Tests verify proper handling of CLAUDESTEP_PROJECT_DIR environment variable
+    - Tests mock GitHubActionsHelper to avoid actual GitHub Actions output
+    - Tests verify JSON output format and project count are written correctly
+    - All tests follow the style guide with Arrange-Act-Assert structure and descriptive names
 
 - [ ] **Test discover_ready.py** (`tests/unit/cli/commands/test_discover_ready.py`)
   - Mock GitHub API for PR queries
@@ -942,7 +955,7 @@ class TestCheckReviewerCapacity:
 - ✅ Phase 1: 100% COMPLETE (test infrastructure, conftest.py fixtures, and domain layer tests all done)
 - ✅ Phase 2: 100% COMPLETE (all infrastructure layer tests done - git, github, filesystem operations)
 - ✅ Phase 3: 100% COMPLETE (all application layer tests done - task_management, statistics, table_formatter, reviewer_management, project_detection, artifact_operations)
-- ✅ Phase 4: ~33% complete (prepare_summary, prepare, and finalize done, need 6 more commands)
+- ✅ Phase 4: ~44% complete (prepare_summary, prepare, finalize, and discover done, need 5 more commands)
 - Phase 5: Not started (integration tests and quality improvements)
 - ✅ Phase 6: ~40% complete (CI set up, need documentation and enhancements)
 
@@ -950,11 +963,11 @@ class TestCheckReviewerCapacity:
 - ✅ **Phase 1**: COMPLETE (December 27, 2025)
 - ✅ **Phase 2**: COMPLETE (December 27, 2025)
 - ✅ **Phase 3**: COMPLETE (December 27, 2025)
-- **Phase 4**: 4-5 days (8 remaining command modules)
+- **Phase 4**: 3-4 days (5 remaining command modules)
 - **Phase 5**: 2-3 days (integration tests, coverage reporting)
 - **Phase 6**: 1 day (documentation, CI enhancements)
 
-**Total Remaining: 7-9 days** (can be parallelized or spread over multiple contributors)
+**Total Remaining: 6-8 days** (can be parallelized or spread over multiple contributors)
 
 ## Resources
 
@@ -988,7 +1001,7 @@ class TestCheckReviewerCapacity:
 - ✅ Architecture modernization with layered structure
 - ✅ Test structure reorganized to mirror src/ layout
 - ✅ CI workflow added for automated testing
-- ✅ All 352 tests passing (0 failures, up from 112 initially)
+- ✅ All 388 tests passing (0 failures, up from 112 initially)
 - ✅ E2E tests updated and working
 - ✅ Comprehensive tests for `pr_operations.py` (21 test cases)
 - ✅ Comprehensive tests for `task_management.py` (19 test cases)
@@ -1000,6 +1013,7 @@ class TestCheckReviewerCapacity:
 - ✅ Comprehensive tests for `artifact_operations.py` (31 test cases) - December 27, 2025
 - ✅ Comprehensive tests for `prepare.py` (19 test cases) - December 27, 2025
 - ✅ Comprehensive tests for `finalize.py` (20 test cases) - December 27, 2025
+- ✅ Comprehensive tests for `discover.py` (16 test cases) - December 27, 2025
 - ✅ **Common test fixtures** in `tests/conftest.py` (December 27, 2025)
   - 20+ reusable fixtures covering file system, git, GitHub, and configuration scenarios
   - All fixtures follow test style guide with clear docstrings and organized by category
