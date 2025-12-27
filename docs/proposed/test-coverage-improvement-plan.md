@@ -35,7 +35,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `.github/workflows/test.yml` - CI workflow for unit tests
 - `pyproject.toml` - Package configuration with test dependencies
 - Tests run on every push and PR to main branch
-- **269 tests passing** with 0 failures
+- **285 tests passing** with 0 failures (up from 269)
 
 ### Existing Tests (Organized by Layer)
 **Domain Layer:**
@@ -54,6 +54,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `tests/unit/application/formatters/test_table_formatter.py` - Table formatting utilities (19 tests)
 - `tests/unit/application/services/test_pr_operations.py` - PR operations (21 tests)
 - `tests/unit/application/services/test_task_management.py` - Task finding and marking (19 tests)
+- `tests/unit/application/services/test_reviewer_management.py` - Reviewer capacity and assignment (16 tests)
 
 **CLI Layer:**
 - `tests/unit/cli/commands/test_prepare_summary.py` - PR summary command (9 tests)
@@ -65,7 +66,6 @@ These changes reduce code duplication and simplify the testing surface area.
 The following modules lack unit tests:
 
 **Application Layer:**
-- `src/claudestep/application/services/reviewer_management.py` - Reviewer capacity management
 - `src/claudestep/application/services/project_detection.py` - Project detection
 - `src/claudestep/application/services/artifact_operations.py` - Artifact management
 
@@ -598,10 +598,22 @@ Before committing a test, verify:
 - [x] **Test table_formatter.py** ✅ COMPLETE (`tests/unit/application/formatters/test_table_formatter.py`)
   - 19 tests covering visual width calculation, padding, emoji support, table formatting
 
-- [ ] **Test reviewer_management.py** (`tests/unit/application/services/test_reviewer_management.py`)
-  - Test `check_reviewer_capacity()`, `find_available_reviewer()`, reviewer rotation
-  - Test capacity calculation with various PR states
-  - Test edge cases (no reviewers, all at capacity, zero maxOpenPRs)
+- [x] **Test reviewer_management.py** ✅ COMPLETE (December 27, 2025) (`tests/unit/application/services/test_reviewer_management.py`)
+  - 16 comprehensive tests covering `find_available_reviewer()` functionality
+  - Tests capacity calculation with various PR states and boundary conditions
+  - Tests edge cases (no reviewers, all at capacity, zero maxOpenPRs, over capacity)
+  - Tests reviewer rotation logic (first available selected)
+  - Tests artifact metadata parsing and PR detail storage
+  - Tests handling of unknown reviewers and missing metadata
+  - **Technical Notes:**
+    - All 16 tests pass with comprehensive coverage of reviewer assignment logic
+    - Tests mock `find_project_artifacts()` to avoid external dependencies
+    - Helper method `_create_artifact_with_metadata()` simplifies test data creation
+    - Tests verify both the selected reviewer and detailed ReviewerCapacityResult
+    - Boundary conditions tested: exactly at capacity, one under, over capacity, zero max
+    - Tests verify environment variable usage (GITHUB_REPOSITORY)
+    - Tests confirm PR details stored correctly (pr_number, task_index, task_description)
+    - All tests follow style guide with Arrange-Act-Assert structure and descriptive names
 
 - [ ] **Test project_detection.py** (`tests/unit/application/services/test_project_detection.py`)
   - Test detecting project from environment variable and PR branch name using `parse_branch_name()`
@@ -875,7 +887,7 @@ class TestCheckReviewerCapacity:
 **Current Progress**:
 - ✅ Phase 1: 100% COMPLETE (test infrastructure, conftest.py fixtures, and domain layer tests all done)
 - ✅ Phase 2: 100% COMPLETE (all infrastructure layer tests done - git, github, filesystem operations)
-- ✅ Phase 3: ~75% complete (task_management, statistics, table_formatter done, need reviewer/project/artifact)
+- ✅ Phase 3: ~83% complete (task_management, statistics, table_formatter, reviewer_management done, need project_detection and artifact_operations)
 - ✅ Phase 4: ~11% complete (prepare_summary done, need 8 more commands)
 - Phase 5: Not started (integration tests and quality improvements)
 - ✅ Phase 6: ~40% complete (CI set up, need documentation and enhancements)
@@ -910,9 +922,10 @@ class TestCheckReviewerCapacity:
 1. ~~Create `tests/conftest.py` with common fixtures (Phase 1)~~ ✅ COMPLETE (December 27, 2025)
 2. ~~Add domain layer tests for config.py with branchPrefix rejection validation (Phase 1)~~ ✅ COMPLETE (December 27, 2025)
 3. ~~Add infrastructure tests for git and github operations (Phase 2)~~ ✅ COMPLETE (December 27, 2025)
-4. Add application service tests for reviewer_management.py (Phase 3)
-5. Add CLI command tests for prepare.py and finalize.py (Phase 4)
-6. Set up CI workflow to run e2e integration tests from demo repository (Phase 5/6)
+4. ~~Add application service tests for reviewer_management.py (Phase 3)~~ ✅ COMPLETE (December 27, 2025)
+5. Add application service tests for project_detection.py and artifact_operations.py (Phase 3)
+6. Add CLI command tests for prepare.py and finalize.py (Phase 4)
+7. Set up CI workflow to run e2e integration tests from demo repository (Phase 5/6)
 
 ## Progress Summary
 
@@ -920,13 +933,14 @@ class TestCheckReviewerCapacity:
 - ✅ Architecture modernization with layered structure
 - ✅ Test structure reorganized to mirror src/ layout
 - ✅ CI workflow added for automated testing
-- ✅ All 269 tests passing (0 failures, up from 112 initially)
+- ✅ All 285 tests passing (0 failures, up from 112 initially, added 16 in this session)
 - ✅ E2E tests updated and working
 - ✅ Comprehensive tests for `pr_operations.py` (21 test cases)
 - ✅ Comprehensive tests for `task_management.py` (19 test cases)
 - ✅ Comprehensive tests for `statistics_collector.py` (44 test cases)
 - ✅ Comprehensive tests for `table_formatter.py` (19 test cases)
 - ✅ Comprehensive tests for `prepare_summary.py` (9 test cases)
+- ✅ Comprehensive tests for `reviewer_management.py` (16 test cases) - December 27, 2025
 - ✅ **Common test fixtures** in `tests/conftest.py` (December 27, 2025)
   - 20+ reusable fixtures covering file system, git, GitHub, and configuration scenarios
   - All fixtures follow test style guide with clear docstrings and organized by category
