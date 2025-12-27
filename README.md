@@ -2,28 +2,39 @@
 
 ## Overview
 
-ClaudeStep automates the tedious refactoring work that never gets prioritized. Define your cleanup tasks once, and it steadily generates PRs -- migrations, code cleanup, and documentation that would otherwise sit on the backlog forever.
+ClaudeStep runs Claude Code on individual steps that you define for your project, creating pull requests for each step one at a time. When you merge a PR, it automatically stages the next PR, creating a chain of incremental improvements.
 
-Built on Claude Code and GitHub Actions, it delivers one small PR at a time, keeping review burden manageable while maintaining momentum on large-scale improvements.
+Built on Claude Code and GitHub Actions, it automates the tedious refactoring work that never gets prioritized -- migrations, code cleanup, and documentation that would otherwise sit on the backlog forever.
 
 ## Features
 
-- 📋 **Define once, run forever** - Write your refactor spec, get automated PRs
+- 📋 **Incremental automation** - Write your refactor spec, get automated PRs for each step
 - ⚡ **Manageable review burden** - One small PR at a time, distributed across team
-- 🔄 **Set and forget** - Daily scheduled runs or trigger on PR merge
+- 🔄 **Continuous flow** - Merge PRs when you have time, next PR stages automatically
 - 💬 **Context for reviewers** - AI-generated summaries explain each change
 - 📊 **Visibility** - Track progress, team stats, and completion rates
 
-## Quick Start
-
-Get up and running with ClaudeStep in 5 minutes.
+## Getting Started
 
 ### Prerequisites
 
 - GitHub repository with code to refactor
 - Anthropic API key ([get one here](https://console.anthropic.com))
+- GitHub CLI (`gh`) installed and authenticated
 
-### Step 1: Create Refactor Project
+### Step 1: Install the Claude Code GitHub App
+
+Run this command in Claude Code to install the GitHub app and set up authentication:
+
+```
+/install-github-app
+```
+
+This grants the necessary permissions for Claude to interact with your repository.
+
+### Step 2: Create a Project
+
+ClaudeStep relies on projects in the `claude-step` folder to source where to find its projects and configuration.
 
 Create this directory structure in your repo:
 
@@ -54,12 +65,14 @@ Include:
 
 ## Checklist
 
-- [ ] First task to refactor
-- [ ] Second task to refactor
-- [ ] Third task to refactor
+Checklist items are formatted with a dash followed by open brackets (e.g., `- [ ]`). You can have any content between the brackets. ClaudeStep will process these checklist items in order as it finds them throughout the markdown document, so plan on every single item being processed.
+
+- [ ] First step to refactor
+- [ ] Second step to refactor
+- [ ] Third step to refactor
 ```
 
-### Step 2: Configure GitHub
+### Step 3: Configure GitHub
 
 #### Add API Key
 
@@ -76,13 +89,7 @@ Include:
 3. Check "Allow GitHub Actions to create and approve pull requests"
 4. Click "Save"
 
-#### Create Label
-
-```bash
-gh label create "ai-refactor" --color "0E8A16"
-```
-
-### Step 3: Add Workflow
+### Step 4: Add Workflow
 
 Create `.github/workflows/ai-refactor.yml`:
 
@@ -90,8 +97,8 @@ Create `.github/workflows/ai-refactor.yml`:
 name: ClaudeStep
 
 on:
-  schedule:
-    - cron: '0 9 * * *'  # Daily at 9 AM UTC
+  pull_request:
+    types: [closed]      # Triggers when you merge or close PRs
   workflow_dispatch:     # Allow manual trigger
 
 permissions:
@@ -112,7 +119,24 @@ jobs:
           project_name: 'my-refactor'
 ```
 
-### Step 4: Run & Test
+### Step 5: Setup Slack Notifications (Optional)
+
+To receive statistics and progress reports in Slack:
+
+1. Create a Slack webhook at [api.slack.com/messaging/webhooks](https://api.slack.com/messaging/webhooks)
+2. Add the webhook URL as a GitHub secret named `SLACK_WEBHOOK_URL`
+3. Pass it to the action:
+
+```yaml
+- uses: gestrich/claude-step@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    project_name: 'my-refactor'
+    slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
+### Step 6: Run & Test
 
 #### Manual Test
 
@@ -126,12 +150,12 @@ jobs:
 
 - ✅ Workflow runs successfully
 - ✅ New branch created: `2025-01-my-refactor-1`
-- ✅ PR created with label "ai-refactor"
+- ✅ PR created with label "claude-step"
 - ✅ PR assigned to you
-- ✅ First task from spec.md is completed
+- ✅ First step from spec.md is completed
 - ✅ AI-generated summary comment posted on PR (explains changes)
 
-### Step 5: Review & Iterate
+### Step 7: Review & Iterate
 
 #### Review the PR
 
@@ -143,7 +167,7 @@ jobs:
 #### Merge
 
 1. When satisfied, merge the PR
-2. Next run (tomorrow or manual) will create PR for next task
+2. After merge, workflow will create PR for next step
 
 #### Improve
 
@@ -154,137 +178,51 @@ As you review PRs, update spec.md with:
 
 The instructions will improve over time!
 
-### Next Steps
+### Scaling Up
 
-#### Scale Up
+Once comfortable, you can:
 
-Once comfortable:
-
-```yaml
-reviewers:
-  - username: alice
-    maxOpenPRs: 2  # ← Increase capacity
-  - username: bob  # ← Add more reviewers
-    maxOpenPRs: 1
-```
-
-#### Add PR Merge Trigger
-
-For faster iteration:
-
-```yaml
-on:
-  schedule:
-    - cron: '0 9 * * *'
-  workflow_dispatch:
-  pull_request:  # ← Add this
-    types: [closed]
-
-jobs:
-  refactor:
-    # ... rest of job
-```
-
-Now when you close a PR (merged or not), it immediately creates the next one!
-
-> **Note:** The workflow triggers on both merged and closed-without-merging PRs. If you close a PR without merging and don't want it to re-open, first update `spec.md` to mark that task as complete (or remove it), merge that change, then close the PR.
-
-#### Multiple Projects
-
-Create additional refactor projects:
-
-```
-claude-step/
-├── swift-migration/
-│   ├── configuration.yml
-│   └── spec.md
-├── typescript-conversion/
-│   ├── configuration.yml
-│   └── spec.md
-└── api-refactor/
-    ├── configuration.yml
-    └── spec.md
-```
-
-Run different projects on different schedules or manually.
-
-### Troubleshooting
-
-#### No PR Created
-
-**Check workflow summary** - it shows:
-- Reviewer capacity (are all reviewers at max?)
-- Available tasks (are all tasks complete or in progress?)
-
-**Common causes:**
-1. All reviewers are at capacity (check open PRs with your label)
-2. All tasks in spec.md are completed or in progress
-3. Label doesn't exist or doesn't match config
-
-**Common fixes:**
-- Increase `maxOpenPRs` if at capacity
-- Add more unchecked tasks to spec.md
-- Verify label exists: `gh label list`
-
-#### PR Creation Fails
-
-**Common causes:**
-- Missing `ANTHROPIC_API_KEY` secret
-- Workflow doesn't have PR creation permissions
-- Branch already exists (shouldn't happen with date prefix)
-
-**Verify:**
-- Secret exists in Settings > Secrets and variables > Actions
-- "Allow GitHub Actions to create and approve pull requests" is enabled
-- You have write access to the repo
-
-#### Bad PR Quality
-
-**Claude makes mistakes** - This is normal initially!
-
-**Solutions:**
-1. Add more detailed instructions to spec.md
-2. Include specific before/after examples
-3. Document common mistakes to avoid
-4. Consider starting with one manual PR to set the pattern
-5. **Update instructions in the same PR** when you fix issues
-
-The more context you provide, the better Claude performs. Instructions improve over time.
-
-#### Reviewer Assignment Not Working
-
-The action uses artifacts to track PR assignments. If assignment seems wrong:
-1. Check that artifact uploads are succeeding in workflow logs
-2. Verify label matches between config and actual PRs
-3. Wait for one full workflow run to establish state
-
-### Tips for Success
-
-1. **Start with clear, simple tasks**
-   ```markdown
-   - [ ] Convert UserService.js to TypeScript
+1. **Increase capacity per reviewer:**
+   ```yaml
+   reviewers:
+     - username: alice
+       maxOpenPRs: 2  # ← Increase from 1
    ```
-   Not: `- [ ] Fix the auth stuff`
 
-2. **Provide examples in spec.md**
-   - Show before/after code
-   - Document patterns to follow
-   - Explain edge cases
+2. **Add more reviewers:**
+   ```yaml
+   reviewers:
+     - username: alice
+       maxOpenPRs: 1
+     - username: bob  # ← Add team members
+       maxOpenPRs: 1
+   ```
 
-3. **Review thoroughly at first**
-   - First few PRs may need guidance
-   - Update spec.md when you fix issues
-   - Quality improves quickly with good instructions
+3. **Create multiple projects:**
+   ```
+   claude-step/
+   ├── swift-migration/
+   │   ├── configuration.yml
+   │   └── spec.md
+   ├── typescript-conversion/
+   │   ├── configuration.yml
+   │   └── spec.md
+   └── api-refactor/
+       ├── configuration.yml
+       └── spec.md
+   ```
 
-4. **One PR at a time initially**
-   - Set `maxOpenPRs: 1`
-   - Increase after you're confident
-   - Easier to iterate on instructions
+4. **Add scheduled triggers** for predictable daily runs:
+   ```yaml
+   on:
+     schedule:
+       - cron: '0 9 * * *'  # Daily at 9 AM UTC
+     pull_request:
+       types: [closed]
+     workflow_dispatch:
+   ```
 
-5. **Merge regularly**
-   - Don't let PRs pile up
-   - Keep momentum going
-   - Batch review if needed
+> **Note:** The workflow triggers on both merged and closed-without-merging PRs. If you close a PR without merging and don't want it to re-open, first update `spec.md` to mark that step as complete (or remove it), merge that change, then close the PR.
 
 ## Action Inputs & Outputs
 
@@ -292,16 +230,16 @@ The action uses artifacts to track PR assignments. If assignment seems wrong:
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `anthropic_api_key` | ✅ | - | Anthropic API key for Claude Code |
-| `github_token` | ✅ | `${{ github.token }}` | GitHub token for PR operations |
-| `project_name` | ✅ | - | Project folder name under `/claude-step` |
-| `claude_model` | ❌ | `claude-sonnet-4-5` | Claude model to use (sonnet-4-5 or opus-4-5) |
-| `claude_allowed_tools` | ❌ | `Write,Read,Bash,Edit` | Comma-separated list of tools Claude can use |
-| `base_branch` | ❌ | `main` | Base branch for PRs |
-| `working_directory` | ❌ | `.` | Working directory |
-| `add_pr_summary` | ❌ | `true` | Add AI-generated summary comment to PR |
-| `slack_webhook_url` | ❌ | - | Slack webhook URL for PR notifications |
-| `pr_label` | ❌ | `claude-step` | Label to apply to ClaudeStep PRs |
+| `anthropic_api_key` | Y | - | Anthropic API key for Claude Code |
+| `github_token` | Y | `${{ github.token }}` | GitHub token for PR operations |
+| `project_name` | Y | - | Project folder name under `/claude-step` |
+| `claude_model` | N | `claude-sonnet-4-5` | Claude model to use (sonnet-4-5 or opus-4-5) |
+| `claude_allowed_tools` | N | `Write,Read,Bash,Edit` | Comma-separated list of tools Claude can use |
+| `base_branch` | N | `main` | Base branch for PRs |
+| `working_directory` | N | `.` | Working directory |
+| `add_pr_summary` | N | `true` | Add AI-generated summary comment to PR |
+| `slack_webhook_url` | N | - | Slack webhook URL for PR notifications |
+| `pr_label` | N | `claude-step` | Label to apply to ClaudeStep PRs |
 
 ### Outputs
 
@@ -310,9 +248,9 @@ The action uses artifacts to track PR assignments. If assignment seems wrong:
 | `pr_number` | Number of created PR (empty if none) |
 | `pr_url` | URL of created PR (empty if none) |
 | `reviewer` | Assigned reviewer username |
-| `task_completed` | Task description completed |
+| `step_completed` | Step description completed |
 | `has_capacity` | Whether reviewer had capacity |
-| `all_tasks_done` | Whether all tasks are complete |
+| `all_steps_done` | Whether all steps are complete |
 
 ### Input Details
 
@@ -442,26 +380,26 @@ The `spec.md` file combines instructions and checklist in a single document.
 - Rule 2
 
 ## Checklist
-- [ ] First task
-  - Additional details for this task can go here
-- [ ] Second task
-- [x] Completed task
+- [ ] First step
+  - Additional details for this step can go here
+- [ ] Second step
+- [x] Completed step
 
 ## More Information
 [Additional context...]
 
-- [ ] Another task (checklist items can appear anywhere!)
+- [ ] Another step (checklist items can appear anywhere!)
 ```
 
-**Task Lifecycle:**
-1. **Unchecked (`- [ ]`)**: Task is pending
-2. **Action picks task**: Creates PR for it
+**Step Lifecycle:**
+1. **Unchecked (`- [ ]`)**: Step is pending
+2. **Action picks step**: Creates PR for it
 3. **PR merged**: Action automatically marks as `- [x]`
-4. **Checked (`- [x]`)**: Task is skipped in future runs
+4. **Checked (`- [x]`)**: Step is skipped in future runs
 
 **Writing Effective Instructions:**
 
-Be specific with task descriptions:
+Be specific with step descriptions:
 ```markdown
 # Bad
 - [ ] Update the user service
@@ -496,9 +434,9 @@ Start with basic instructions and refine based on PR reviews:
 
 3. Continue refining as you learn what works.
 
-**Common Patterns for Organizing Tasks:**
+**Common Patterns for Organizing Steps:**
 
-Group related tasks:
+Group related steps:
 ```markdown
 ## Database Layer
 - [ ] Convert UserRepository
@@ -525,11 +463,11 @@ Progressive complexity:
 Template for PR descriptions with `{{TASK_DESCRIPTION}}` placeholder.
 
 **Template Variables:**
-- `{{TASK_DESCRIPTION}}` - The task description from spec.md
+- `{{TASK_DESCRIPTION}}` - The step description from spec.md
 
 **Example:**
 ```markdown
-## Task
+## Step
 {{TASK_DESCRIPTION}}
 
 ## Changes
@@ -553,8 +491,8 @@ _Auto-generated by ClaudeStep_
 
 **Default template** (if no pr-template.md exists):
 ```markdown
-## Task
-{task description}
+## Step
+{step description}
 ```
 
 ## Trigger Modes
@@ -603,120 +541,7 @@ jobs:
 - Best for active refactoring periods
 - **Important:** If closing without merging, update `spec.md` first to avoid the PR re-opening
 
-## Setup
-
-Before using ClaudeStep, you need to configure a few things:
-
-### 1. Install the Claude Code GitHub App
-
-Run this command in Claude Code to install the GitHub app and set up authentication:
-
-```
-/install-github-app
-```
-
-This grants the necessary permissions for Claude to interact with your repository.
-
-### 2. Add Anthropic API Key
-
-Add your Anthropic API key as a repository secret:
-
-1. Go to **Settings > Secrets and variables > Actions**
-2. Add a secret named `ANTHROPIC_API_KEY` with your key from [console.anthropic.com](https://console.anthropic.com)
-
-### 3. Enable PR Creation
-
-Allow GitHub Actions to create pull requests:
-
-1. Go to **Settings > Actions > General**
-2. Scroll to **Workflow permissions**
-3. Check **"Allow GitHub Actions to create and approve pull requests"**
-4. Save
-
-### 4. Create Your Refactor Label
-
-Create a label for tracking refactor PRs:
-
-```bash
-gh label create "your-refactor-label" --description "Automated refactor PRs" --color "0E8A16"
-```
-
-All PRs are automatically labeled with `claudestep` for tracking purposes.
-
-### 5. Setup Slack Notifications (Optional)
-
-To receive statistics and progress reports in Slack, you'll need a webhook URL.
-
-#### Get Slack Webhook URL
-
-1. Go to [https://api.slack.com/apps](https://api.slack.com/apps)
-2. Click **"Create New App"** → **"From scratch"**
-3. Name your app (e.g., "ClaudeStep Bot") and select your workspace
-4. In the app settings, go to **"Incoming Webhooks"**
-5. Toggle **"Activate Incoming Webhooks"** to **On**
-6. Click **"Add New Webhook to Workspace"**
-7. Select the channel where you want notifications (e.g., `#refactoring-updates`)
-8. Click **"Allow"**
-9. Copy the webhook URL (looks like `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXX`)
-
-#### Add Webhook to GitHub
-
-1. Go to your repository **Settings > Secrets and variables > Actions**
-2. Click **"New repository secret"**
-3. Name: `SLACK_WEBHOOK_URL`
-4. Value: (paste your Slack webhook URL)
-5. Click **"Add secret"**
-
-#### Use in Workflows
-
-The Statistics action outputs formatted messages ready for Slack:
-
-```yaml
-- name: Generate Statistics
-  id: stats
-  uses: gestrich/claude-step/statistics@v1
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-
-- name: Post to Slack
-  uses: slackapi/slack-github-action@v2
-  with:
-    payload: |
-      {
-        "text": "ClaudeStep Report",
-        "blocks": [
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": ${{ toJson(steps.stats.outputs.slack_message) }}
-            }
-          }
-        ]
-      }
-  env:
-    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-```
-
-See [.github/workflows/claudestep-statistics.yml](.github/workflows/claudestep-statistics.yml) for a complete example.
-
----
-
-See [Configuration Reference](#configuration-reference) for details on `configuration.yml` and `spec.md` format.
-
-## Background
-
-### Problems Being Solved
-
-1. **Motivation & Inertia** - Large refactors require creating many PRs over time. Having an automated system breaks the inertia and keeps progress moving.
-
-2. **Burden of Review** - By delivering one PR at a time, the review burden becomes manageable.
-
-3. **Tracking Progress** - The system provides visibility into what's done vs. what remains.
-
-4. **Hands-off Operation** - Runs automatically, sending notifications when work is ready for review.
-
-### Per-User PR Assignment
+## Per-User PR Assignment
 
 Instead of a global `maxConcurrentPRs`, PRs are assigned per reviewer. This:
 - Distributes review load across team members
@@ -724,88 +549,7 @@ Instead of a global `maxConcurrentPRs`, PRs are assigned per reviewer. This:
 - Each reviewer only sees PRs assigned to them
 - When a reviewer merges their PR, a new one is created for them
 
-See [Trigger Modes](#trigger-modes) for details on scheduled, manual, and automatic triggers.
-
-## Best Practices
-
-### How It Works
-
-#### 1. Create the Specification
-
-Create `spec.md` combining instructions and checklist:
-```markdown
-# Swift Migration
-
-Convert Objective-C files to Swift following these guidelines:
-
-- Use Swift naming conventions (camelCase for methods, PascalCase for types)
-- Replace `NSString` with `String`, `NSArray` with `[Type]`
-- Use guard statements instead of nested if-let
-- Add appropriate access control (public/private/internal)
-
-## Before/After Example
-[... detailed examples ...]
-
-## Checklist
-
-- [ ] Convert UserManager.m
-- [ ] Convert NetworkClient.m
-- [x] Convert Logger.m (completed)
-```
-
-The `- [ ]` items can appear anywhere in the file—they don't need to be in a specific section. This allows you to include detailed instructions under each item if needed.
-
-#### 2. ClaudeStep (GitHub Action)
-
-Runs on schedule or merge trigger:
-1. Check for open PRs with the label
-2. If under max, create a new PR for the next item
-3. Claude reads the entire `spec.md` file to understand both what to do and how to do it
-4. Apply the label and use the PR template
-
-#### 3. Human Review & Refinement
-
-When notified:
-- Review and merge if good
-- If issues: fix and **update the instructions in the same PR**
-- Goal: incrementally improve toward 90%+ accuracy
-
-### Improving Instructions
-
-- **Add fixes to the same PR** - When you see instruction gaps, add improvements alongside the refactor code. Keeps the process clean.
-- **Expect frequent edits early** - This is normal. Instructions will stabilize over time.
-- **Start with one PR at a time** - Easier to iterate when you're not fixing multiple PRs with outdated instructions.
-
-### Quality & Review Responsibility
-
-**You are responsible for this code.** AI-generated refactors are no different than using IDE refactor tools—the responsibility stays with you.
-
-#### Team Considerations
-
-- **Agree on review levels per refactor type** - Mechanical renames may need less scrutiny than logic changes.
-- **Define QA involvement** - Does QA need to test every PR, or can some be batched weekly?
-- **CI vs. manual testing** - Is your test coverage sufficient, or do engineers need to build and run locally?
-
-#### Make It Part of Your Pipeline
-
-- If QA reviews weekly, batch these PRs for that review
-- Don't let refactor PRs become noise—integrate them into your existing process
-
-#### PR Template Tips
-
-Include a "Things to Check" section in your PR template with a checklist based on the refactor type.
-
-### Getting Started Tips
-
-Once you have the system set up, here are tips for rolling it out:
-
-- **Lead with a manual PR** - Stage your first PR manually with several example refactors. This kicks off the chain and sets the pattern for Claude to follow.
-
-- **One at a time initially** - Start with one concurrent PR. You'll be editing instructions frequently early on—don't want multiple PRs doing it wrong.
-
-- **Use immediate trigger first** - Start with merge-triggered runs for faster iteration. Switch to scheduled (daily) once the process is stable.
-
-- **Scale up gradually** - As confidence grows, add more reviewers and increase concurrent PRs per reviewer.
+See [Configuration Reference](#configuration-reference) for details on `configuration.yml` and `spec.md` format.
 
 ## Development
 
@@ -858,13 +602,13 @@ If validation fails, the workflow will error with a descriptive message.
 The ClaudeStep action follows this workflow:
 
 1. **Check Capacity** - Finds first reviewer under their `maxOpenPRs` limit
-2. **Find Task** - Scans spec.md for first unchecked `- [ ]` item
+2. **Find Step** - Scans spec.md for first unchecked `- [ ]` item
 3. **Create Branch** - Names branch with format `YYYY-MM-{project}-{index}`
-4. **Run Claude** - Provides entire spec.md as context for the task
+4. **Run Claude** - Provides entire spec.md as context for the step
 5. **Create PR** - Assigns to reviewer, applies label, uses template
-6. **Track Progress** - Uploads artifact with task metadata
+6. **Track Progress** - Uploads artifact with step metadata
 
-When you merge a PR, the next run will pick up the next unchecked task and repeat the process.
+When you merge a PR, the next run will pick up the next unchecked step and repeat the process.
 
 ## Security
 
@@ -908,17 +652,6 @@ MIT License - see LICENSE file
 Created by [gestrich](https://github.com/gestrich)
 
 Built with [Claude Code](https://github.com/anthropics/claude-code-action) by Anthropic
-
-## Configuration Best Practices
-
-1. **Start simple** - Basic instructions, one reviewer, low capacity (`maxOpenPRs: 1`)
-2. **Test manually** - Use `workflow_dispatch` to test before scheduling
-3. **Iterate on instructions** - Update spec.md based on review feedback
-4. **Monitor capacity** - Check workflow summaries to see reviewer load
-5. **Version control everything** - Commit config changes with code changes
-6. **Document gotchas** - Add special cases to spec.md as you discover them
-7. **Group related tasks** - Organize checklist items by layer, component, or complexity
-8. **Be specific** - Clear task descriptions lead to better results
 
 ## TODO
 
