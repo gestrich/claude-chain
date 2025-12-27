@@ -21,19 +21,7 @@ Built on Claude Code and GitHub Actions, it automates the tedious refactoring wo
 - GitHub repository with code to refactor
 - Anthropic API key ([get one here](https://console.anthropic.com))
 
-### Step 1: Install the Claude Code GitHub App
-
-The Claude Code GitHub App allows the action to interact with your repository. This is a remote GitHub configuration, not a local installation.
-
-In your local repository directory, run this command in Claude Code:
-
-```
-/install-github-app
-```
-
-This installs the app at the GitHub repository level and grants the necessary permissions for Claude to read your spec and create pull requests.
-
-### Step 2: Create a Project
+### Step 1: Create a Project
 
 ClaudeStep relies on projects in the `claude-step` folder to source where to find its projects and configuration.
 
@@ -73,24 +61,7 @@ Checklist items are formatted with a dash followed by open brackets (e.g., `- [ 
 - [ ] Third step to refactor
 ```
 
-### Step 3: Configure GitHub
-
-#### Add API Key
-
-1. Go to Settings > Secrets and variables > Actions
-2. Click "New repository secret"
-3. Name: `ANTHROPIC_API_KEY`
-4. Value: (paste your Anthropic API key)
-5. Click "Add secret"
-
-#### Enable PR Creation
-
-1. Go to Settings > Actions > General
-2. Scroll to "Workflow permissions"
-3. Check "Allow GitHub Actions to create and approve pull requests"
-4. Click "Save"
-
-### Step 4: Add Workflow
+### Step 2: Add Workflow
 
 Create `.github/workflows/ai-refactor.yml`:
 
@@ -120,7 +91,7 @@ jobs:
           project_name: 'my-refactor'
 ```
 
-### Step 5: Setup Slack Notifications (Optional)
+### Step 3: Setup Slack Notifications (Optional)
 
 To receive statistics and progress reports in Slack:
 
@@ -137,7 +108,36 @@ To receive statistics and progress reports in Slack:
     slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
 
-### Step 6: Run & Test
+### Step 4: Configure GitHub
+
+#### Add API Key
+
+1. Go to Settings > Secrets and variables > Actions
+2. Click "New repository secret"
+3. Name: `ANTHROPIC_API_KEY`
+4. Value: (paste your Anthropic API key)
+5. Click "Add secret"
+
+#### Enable PR Creation
+
+1. Go to Settings > Actions > General
+2. Scroll to "Workflow permissions"
+3. Check "Allow GitHub Actions to create and approve pull requests"
+4. Click "Save"
+
+#### Install Claude Code GitHub App
+
+The Claude Code GitHub App allows the action to interact with your repository. This is a remote GitHub configuration, not a local installation.
+
+In your local repository directory, run this command in Claude Code:
+
+```
+/install-github-app
+```
+
+This installs the app at the GitHub repository level and grants the necessary permissions for Claude to read your spec and create pull requests.
+
+### Step 5: Run & Test
 
 #### Manual Test
 
@@ -156,7 +156,7 @@ To receive statistics and progress reports in Slack:
 - ✅ First step from spec.md is completed
 - ✅ AI-generated summary comment posted on PR (explains changes)
 
-### Step 7: Review & Iterate
+### Step 6: Review & Iterate
 
 #### Review the PR
 
