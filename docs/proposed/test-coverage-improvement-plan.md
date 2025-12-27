@@ -35,7 +35,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `.github/workflows/test.yml` - CI workflow for unit tests
 - `pyproject.toml` - Package configuration with test dependencies
 - Tests run on every push and PR to main branch
-- **285 tests passing** with 0 failures (up from 269)
+- **302 tests passing** with 0 failures (up from 285)
 
 ### Existing Tests (Organized by Layer)
 **Domain Layer:**
@@ -55,6 +55,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `tests/unit/application/services/test_pr_operations.py` - PR operations (21 tests)
 - `tests/unit/application/services/test_task_management.py` - Task finding and marking (19 tests)
 - `tests/unit/application/services/test_reviewer_management.py` - Reviewer capacity and assignment (16 tests)
+- `tests/unit/application/services/test_project_detection.py` - Project detection from PRs and path resolution (17 tests)
 
 **CLI Layer:**
 - `tests/unit/cli/commands/test_prepare_summary.py` - PR summary command (9 tests)
@@ -66,7 +67,6 @@ These changes reduce code duplication and simplify the testing surface area.
 The following modules lack unit tests:
 
 **Application Layer:**
-- `src/claudestep/application/services/project_detection.py` - Project detection
 - `src/claudestep/application/services/artifact_operations.py` - Artifact management
 
 **CLI Layer:**
@@ -615,11 +615,21 @@ Before committing a test, verify:
     - Tests confirm PR details stored correctly (pr_number, task_index, task_description)
     - All tests follow style guide with Arrange-Act-Assert structure and descriptive names
 
-- [ ] **Test project_detection.py** (`tests/unit/application/services/test_project_detection.py`)
-  - Test detecting project from environment variable and PR branch name using `parse_branch_name()`
-  - Test project path resolution, spec.md/configuration.yml file discovery
-  - Test error cases (project not found, missing files, invalid branch names)
-  - Test simplified branch format parsing (`claude-step-{project}-{index}`)
+- [x] **Test project_detection.py** ✅ COMPLETE (December 27, 2025) (`tests/unit/application/services/test_project_detection.py`)
+  - 17 comprehensive tests covering project detection and path resolution
+  - Tests for `detect_project_from_pr()` - extracting project from PR branch using `parse_branch_name()`
+  - Tests for `detect_project_paths()` - generating configuration, spec, and template paths
+  - Tests error cases (missing branch name, invalid JSON, API failures, invalid branch formats)
+  - Tests edge cases (complex project names, numeric names, single character names, minimum valid branches)
+  - **Technical Notes:**
+    - All 17 tests pass with comprehensive coverage of project detection logic
+    - Tests mock `run_gh_command()` to avoid external GitHub CLI dependencies
+    - Tests verify proper handling of GitHub API responses and JSON parsing
+    - Tests confirm correct path generation with standard directory structure (claude-step/{project}/)
+    - Branch name validation tests ensure only valid format (`claude-step-{project}-{index}`) is accepted
+    - Tests verify graceful error handling (returns None on failures, not exceptions)
+    - Path generation tests confirm correct file extensions (.yml, .md) and consistent base directory
+    - All tests follow style guide with Arrange-Act-Assert structure and descriptive names
 
 - [ ] **Test artifact_operations.py** (`tests/unit/application/services/test_artifact_operations.py`)
   - Test artifact creation, reading, writing, metadata handling
@@ -887,7 +897,7 @@ class TestCheckReviewerCapacity:
 **Current Progress**:
 - ✅ Phase 1: 100% COMPLETE (test infrastructure, conftest.py fixtures, and domain layer tests all done)
 - ✅ Phase 2: 100% COMPLETE (all infrastructure layer tests done - git, github, filesystem operations)
-- ✅ Phase 3: ~83% complete (task_management, statistics, table_formatter, reviewer_management done, need project_detection and artifact_operations)
+- ✅ Phase 3: ~92% complete (task_management, statistics, table_formatter, reviewer_management, project_detection done, need artifact_operations)
 - ✅ Phase 4: ~11% complete (prepare_summary done, need 8 more commands)
 - Phase 5: Not started (integration tests and quality improvements)
 - ✅ Phase 6: ~40% complete (CI set up, need documentation and enhancements)
@@ -895,12 +905,12 @@ class TestCheckReviewerCapacity:
 **Remaining Effort**:
 - ✅ **Phase 1**: COMPLETE (December 27, 2025)
 - ✅ **Phase 2**: COMPLETE (December 27, 2025)
-- **Phase 3**: 1 day (reviewer_management, project_detection, artifact_operations)
+- **Phase 3**: 0.5 day (artifact_operations - reviewer_management and project_detection complete)
 - **Phase 4**: 4-5 days (8 remaining command modules)
 - **Phase 5**: 2-3 days (integration tests, coverage reporting)
 - **Phase 6**: 1 day (documentation, CI enhancements)
 
-**Total Remaining: 8-10 days** (can be parallelized or spread over multiple contributors)
+**Total Remaining: 7.5-9.5 days** (can be parallelized or spread over multiple contributors)
 
 ## Resources
 
@@ -923,9 +933,10 @@ class TestCheckReviewerCapacity:
 2. ~~Add domain layer tests for config.py with branchPrefix rejection validation (Phase 1)~~ ✅ COMPLETE (December 27, 2025)
 3. ~~Add infrastructure tests for git and github operations (Phase 2)~~ ✅ COMPLETE (December 27, 2025)
 4. ~~Add application service tests for reviewer_management.py (Phase 3)~~ ✅ COMPLETE (December 27, 2025)
-5. Add application service tests for project_detection.py and artifact_operations.py (Phase 3)
-6. Add CLI command tests for prepare.py and finalize.py (Phase 4)
-7. Set up CI workflow to run e2e integration tests from demo repository (Phase 5/6)
+5. ~~Add application service tests for project_detection.py (Phase 3)~~ ✅ COMPLETE (December 27, 2025)
+6. Add application service tests for artifact_operations.py (Phase 3)
+7. Add CLI command tests for prepare.py and finalize.py (Phase 4)
+8. Set up CI workflow to run e2e integration tests from demo repository (Phase 5/6)
 
 ## Progress Summary
 
@@ -933,7 +944,7 @@ class TestCheckReviewerCapacity:
 - ✅ Architecture modernization with layered structure
 - ✅ Test structure reorganized to mirror src/ layout
 - ✅ CI workflow added for automated testing
-- ✅ All 285 tests passing (0 failures, up from 112 initially, added 16 in this session)
+- ✅ All 302 tests passing (0 failures, up from 112 initially)
 - ✅ E2E tests updated and working
 - ✅ Comprehensive tests for `pr_operations.py` (21 test cases)
 - ✅ Comprehensive tests for `task_management.py` (19 test cases)
@@ -941,6 +952,7 @@ class TestCheckReviewerCapacity:
 - ✅ Comprehensive tests for `table_formatter.py` (19 test cases)
 - ✅ Comprehensive tests for `prepare_summary.py` (9 test cases)
 - ✅ Comprehensive tests for `reviewer_management.py` (16 test cases) - December 27, 2025
+- ✅ Comprehensive tests for `project_detection.py` (17 test cases) - December 27, 2025
 - ✅ **Common test fixtures** in `tests/conftest.py` (December 27, 2025)
   - 20+ reusable fixtures covering file system, git, GitHub, and configuration scenarios
   - All fixtures follow test style guide with clear docstrings and organized by category
