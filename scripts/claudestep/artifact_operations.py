@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-from claudestep.exceptions import GitHubAPIError
+from claudestep.domain.exceptions import GitHubAPIError
 from claudestep.github_operations import download_artifact_json, gh_api_call
 
 

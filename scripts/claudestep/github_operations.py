@@ -7,7 +7,7 @@ import tempfile
 import zipfile
 from typing import Any, Dict, List, Optional
 
-from claudestep.exceptions import GitHubAPIError
+from claudestep.domain.exceptions import GitHubAPIError
 from claudestep.git_operations import run_command
 from claudestep.github_actions import GitHubActionsHelper
 

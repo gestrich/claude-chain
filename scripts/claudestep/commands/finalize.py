@@ -5,8 +5,8 @@ import json
 import os
 from datetime import datetime
 
-from claudestep.config import substitute_template
-from claudestep.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
+from claudestep.domain.config import substitute_template
+from claudestep.domain.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
 from claudestep.git_operations import run_git_command
 from claudestep.github_actions import GitHubActionsHelper
 from claudestep.github_operations import run_gh_command

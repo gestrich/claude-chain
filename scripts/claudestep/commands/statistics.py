@@ -4,7 +4,7 @@ import argparse
 import os
 from datetime import datetime
 
-from claudestep.exceptions import ConfigurationError
+from claudestep.domain.exceptions import ConfigurationError
 from claudestep.github_actions import GitHubActionsHelper
 from claudestep.statistics_collector import collect_all_statistics
 

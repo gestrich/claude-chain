@@ -4,8 +4,8 @@ import argparse
 import json
 import os
 
-from claudestep.config import load_config, validate_spec_format
-from claudestep.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
+from claudestep.domain.config import load_config, validate_spec_format
+from claudestep.domain.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
 from claudestep.git_operations import run_git_command
 from claudestep.github_actions import GitHubActionsHelper
 from claudestep.github_operations import ensure_label_exists

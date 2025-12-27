@@ -4,7 +4,7 @@ import json
 import pytest
 from datetime import datetime
 
-from claudestep.models import TeamMemberStats, ProjectStats, StatisticsReport
+from claudestep.domain.models import TeamMemberStats, ProjectStats, StatisticsReport
 from claudestep.statistics_collector import count_tasks
 
 

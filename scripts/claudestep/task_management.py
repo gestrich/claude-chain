@@ -5,7 +5,7 @@ import re
 from typing import Optional
 
 from claudestep.artifact_operations import find_in_progress_tasks
-from claudestep.exceptions import FileNotFoundError
+from claudestep.domain.exceptions import FileNotFoundError
 
 
 def generate_task_id(task: str, max_length: int = 30) -> str:

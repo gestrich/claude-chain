@@ -8,7 +8,7 @@ import json
 import re
 from typing import List, Optional, Tuple
 
-from claudestep.exceptions import GitHubAPIError
+from claudestep.domain.exceptions import GitHubAPIError
 from claudestep.github_operations import run_gh_command
 
 

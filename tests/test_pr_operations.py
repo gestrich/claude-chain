@@ -250,7 +250,7 @@ class TestGetProjectPrs:
     @patch("claudestep.pr_operations.run_gh_command")
     def test_handle_api_error(self, mock_gh_command):
         """Should handle GitHub API errors gracefully"""
-        from claudestep.exceptions import GitHubAPIError
+        from claudestep.domain.exceptions import GitHubAPIError
 
         mock_gh_command.side_effect = GitHubAPIError("API failed")
 

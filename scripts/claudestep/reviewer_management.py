@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from claudestep.artifact_operations import find_project_artifacts
-from claudestep.models import ReviewerCapacityResult
+from claudestep.domain.models import ReviewerCapacityResult
 
 
 def find_available_reviewer(reviewers: List[Dict[str, Any]], label: str, project: str) -> tuple[Optional[str], ReviewerCapacityResult]:

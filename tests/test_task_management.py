@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from claudestep.exceptions import FileNotFoundError
+from claudestep.domain.exceptions import FileNotFoundError
 from claudestep.task_management import (
     find_next_available_task,
     generate_task_id,
