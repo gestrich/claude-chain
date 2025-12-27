@@ -182,26 +182,30 @@ Configuration and workflow improvements for V1 release.
 - The workflow was already running daily, not hourly as initially thought
 - Previous schedule was 2am UTC, now it's 9am UTC (5am EST)
 
-- [ ] **Move E2E tests to demo project**
+- [x] **Move E2E tests to demo project**
 
-**Status:** PENDING
+**Status:** COMPLETED
 
-**Goal:**
-- Relocate end-to-end tests from the action repository to the demo project at /Users/bill/Developer/personal/claude-step-demo
-- Update architecture documentation to reflect this change
-- Ensure tests validate changes in a real-world environment
-
-**Changes needed:**
-- Move E2E test files to the demo project repository at /Users/bill/Developer/personal/claude-step-demo
-- Update `docs/architecture/local-testing.md` to document using demo project for E2E tests
-- Add note to push both projects (action and demo) before running tests
-- Remove E2E tests from the action repository if applicable
-- Ensure test setup instructions are clear in demo project
+**Changes made:**
+- Copied all E2E test files to `/Users/bill/Developer/personal/claude-step-demo/tests/integration/`
+  - `test_workflow_e2e.py` - Main test file
+  - `README.md` - Test documentation
+  - `run_test.sh` - Test runner script
+  - `__init__.py` - Python module file
+- Made `run_test.sh` executable in the demo project
+- Updated `docs/architecture/local-testing.md` with:
+  - New section explaining E2E tests are in the demo project
+  - Instructions for running E2E tests
+  - Important note to push both repositories before running tests
+  - Updated testing repository documentation
+- Added note to `docs/architecture/e2e-testing.md` pointing to new location
+- Verified build succeeds (62 tests pass, 5 pre-existing failures unrelated to this change)
 
 **Technical notes:**
-- E2E tests are more appropriate in the demo project as they test the full integration
-- Requires coordination between both repositories for testing
-- Tests should validate the action works correctly in a real GitHub environment
+- E2E test files remain in the action repository for backwards compatibility
+- Tests in the demo project are the source of truth going forward
+- Python syntax validation passes for all files
+- Unit tests pass successfully (excluding integration tests)
 
 - [ ] **Reduce number of end-to-end tests**
 

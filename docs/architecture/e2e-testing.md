@@ -2,6 +2,8 @@
 
 This guide explains how to run the ClaudeStep end-to-end integration tests.
 
+> **Note:** The E2E tests are located in the demo project at `claude-step-demo/tests/integration/`. See `claude-step-demo/tests/integration/README.md` for the latest documentation.
+
 ## Overview
 
 The e2e tests validate the complete ClaudeStep workflow in a real GitHub environment:
