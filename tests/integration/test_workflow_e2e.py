@@ -370,6 +370,11 @@ def test_claudestep_workflow_e2e(gh, test_project, cleanup_prs):
     print(f"Testing ClaudeStep workflow with project: {test_project.project_name}")
     print(f"{'='*60}\n")
 
+    # Wait for GitHub to fully process the push before triggering workflow
+    # Without this, the workflow may checkout an older commit
+    print("Waiting for GitHub to process the push...")
+    time.sleep(5)
+
     # === STEP 1: Trigger workflow and verify first PR ===
     print("\n[STEP 1] Triggering workflow for first task...")
 
