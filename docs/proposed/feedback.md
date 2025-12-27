@@ -182,7 +182,37 @@ Current implementation uses `project_name` as a required input parameter. This d
 - Remove "Iterative Improvement" section
 - Remove "Common Patterns for Organizing Steps" section
 
-## Step 8: Consolidate Document Structure
+## ✅ Step 8: Consolidate Document Structure (COMPLETED)
+
+**Technical Notes:**
+- Removed "Getting Started" section header, replaced with "Setup" (README.md:22)
+- Renumbered steps after adding PR template as Step 2:
+  - Step 2: Customize PR Template (Optional) - new step (README.md:80-110)
+  - Step 3: Add Workflow (was Step 2) (README.md:112)
+  - Step 4: Setup Slack Notifications (was Step 3) (README.md:146)
+  - Step 5: Configure GitHub (was Step 4) (README.md:163)
+  - Step 6: Run & Test (was Step 5) (README.md:192)
+  - Step 7: Review & Iterate (was Step 6) (README.md:223)
+- Moved PR template documentation from Configuration Reference (lines 408-437) into main setup flow as Step 2
+- Integrated Per-User PR Assignment explanation with Scaling Up section (README.md:240-246)
+- Removed duplicate PR template section from Configuration Reference
+- Removed standalone Per-User PR Assignment section (previously lines 491-499)
+- Document now flows linearly from Overview → Prerequisites → Setup (steps 1-7) → Scaling Up → Reference sections → Development/Support
+
+**Document structure now follows intended flow:**
+1. Overview/Features (README.md:3-15)
+2. Prerequisites (README.md:17-20)
+3. Setup - Step-by-step (README.md:22-235):
+   - Step 1: Create project structure, configuration, spec
+   - Step 2: Optional PR template
+   - Step 3: Workflow file
+   - Step 4: Optional Slack notifications
+   - Step 5: Configure GitHub (API key, permissions, app install)
+   - Step 6: Push to main and trigger initial workflow
+   - Step 7: Review & iterate
+4. Scaling Up (includes per-user assignment) (README.md:236-278)
+5. Reference sections (inputs/outputs, configuration) (README.md:280-494)
+6. Development, Support, Credits (README.md:496-600)
 
 ### Goal
 Make entire document one cohesive "0 to 100" setup guide. No scattered sections.
