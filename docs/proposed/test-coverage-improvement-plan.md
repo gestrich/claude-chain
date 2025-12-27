@@ -35,7 +35,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `.github/workflows/test.yml` - CI workflow for unit tests
 - `pyproject.toml` - Package configuration with test dependencies
 - Tests run on every push and PR to main branch
-- **406 tests passing** with 0 failures (up from 388)
+- **421 tests passing** with 0 failures (up from 406)
 
 ### Existing Tests (Organized by Layer)
 **Domain Layer:**
@@ -64,6 +64,7 @@ These changes reduce code duplication and simplify the testing surface area.
 - `tests/unit/cli/commands/test_finalize.py` - Finalization workflow command (20 tests)
 - `tests/unit/cli/commands/test_discover.py` - Project discovery command (16 tests)
 - `tests/unit/cli/commands/test_discover_ready.py` - Ready project discovery command (18 tests)
+- `tests/unit/cli/commands/test_statistics.py` - Statistics reporting command (15 tests)
 
 **Integration:**
 - Demo repository: `claude-step-demo/tests/integration/test_workflow_e2e.py` - End-to-end workflow
@@ -734,10 +735,25 @@ Before committing a test, verify:
     - Tests verify JSON output matches discovery pattern (array of project names, project count)
     - All tests follow the style guide with Arrange-Act-Assert structure and descriptive names
 
-- [ ] **Test statistics.py** (`tests/unit/cli/commands/test_statistics.py`)
-  - Mock statistics collector
-  - Test report generation workflow, output formatting (JSON, Slack)
-  - Test GitHub Actions output writing, handling projects with no tasks, date range filtering
+- [x] **Test statistics.py** ✅ COMPLETE (December 27, 2025) (`tests/unit/cli/commands/test_statistics.py`)
+  - 15 comprehensive tests covering statistics report generation
+  - Tests for successful report generation in Slack and JSON formats
+  - Tests for environment variable parsing (CONFIG_PATH, STATS_DAYS_BACK, STATS_FORMAT)
+  - Tests for output writing (slack_message, statistics_json, has_statistics)
+  - Tests for step summary generation with leaderboard, project progress, and team activity
+  - Tests for sorting logic (projects alphabetically, team members by merged count descending)
+  - Tests for empty report handling (no projects, no team members)
+  - Tests for exception handling with proper error outputs
+  - Tests for console output formatting and information display
+  - **Technical Notes:**
+    - All 15 tests pass (total test count increased from 406 to 421)
+    - Tests mock `collect_all_statistics()` to avoid external dependencies
+    - Tests verify proper use of GitHubActionsHelper for all outputs
+    - Tests verify JSON output format uses "projects" and "team_members" keys
+    - Tests verify leaderboard only written when team stats exist
+    - Tests verify timestamp written to step summary
+    - Tests verify proper handling of format types (slack outputs both Slack and JSON, json outputs only JSON)
+    - All tests follow the style guide with Arrange-Act-Assert structure and descriptive names
 
 - [ ] **Test add_cost_comment.py** (`tests/unit/cli/commands/test_add_cost_comment.py`)
   - Mock GitHub API for comment posting
@@ -967,7 +983,7 @@ class TestCheckReviewerCapacity:
 - ✅ Phase 1: 100% COMPLETE (test infrastructure, conftest.py fixtures, and domain layer tests all done)
 - ✅ Phase 2: 100% COMPLETE (all infrastructure layer tests done - git, github, filesystem operations)
 - ✅ Phase 3: 100% COMPLETE (all application layer tests done - task_management, statistics, table_formatter, reviewer_management, project_detection, artifact_operations)
-- ✅ Phase 4: ~56% complete (prepare_summary, prepare, finalize, discover, and discover_ready done, need 4 more commands)
+- ✅ Phase 4: ~67% complete (prepare_summary, prepare, finalize, discover, discover_ready, and statistics done, need 3 more commands)
 - Phase 5: Not started (integration tests and quality improvements)
 - ✅ Phase 6: ~40% complete (CI set up, need documentation and enhancements)
 
@@ -975,11 +991,11 @@ class TestCheckReviewerCapacity:
 - ✅ **Phase 1**: COMPLETE (December 27, 2025)
 - ✅ **Phase 2**: COMPLETE (December 27, 2025)
 - ✅ **Phase 3**: COMPLETE (December 27, 2025)
-- **Phase 4**: 2-3 days (4 remaining command modules: statistics, add_cost_comment, extract_cost, notify_pr)
+- **Phase 4**: 1-2 days (3 remaining command modules: add_cost_comment, extract_cost, notify_pr)
 - **Phase 5**: 2-3 days (integration tests, coverage reporting)
 - **Phase 6**: 1 day (documentation, CI enhancements)
 
-**Total Remaining: 5-7 days** (can be parallelized or spread over multiple contributors)
+**Total Remaining: 4-6 days** (can be parallelized or spread over multiple contributors)
 
 ## Resources
 
@@ -1015,7 +1031,7 @@ class TestCheckReviewerCapacity:
 - ✅ Architecture modernization with layered structure
 - ✅ Test structure reorganized to mirror src/ layout
 - ✅ CI workflow added for automated testing
-- ✅ All 406 tests passing (0 failures, up from 112 initially)
+- ✅ All 421 tests passing (0 failures, up from 112 initially)
 - ✅ E2E tests updated and working
 - ✅ Comprehensive tests for `pr_operations.py` (21 test cases)
 - ✅ Comprehensive tests for `task_management.py` (19 test cases)
@@ -1029,6 +1045,7 @@ class TestCheckReviewerCapacity:
 - ✅ Comprehensive tests for `finalize.py` (20 test cases) - December 27, 2025
 - ✅ Comprehensive tests for `discover.py` (16 test cases) - December 27, 2025
 - ✅ Comprehensive tests for `discover_ready.py` (18 test cases) - December 27, 2025
+- ✅ Comprehensive tests for `statistics.py` (15 test cases) - December 27, 2025
 - ✅ **Common test fixtures** in `tests/conftest.py` (December 27, 2025)
   - 20+ reusable fixtures covering file system, git, GitHub, and configuration scenarios
   - All fixtures follow test style guide with clear docstrings and organized by category
