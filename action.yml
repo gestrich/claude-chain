@@ -264,6 +264,7 @@ runs:
       uses: slackapi/slack-github-action@v2
       with:
         method: incoming-webhook
+        webhook-url: ${{ steps.prepare.outputs.slack_webhook_url }}
         payload: |
           {
             "text": "New ClaudeStep PR Created",
@@ -286,8 +287,6 @@ runs:
               }
             ]
           }
-      env:
-        SLACK_WEBHOOK_URL: ${{ steps.prepare.outputs.slack_webhook_url }}
       continue-on-error: true
 
     - name: Upload task metadata artifact
