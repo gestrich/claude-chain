@@ -9,15 +9,15 @@ Run with: python3 -m claudestep <command>
 import argparse
 import sys
 
-from claudestep.commands.add_cost_comment import cmd_add_cost_comment
-from claudestep.commands.discover import main as cmd_discover
-from claudestep.commands.discover_ready import main as cmd_discover_ready
-from claudestep.commands.extract_cost import cmd_extract_cost
-from claudestep.commands.finalize import cmd_finalize
-from claudestep.commands.notify_pr import cmd_notify_pr
-from claudestep.commands.prepare import cmd_prepare
-from claudestep.commands.prepare_summary import cmd_prepare_summary
-from claudestep.commands.statistics import cmd_statistics
+from claudestep.cli.commands.add_cost_comment import cmd_add_cost_comment
+from claudestep.cli.commands.discover import main as cmd_discover
+from claudestep.cli.commands.discover_ready import main as cmd_discover_ready
+from claudestep.cli.commands.extract_cost import cmd_extract_cost
+from claudestep.cli.commands.finalize import cmd_finalize
+from claudestep.cli.commands.notify_pr import cmd_notify_pr
+from claudestep.cli.commands.prepare import cmd_prepare
+from claudestep.cli.commands.prepare_summary import cmd_prepare_summary
+from claudestep.cli.commands.statistics import cmd_statistics
 from claudestep.infrastructure.github.actions import GitHubActionsHelper
 
 
