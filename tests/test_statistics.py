@@ -541,3 +541,89 @@ class TestLeaderboard:
 
         # Leaderboard should come first (most engaging)
         assert leaderboard_pos < project_pos
+
+class TestCostExtraction:
+    """Test cost extraction from PR comments"""
+
+    def test_extract_cost_from_valid_comment(self):
+        """Test extracting cost from a valid cost breakdown comment"""
+        from claudestep.statistics_collector import extract_cost_from_comment
+
+        comment = """## 💰 Cost Breakdown
+
+This PR was generated using Claude Code with the following costs:
+
+| Component | Cost (USD) |
+|-----------|------------|
+| Main refactoring task | $0.123456 |
+| PR summary generation | $0.002345 |
+| **Total** | **$0.125801** |
+
+---
+*Cost tracking by ClaudeStep • [View workflow run](https://example.com)*
+"""
+        cost = extract_cost_from_comment(comment)
+        assert cost == 0.125801
+
+    def test_extract_cost_no_cost_comment(self):
+        """Test extracting cost from comment without cost breakdown"""
+        from claudestep.statistics_collector import extract_cost_from_comment
+
+        comment = "This is a regular comment without cost information."
+        cost = extract_cost_from_comment(comment)
+        assert cost is None
+
+    def test_extract_cost_malformed_comment(self):
+        """Test extracting cost from malformed cost comment"""
+        from claudestep.statistics_collector import extract_cost_from_comment
+
+        comment = """## 💰 Cost Breakdown
+        
+| Component | Cost |
+| Total | $invalid |
+"""
+        cost = extract_cost_from_comment(comment)
+        assert cost is None
+
+    def test_project_stats_has_cost_field(self):
+        """Test that ProjectStats has total_cost_usd field"""
+        stats = ProjectStats("test-project", "/fake/spec.md")
+        assert hasattr(stats, "total_cost_usd")
+        assert stats.total_cost_usd == 0.0
+
+    def test_slack_format_includes_cost(self):
+        """Test that Slack format includes cost column"""
+        report = StatisticsReport()
+
+        # Add a project with cost data
+        stats = ProjectStats("test-project", "/fake/spec.md")
+        stats.total_tasks = 10
+        stats.completed_tasks = 5
+        stats.in_progress_tasks = 2
+        stats.pending_tasks = 3
+        stats.total_cost_usd = 1.234567
+        report.add_project(stats)
+
+        slack_msg = report.format_for_slack()
+
+        # Check that cost column header is present
+        assert "Cost" in slack_msg
+
+        # Check that cost value is formatted correctly
+        assert "$1.23" in slack_msg
+
+    def test_slack_format_zero_cost(self):
+        """Test that Slack format shows '-' for zero cost"""
+        report = StatisticsReport()
+
+        # Add a project with no cost data
+        stats = ProjectStats("test-project", "/fake/spec.md")
+        stats.total_tasks = 10
+        stats.completed_tasks = 5
+        stats.total_cost_usd = 0.0
+        report.add_project(stats)
+
+        slack_msg = report.format_for_slack()
+
+        # Should show "-" for zero cost
+        assert "Cost" in slack_msg

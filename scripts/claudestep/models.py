@@ -203,6 +203,7 @@ class ProjectStats:
         self.completed_tasks = 0
         self.in_progress_tasks = 0
         self.pending_tasks = 0
+        self.total_cost_usd = 0.0
 
     @property
     def completion_percentage(self) -> float:
@@ -406,8 +407,8 @@ class StatisticsReport:
 
             # Build table using TableFormatter
             table = TableFormatter(
-                headers=["Project", "Open", "Merged", "Total", "Progress"],
-                align=['left', 'right', 'right', 'right', 'left']
+                headers=["Project", "Open", "Merged", "Total", "Progress", "Cost"],
+                align=['left', 'right', 'right', 'right', 'left', 'right']
             )
 
             for project_name in sorted(self.project_stats.keys()):
@@ -420,12 +421,16 @@ class StatisticsReport:
                 bar = "█" * filled + "░" * (bar_width - filled)
                 progress_display = f"{bar} {pct:>3.0f}%"
 
+                # Format cost
+                cost_display = f"${stats.total_cost_usd:.2f}" if stats.total_cost_usd > 0 else "-"
+
                 table.add_row([
                     project_name[:20],
                     str(stats.in_progress_tasks),
                     str(stats.completed_tasks),
                     str(stats.total_tasks),
-                    progress_display
+                    progress_display,
+                    cost_display
                 ])
 
             lines.append(table.format())

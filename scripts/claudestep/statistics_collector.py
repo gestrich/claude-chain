@@ -13,6 +13,91 @@ from claudestep.models import ProjectStats, StatisticsReport, TeamMemberStats
 from claudestep.task_management import get_in_progress_task_indices
 
 
+def extract_cost_from_comment(comment_body: str) -> Optional[float]:
+    """Extract total cost from a cost breakdown comment
+
+    Args:
+        comment_body: The PR comment body text
+
+    Returns:
+        Total cost in USD, or None if not found
+    """
+    # Look for the total cost line: | **Total** | **$X.XXXXXX** |
+    pattern = r'\|\s*\*\*Total\*\*\s*\|\s*\*\*\$(\d+\.\d+)\*\*\s*\|'
+    match = re.search(pattern, comment_body)
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+def collect_project_costs(
+    project_name: str, repo: str, label: str = "claudestep"
+) -> float:
+    """Collect total costs for a project from PR comments
+
+    Args:
+        project_name: Name of the project to collect costs for
+        repo: GitHub repository (owner/name)
+        label: GitHub label to filter PRs
+
+    Returns:
+        Total cost in USD across all merged PRs for this project
+    """
+    print(f"  Collecting costs from PR comments...")
+    total_cost = 0.0
+    prs_with_cost = 0
+
+    try:
+        # Get all merged PRs for this project (filter by label)
+        pr_output = run_gh_command([
+            "pr", "list",
+            "--repo", repo,
+            "--label", label,
+            "--state", "merged",
+            "--limit", "100",
+            "--json", "number,title,body,comments"
+        ])
+
+        prs = json.loads(pr_output) if pr_output else []
+
+        # Filter PRs for this specific project (check title contains project name)
+        project_prs = [pr for pr in prs if project_name in pr.get("title", "")]
+
+        print(f"  Found {len(project_prs)} merged PR(s) for {project_name}")
+
+        for pr in project_prs:
+            pr_number = pr.get("number")
+
+            # Check comments for cost breakdown
+            comments = pr.get("comments", [])
+
+            for comment in comments:
+                body = comment.get("body", "")
+
+                # Look for cost breakdown comment (contains "💰 Cost Breakdown")
+                if "💰 Cost Breakdown" in body or "Cost Breakdown" in body:
+                    cost = extract_cost_from_comment(body)
+                    if cost is not None:
+                        total_cost += cost
+                        prs_with_cost += 1
+                        print(f"    PR #{pr_number}: ${cost:.6f}")
+                        break  # Found cost for this PR, move to next
+
+        if prs_with_cost > 0:
+            print(f"  Total cost: ${total_cost:.6f} ({prs_with_cost} PR(s) with cost data)")
+        else:
+            print(f"  No cost data found in PR comments")
+
+        return total_cost
+
+    except Exception as e:
+        print(f"  Warning: Failed to collect costs: {e}")
+        return 0.0
+
+
 def count_tasks(spec_path: str) -> Tuple[int, int]:
     """Returns (total, completed) task counts from spec.md
 
@@ -211,6 +296,13 @@ def collect_project_stats(
         0, stats.total_tasks - stats.completed_tasks - stats.in_progress_tasks
     )
     print(f"  Pending: {stats.pending_tasks}")
+
+    # Collect costs from merged PRs
+    try:
+        stats.total_cost_usd = collect_project_costs(project_name, repo, label)
+    except Exception as e:
+        print(f"  Warning: Failed to collect costs: {e}")
+        stats.total_cost_usd = 0.0
 
     return stats
 
