@@ -1,17 +1,8 @@
 # TODO
 
-
 ## V1
 
-- [ ] Use YML for configuration
-
-This app currently uses json but YML would be preferred. No backwards compatibilty needed. Just fix it. Will need to update /Users/bill/Developer/personal/claude-step-demo
-
-- [ ] 
-
-- [ ] **Trigger action off of closed, not just merged**
-
-Our linked project at /Users/bill/Developer/personal/claude-step-demo triggers off merged PRs. But we need to assume PRs may be closed without merging too. Note this may trigger the same PR to be opened again so we may want to advise against closing PRs and instead updating the markdown to remove that step if not needed and merge that change first before closing the PR to avoid a cycle of it re-opening.
+**Configuration & Workflow Improvements:** See [v1-improvements.md](v1-improvements.md) for detailed tasks related to configuration format, branch naming, action inputs, and PR triggers.
 
 - [ ] **Secure Secrets**
 
