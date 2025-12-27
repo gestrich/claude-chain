@@ -31,8 +31,10 @@ claude-refactor-chain/
 │   └── action.yml                # Discovery action
 ├── statistics/
 │   └── action.yml                # Statistics action
+├── src/
+│   └── claudestep/               # Modern Python package (layered architecture)
 └── scripts/
-    └── claudestep/               # Shared Python package
+    └── claudestep/               # Legacy compatibility layer (deprecated)
 ```
 
 ### Naming Convention
@@ -48,6 +50,11 @@ claude-refactor-chain/
 - Enables clean publishing as separate actions (e.g., `@org/repo/statistics@v1`)
 - Consistent naming makes it clear where to find action definitions
 - Separates concerns while sharing common code
+
+**Package Structure**:
+- Modern code lives in `src/claudestep/` following layered architecture
+- Legacy code in `scripts/claudestep/` for backward compatibility
+- PYTHONPATH includes both directories during migration
 
 ### Usage Patterns
 
@@ -80,8 +87,8 @@ When adding new actions to this repository:
 
 1. **Create a subdirectory** with a descriptive name (e.g., `validation/`, `metrics/`)
 2. **Add `action.yml`** in that subdirectory (not `action-name.yml`)
-3. **Keep Python logic** in `scripts/claudestep/` (shared codebase)
-4. **Add command** to `scripts/claudestep/__main__.py` dispatcher
+3. **Keep Python logic** in `src/claudestep/` following layered architecture
+4. **Add command** to `src/claudestep/cli/` directory
 5. **Update this document** with the new action
 
 **Example for a hypothetical "validate" action**:
@@ -455,36 +462,53 @@ The PR summary feature adds AI-generated comments to PRs explaining what was cha
 
 ### Python Package Structure
 
+**Modern Structure** (`src/claudestep/` - Layered Architecture):
 ```
-scripts/claudestep/
-├── __init__.py              # Package definition
-├── __main__.py              # Entry point (command dispatcher)
+src/claudestep/
+├── __init__.py
+├── __main__.py              # Entry point
 │
-├── commands/                # Command implementations
-│   ├── __init__.py
-│   ├── discover.py          # Project discovery
-│   ├── discover_ready.py    # Ready project discovery
-│   ├── prepare.py           # Pre-execution setup
-│   ├── finalize.py          # Post-execution PR creation
-│   ├── prepare_summary.py   # PR summary prompt generation
-│   └── statistics.py        # Statistics generation
+├── domain/                  # Layer 1: Core business logic
+│   ├── models.py            # Data models
+│   ├── exceptions.py        # Custom exceptions
+│   └── config.py            # Configuration models
 │
-├── prompts/                 # Prompt templates
-│   └── summary_prompt.md    # PR summary generation prompt
+├── infrastructure/          # Layer 2: External dependencies
+│   ├── git/
+│   │   └── operations.py    # Git command wrappers
+│   ├── github/
+│   │   ├── operations.py    # GitHub CLI wrappers
+│   │   └── actions.py       # GitHub Actions integration
+│   └── filesystem/
+│       └── operations.py    # File I/O operations
 │
-├── models.py                # Data models (ReviewerCapacityResult, ProjectStats, etc.)
-├── config.py                # Configuration loading and validation
-├── exceptions.py            # Custom exception hierarchy
+├── application/             # Layer 3: Business logic services
+│   ├── services/
+│   │   ├── reviewer_management.py
+│   │   ├── task_management.py
+│   │   ├── project_detection.py
+│   │   ├── pr_operations.py
+│   │   └── artifact_operations.py
+│   ├── collectors/
+│   │   └── statistics_collector.py
+│   └── formatters/
+│       └── table_formatter.py
 │
-├── github_actions.py        # GitHub Actions integration (outputs, summaries)
-├── github_operations.py     # GitHub CLI/API wrappers
-├── git_operations.py        # Git command wrappers
-│
-├── task_management.py       # Task finding, marking, tracking
-├── reviewer_management.py   # Reviewer capacity checking
-├── project_detection.py     # Project path resolution
-└── statistics_collector.py  # Statistics data collection
+└── cli/                     # Layer 4: Presentation layer
+    ├── commands/
+    │   ├── discover.py
+    │   ├── discover_ready.py
+    │   ├── prepare.py
+    │   ├── finalize.py
+    │   ├── prepare_summary.py
+    │   └── statistics.py
+    └── parser.py
 ```
+
+**Legacy Structure** (`scripts/claudestep/` - For backward compatibility):
+- Maintained during migration
+- Will be removed in future releases
+- Contains compatibility shims that import from new structure
 
 ### Module Responsibilities
 
