@@ -33,3 +33,4 @@ jobs:
           project_name: ${{ github.event.inputs.project_name }}
           base_branch: ${{ github.event.inputs.base_branch || 'e2e-test' }}
           claude_model: 'claude-3-haiku-20240307'
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

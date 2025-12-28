@@ -18,7 +18,7 @@ The fix is straightforward: pass the `slack_webhook_url` input to the ClaudeStep
 
 ## Phases
 
-- [ ] Phase 1: Update claudestep-test.yml workflow
+- [x] Phase 1: Update claudestep-test.yml workflow
 
 Modify `.github/workflows/claudestep-test.yml` to pass the Slack webhook URL as an input to the ClaudeStep action.
 
@@ -34,6 +34,12 @@ Modify `.github/workflows/claudestep-test.yml` to pass the Slack webhook URL as 
 - `steps.prepare.outputs.slack_webhook_url` will be populated
 - The condition for posting to Slack will pass
 - PR creation notifications will be sent to Slack during e2e tests
+
+**Technical notes:**
+- Added `slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}` to the workflow inputs at line 36
+- YAML syntax validated successfully
+- This change aligns with how other secrets are passed (anthropic_api_key, github_token)
+- The webhook URL will now flow through: workflow input → action.yml input (line 43) → prepare step env var (line 94) → prepare step output → Slack action webhook parameter (line 266)
 
 - [ ] Phase 2: Document the requirement
 
