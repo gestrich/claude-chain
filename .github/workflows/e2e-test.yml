@@ -57,7 +57,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          ./tests/e2e/run_test.sh
+          pytest tests/e2e/ -v
 
       - name: Cleanup test branch (on success)
         if: success()
