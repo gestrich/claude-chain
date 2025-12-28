@@ -44,28 +44,35 @@ Outcome:
 - Script provides clear feedback that the workflow was triggered successfully
 - Zero local git mutations - all test execution happens on GitHub's infrastructure
 
-- [ ] Phase 2: Add workflow monitoring and result reporting
+- [x] Phase 2: Add workflow monitoring and result reporting
 
-Extend `tests/e2e/run_test.sh` to:
-- Wait for the workflow run to complete using `gh run watch <run-id>`
-- Stream logs to the console so developers can see progress
-- Check the final workflow conclusion (success/failure/cancelled)
-- Exit with appropriate exit code (0 for success, 1 for failure)
-- Provide helpful messages about viewing logs via GitHub UI
+**Status: COMPLETED**
 
-Files to modify:
+Extended `tests/e2e/run_test.sh` to:
+- ✓ Wait for workflow run to be created (5 second delay after trigger)
+- ✓ Get the most recent workflow run ID using `gh run list --workflow=e2e-test.yml --branch=<branch>`
+- ✓ Stream live logs to console using `gh run watch <run-id> --exit-status`
+- ✓ Check final workflow conclusion via exit code from `gh run watch`
+- ✓ Exit with appropriate exit code (0 for success, 1 for failure)
+- ✓ Provide helpful messages about viewing detailed logs via GitHub UI
+- ✓ Handle case where workflow run ID cannot be found (graceful fallback)
+
+Files modified:
 - `tests/e2e/run_test.sh`
 
-Technical considerations:
-- `gh run watch` provides live log streaming
-- May need to handle cases where workflow is queued for a long time
-- Should handle Ctrl+C gracefully (workflow continues, but local monitoring stops)
-- Provide link to GitHub Actions UI for detailed inspection
+Technical notes:
+- Used `gh run list --json databaseId --jq '.[0].databaseId'` to get the run ID
+- The `--exit-status` flag on `gh run watch` ensures the command exits with the workflow's exit code
+- Added 5 second sleep after triggering to allow GitHub to create the workflow run
+- Graceful handling when run ID cannot be found (provides manual monitoring instructions)
+- Ctrl+C naturally stops monitoring but workflow continues (inherent behavior of `gh run watch`)
+- Clear visual sections with separators for workflow trigger, monitoring, and completion
 
-Expected outcome:
-- Developers see live progress of tests running on GitHub
-- Clear success/failure indication when complete
-- Easy access to detailed logs if needed
+Outcome:
+- Developers see live progress of tests running on GitHub in their terminal
+- Clear success/failure indication with colored output (green ✓ for pass, red ✗ for fail)
+- Proper exit codes for CI/CD integration (0 for success, 1 for failure)
+- Easy access to detailed logs via `gh run view` command or GitHub UI link
 
 - [ ] Phase 3: Update documentation
 

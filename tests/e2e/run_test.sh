@@ -68,23 +68,69 @@ echo ""
 echo "Triggering workflow..."
 gh workflow run e2e-test.yml --ref "${CURRENT_BRANCH}"
 
-if [ $? -eq 0 ]; then
+if [ $? -ne 0 ]; then
     echo ""
-    echo -e "${GREEN}✓${NC} Workflow triggered successfully!"
+    echo -e "${RED}✗${NC} Failed to trigger workflow"
     echo ""
-    echo "The E2E tests are now running remotely on GitHub."
-    echo "Your local git state will not be affected."
-    echo ""
-    echo "To view the workflow run:"
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} Workflow triggered successfully!"
+echo ""
+
+# Wait a moment for the workflow run to be created
+echo "Waiting for workflow run to start..."
+sleep 5
+
+# Get the most recent workflow run ID for this workflow and branch
+RUN_ID=$(gh run list --workflow=e2e-test.yml --branch="${CURRENT_BRANCH}" --limit=1 --json databaseId --jq '.[0].databaseId')
+
+if [ -z "$RUN_ID" ]; then
+    echo -e "${YELLOW}Warning: Could not find workflow run ID${NC}"
+    echo "The workflow may be queued. You can monitor it manually:"
     echo "  gh run list --workflow=e2e-test.yml"
-    echo "  gh run view <run-id>"
     echo ""
     echo "Or visit: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/workflows/e2e-test.yml"
     echo ""
     exit 0
-else
+fi
+
+echo "Workflow run ID: ${RUN_ID}"
+echo ""
+echo "========================================"
+echo "Monitoring Workflow Execution"
+echo "========================================"
+echo ""
+echo "Streaming logs from GitHub Actions..."
+echo "Press Ctrl+C to stop monitoring (workflow will continue running)"
+echo ""
+
+# Watch the workflow run and stream logs
+# The --exit-status flag makes gh run watch exit with the workflow's exit code
+gh run watch "${RUN_ID}" --exit-status
+
+WORKFLOW_EXIT_CODE=$?
+
+echo ""
+echo "========================================"
+echo "Workflow Execution Complete"
+echo "========================================"
+echo ""
+
+if [ $WORKFLOW_EXIT_CODE -eq 0 ]; then
+    echo -e "${GREEN}✓ E2E Tests PASSED${NC}"
     echo ""
-    echo -e "${RED}✗${NC} Failed to trigger workflow"
+    echo "View detailed logs:"
+    echo "  gh run view ${RUN_ID}"
+    echo ""
+    exit 0
+else
+    echo -e "${RED}✗ E2E Tests FAILED${NC}"
+    echo ""
+    echo "View detailed logs and errors:"
+    echo "  gh run view ${RUN_ID}"
+    echo ""
+    echo "Or visit: https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/${RUN_ID}"
     echo ""
     exit 1
 fi
