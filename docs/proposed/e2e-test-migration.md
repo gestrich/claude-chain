@@ -268,9 +268,27 @@ jobs:
 
 ---
 
-### - [ ] Phase 2: Migrate Workflow E2E Test (2-3 hours)
+### - [x] Phase 2: Migrate Workflow E2E Test ✅ COMPLETED
+
+**Status:** Completed on 2025-12-27
 
 **Goal:** Migrate and adapt the main workflow test to work with self-testing
+
+**Technical Notes:**
+- Created comprehensive `test_workflow_e2e.py` with 7 test functions covering core workflow functionality
+- Implemented tests for:
+  - Basic PR creation from tasks
+  - AI-generated summary verification
+  - Cost information in PR comments
+  - Reviewer capacity limits (max_prs_per_reviewer)
+  - Merge-triggered workflows (placeholder for future implementation)
+  - Empty spec handling
+- All tests use the migrated helper classes (GitHubHelper, TestProjectManager)
+- Tests trigger `claudestep-test.yml` workflow for recursive self-testing
+- Comprehensive docstrings explain the recursive workflow pattern
+- Tests use fixtures for cleanup to ensure resources are removed even on failure
+- Each test uses unique project IDs via the `project_id` fixture to prevent conflicts
+- All 506 unit tests still pass successfully
 
 **Tasks:**
 
