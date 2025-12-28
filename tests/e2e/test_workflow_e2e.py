@@ -62,7 +62,7 @@ def test_basic_workflow_creates_pr(
         "Workflow should complete successfully"
 
     # Expected branch name for first task
-    expected_branch = f"refactor/{test_project}-1"
+    expected_branch = f"claude-step-{test_project}-1"
 
     # Get the PR that was created
     pr = gh.get_pull_request(expected_branch)
@@ -121,7 +121,7 @@ def test_pr_has_ai_summary(
     )
 
     # Get the PR
-    expected_branch = f"refactor/{test_project}-1"
+    expected_branch = f"claude-step-{test_project}-1"
     pr = gh.get_pull_request(expected_branch)
 
     assert pr is not None, "PR should exist"
@@ -180,7 +180,7 @@ def test_pr_has_cost_information(
     )
 
     # Get the PR
-    expected_branch = f"refactor/{test_project}-1"
+    expected_branch = f"claude-step-{test_project}-1"
     pr = gh.get_pull_request(expected_branch)
 
     assert pr is not None, "PR should exist"
@@ -268,7 +268,7 @@ def test_reviewer_capacity_limits(
         # With max_prs_per_reviewer=2, only 2 PRs should be created
         created_prs = []
         for i in range(1, 5):  # Check for tasks 1-4
-            branch = f"refactor/{project_name}-{i}"
+            branch = f"claude-step-{project_name}-{i}"
             pr = gh.get_pull_request(branch)
             if pr:
                 created_prs.append(pr)
@@ -280,7 +280,7 @@ def test_reviewer_capacity_limits(
 
         # Clean up branches
         for i in range(1, len(created_prs) + 1):
-            branch = f"refactor/{project_name}-{i}"
+            branch = f"claude-step-{project_name}-{i}"
             gh.delete_branch(branch)
 
     finally:
@@ -371,7 +371,7 @@ def test_workflow_handles_empty_spec(
             "Workflow should complete successfully even with no tasks"
 
         # Verify no PRs were created
-        pr = gh.get_pull_request(f"refactor/{project_name}-1")
+        pr = gh.get_pull_request(f"claude-step-{project_name}-1")
         assert pr is None, "No PR should be created when there are no tasks"
 
     finally:
