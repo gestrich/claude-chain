@@ -112,24 +112,38 @@ Outcome:
 - Clear instructions for monitoring remote test execution
 - Benefits of remote execution are well documented
 
-- [ ] Phase 4: Optional - Add support for passing branch/ref
+- [x] Phase 4: Add support for passing branch/ref
 
-Consider adding optional parameter to `run_test.sh`:
-- Allow developers to specify which branch/ref to run tests from
-- Default to current branch if not specified
-- Pass through to `gh workflow run --ref <branch>`
+**Status: COMPLETED**
 
-Files to modify:
+Added optional branch parameter to `run_test.sh`:
+- ✓ Added optional `[branch-name]` parameter to script
+- ✓ Default to current branch if not specified
+- ✓ Validate that specified branch exists on remote before triggering workflow
+- ✓ Pass through to `gh workflow run --ref <branch>`
+- ✓ Updated usage documentation in script header
+- ✓ Clear error messages if specified branch doesn't exist on remote
+- ✓ Display first 10 available branches when validation fails
+
+Files modified:
 - `tests/e2e/run_test.sh`
 
-Technical considerations:
-- This allows testing feature branches without checking them out locally
-- Syntax: `./tests/e2e/run_test.sh [branch-name]`
-- Validate that the branch exists on remote before triggering
+Technical notes:
+- Uses `$1` parameter to capture optional branch name argument
+- Validation uses `git ls-remote --heads origin <branch>` to check remote existence
+- TARGET_BRANCH variable replaces CURRENT_BRANCH throughout for consistency
+- Helps users discover available branches with `git branch -r` output on error
+- All references to CURRENT_BRANCH updated to TARGET_BRANCH in workflow trigger and monitoring
 
-Expected outcome:
-- Developers can test any remote branch without switching locally
+Usage:
+- Run tests on current branch: `./tests/e2e/run_test.sh`
+- Run tests on specific branch: `./tests/e2e/run_test.sh feature-branch`
+
+Outcome:
+- Developers can test any remote branch without checking it out locally
+- No local branch switching required to test feature branches
 - More flexible testing workflow
+- Validation prevents triggering workflows on non-existent branches
 
 - [ ] Phase 5: Validation
 

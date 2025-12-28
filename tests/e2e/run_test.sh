@@ -11,11 +11,14 @@
 # - ANTHROPIC_API_KEY configured as a repository secret
 #
 # Usage:
-#   ./tests/e2e/run_test.sh
+#   ./tests/e2e/run_test.sh [branch-name]
+#
+# Arguments:
+#   branch-name  (optional) Branch or ref to run tests from. Defaults to current branch.
 #
 # The script will:
 # 1. Check prerequisites (gh CLI authentication)
-# 2. Trigger the e2e-test.yml workflow on GitHub for the current branch
+# 2. Trigger the e2e-test.yml workflow on GitHub for the specified or current branch
 # 3. Monitor the workflow execution and stream logs to the terminal
 # 4. Report success/failure with proper exit codes
 #
@@ -54,9 +57,26 @@ if ! gh auth status &> /dev/null; then
 fi
 echo -e "${GREEN}✓${NC} GitHub CLI is authenticated"
 
-# Get current branch
-CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-echo -e "${GREEN}✓${NC} Current branch: ${CURRENT_BRANCH}"
+# Determine which branch to test
+if [ -n "$1" ]; then
+    # Use the branch provided as argument
+    TARGET_BRANCH="$1"
+    echo "Testing specified branch: ${TARGET_BRANCH}"
+
+    # Validate that the branch exists on remote
+    echo "Validating branch exists on remote..."
+    if ! git ls-remote --heads origin "${TARGET_BRANCH}" | grep -q "${TARGET_BRANCH}"; then
+        echo -e "${RED}ERROR: Branch '${TARGET_BRANCH}' does not exist on remote${NC}"
+        echo "Available branches:"
+        git branch -r | grep -v '\->' | sed 's/origin\///' | head -10
+        exit 1
+    fi
+    echo -e "${GREEN}✓${NC} Branch exists on remote: ${TARGET_BRANCH}"
+else
+    # Use current branch
+    TARGET_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    echo -e "${GREEN}✓${NC} Current branch: ${TARGET_BRANCH}"
+fi
 
 # Trigger the workflow
 echo ""
@@ -64,13 +84,13 @@ echo "========================================"
 echo "Triggering E2E Tests on GitHub"
 echo "========================================"
 echo ""
-echo "Branch: ${CURRENT_BRANCH}"
+echo "Branch: ${TARGET_BRANCH}"
 echo "Workflow: e2e-test.yml"
 echo ""
 
-# Trigger the e2e-test.yml workflow on the current branch
+# Trigger the e2e-test.yml workflow on the target branch
 echo "Triggering workflow..."
-gh workflow run e2e-test.yml --ref "${CURRENT_BRANCH}"
+gh workflow run e2e-test.yml --ref "${TARGET_BRANCH}"
 
 if [ $? -ne 0 ]; then
     echo ""
@@ -87,7 +107,7 @@ echo "Waiting for workflow run to start..."
 sleep 5
 
 # Get the most recent workflow run ID for this workflow and branch
-RUN_ID=$(gh run list --workflow=e2e-test.yml --branch="${CURRENT_BRANCH}" --limit=1 --json databaseId --jq '.[0].databaseId')
+RUN_ID=$(gh run list --workflow=e2e-test.yml --branch="${TARGET_BRANCH}" --limit=1 --json databaseId --jq '.[0].databaseId')
 
 if [ -z "$RUN_ID" ]; then
     echo -e "${YELLOW}Warning: Could not find workflow run ID${NC}"
