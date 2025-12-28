@@ -54,8 +54,10 @@ addopts = [
     "--cov-fail-under=70",
 ]
 markers = [
-    "integration: End-to-end integration tests (may be slow)",
-    "unit: Fast unit tests",
+    "unit: Fast unit tests with no external dependencies",
+    "integration: Integration tests with mocked external services",
+    "e2e: End-to-end tests using real GitHub API and workflows",
+    "slow: Tests that take significant time to run",
 ]
 
 [tool.coverage.run]
