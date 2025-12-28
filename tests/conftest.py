@@ -13,6 +13,8 @@ import subprocess
 
 import pytest
 
+from tests.builders import ConfigBuilder, SpecFileBuilder, PRDataBuilder
+
 
 # ==============================================================================
 # File System Fixtures
@@ -43,62 +45,54 @@ def tmp_project_dir(tmp_path):
 def sample_spec_file(tmp_path):
     """Fixture providing a sample spec.md file with various task states
 
+    Uses SpecFileBuilder for cleaner test data creation.
+
     Returns:
         Path to the spec.md file
     """
-    spec_content = """# Project Specification
-
-## Overview
-This is a sample project for testing.
-
-## Tasks
-
-- [x] Task 1 - Completed task
-- [x] Task 2 - Another completed task
-- [ ] Task 3 - Next task to do
-- [ ] Task 4 - Future task
-- [ ] Task 5 - Another future task
-"""
-    spec_file = tmp_path / "spec.md"
-    spec_file.write_text(spec_content)
-    return spec_file
+    return (SpecFileBuilder()
+            .with_title("Project Specification")
+            .with_overview("This is a sample project for testing.")
+            .add_section("## Tasks")
+            .add_completed_task("Task 1 - Completed task")
+            .add_completed_task("Task 2 - Another completed task")
+            .add_task("Task 3 - Next task to do")
+            .add_task("Task 4 - Future task")
+            .add_task("Task 5 - Another future task")
+            .write_to(tmp_path))
 
 
 @pytest.fixture
 def empty_spec_file(tmp_path):
     """Fixture providing an empty spec.md file (no tasks)
 
+    Uses SpecFileBuilder for cleaner test data creation.
+
     Returns:
         Path to the empty spec.md file
     """
-    spec_content = """# Project Specification
-
-## Overview
-This project has no tasks yet.
-"""
-    spec_file = tmp_path / "spec.md"
-    spec_file.write_text(spec_content)
-    return spec_file
+    return (SpecFileBuilder()
+            .with_title("Project Specification")
+            .with_overview("This project has no tasks yet.")
+            .write_to(tmp_path))
 
 
 @pytest.fixture
 def all_completed_spec_file(tmp_path):
     """Fixture providing a spec.md file with all tasks completed
 
+    Uses SpecFileBuilder for cleaner test data creation.
+
     Returns:
         Path to the spec.md file
     """
-    spec_content = """# Project Specification
-
-## Tasks
-
-- [x] Task 1 - Completed
-- [x] Task 2 - Completed
-- [x] Task 3 - Completed
-"""
-    spec_file = tmp_path / "spec.md"
-    spec_file.write_text(spec_content)
-    return spec_file
+    return (SpecFileBuilder()
+            .with_title("Project Specification")
+            .add_section("## Tasks")
+            .add_completed_task("Task 1 - Completed")
+            .add_completed_task("Task 2 - Completed")
+            .add_completed_task("Task 3 - Completed")
+            .write_to(tmp_path))
 
 
 @pytest.fixture
@@ -216,27 +210,17 @@ def mock_github_api():
 def sample_pr_data():
     """Fixture providing sample PR data structures
 
+    Uses PRDataBuilder for cleaner test data creation.
+
     Returns:
         Dict containing sample PR response data from GitHub API
     """
-    return {
-        "number": 123,
-        "title": "Task 3 - Implement feature",
-        "state": "open",
-        "html_url": "https://github.com/owner/repo/pull/123",
-        "user": {"login": "alice"},
-        "created_at": "2025-01-15T10:00:00Z",
-        "updated_at": "2025-01-15T10:00:00Z",
-        "head": {
-            "ref": "claude-step-my-project-3"
-        },
-        "base": {
-            "ref": "main"
-        },
-        "labels": [
-            {"name": "claude-step"}
-        ]
-    }
+    return (PRDataBuilder()
+            .with_number(123)
+            .with_task(3, "Implement feature", "my-project")
+            .with_user("alice")
+            .with_created_at("2025-01-15T10:00:00Z")
+            .build())
 
 
 @pytest.fixture
@@ -292,32 +276,24 @@ def github_env_vars(tmp_path):
 def sample_config_dict():
     """Fixture providing a sample configuration dictionary
 
+    Uses ConfigBuilder for cleaner test data creation.
+
     Returns:
         Dict with valid configuration data
     """
-    return {
-        "reviewers": [
-            {"username": "alice", "maxOpenPRs": 2},
-            {"username": "bob", "maxOpenPRs": 3},
-            {"username": "charlie", "maxOpenPRs": 1}
-        ],
-        "project": "sample-project"
-    }
+    return ConfigBuilder.default()
 
 
 @pytest.fixture
 def single_reviewer_config():
     """Fixture providing configuration with a single reviewer
 
+    Uses ConfigBuilder for cleaner test data creation.
+
     Returns:
         Dict with single reviewer configuration
     """
-    return {
-        "reviewers": [
-            {"username": "alice", "maxOpenPRs": 2}
-        ],
-        "project": "sample-project"
-    }
+    return ConfigBuilder.single_reviewer()
 
 
 @pytest.fixture

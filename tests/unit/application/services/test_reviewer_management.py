@@ -13,6 +13,8 @@ from claudestep.application.services.artifact_operations import ProjectArtifact,
 from claudestep.domain.models import ReviewerCapacityResult
 from datetime import datetime
 
+from tests.builders import ConfigBuilder, ArtifactBuilder, TaskMetadataBuilder
+
 
 class TestFindAvailableReviewer:
     """Test suite for find_available_reviewer functionality"""
@@ -20,16 +22,16 @@ class TestFindAvailableReviewer:
     @pytest.fixture
     def reviewers_config(self):
         """Fixture providing sample reviewer configuration"""
-        return [
-            {"username": "alice", "maxOpenPRs": 2},
-            {"username": "bob", "maxOpenPRs": 3},
-            {"username": "charlie", "maxOpenPRs": 1}
-        ]
+        return (ConfigBuilder()
+                .with_reviewer("alice", 2)
+                .with_reviewer("bob", 3)
+                .with_reviewer("charlie", 1)
+                .build()["reviewers"])
 
     @pytest.fixture
     def single_reviewer_config(self):
         """Fixture providing single reviewer configuration"""
-        return [{"username": "alice", "maxOpenPRs": 2}]
+        return ConfigBuilder().with_reviewer("alice", 2).build()["reviewers"]
 
     @pytest.fixture
     def mock_env(self):
@@ -45,23 +47,21 @@ class TestFindAvailableReviewer:
         reviewer: str,
         project: str = "myproject"
     ) -> ProjectArtifact:
-        """Helper to create a ProjectArtifact with metadata"""
-        metadata = TaskMetadata(
-            task_index=task_index,
-            task_description=f"Task {task_index}",
-            project=project,
-            branch_name=f"claude-step-{project}-{task_index}",
-            reviewer=reviewer,
-            created_at=datetime.now(),
-            workflow_run_id=1000 + artifact_id,
-            pr_number=pr_number
-        )
-        return ProjectArtifact(
-            artifact_id=artifact_id,
-            artifact_name=f"task-metadata-{project}-{task_index}.json",
-            workflow_run_id=1000 + artifact_id,
-            metadata=metadata
-        )
+        """Helper to create a ProjectArtifact with metadata using builders"""
+        metadata = (TaskMetadataBuilder()
+                    .with_task(task_index, f"Task {task_index}")
+                    .with_project(project)
+                    .with_reviewer(reviewer)
+                    .with_pr_number(pr_number)
+                    .with_workflow_run_id(1000 + artifact_id)
+                    .build())
+
+        return (ArtifactBuilder()
+                .with_id(artifact_id)
+                .with_task(task_index, project=project)
+                .with_workflow_run_id(1000 + artifact_id)
+                .with_metadata(metadata)
+                .build())
 
     def test_find_reviewer_returns_first_with_capacity_when_all_available(
         self, reviewers_config, mock_env

@@ -13,23 +13,21 @@ from claudestep.application.services.task_management import (
     mark_task_complete,
 )
 
+from tests.builders import SpecFileBuilder
+
 
 class TestFindNextAvailableTask:
     """Tests for find_next_available_task function"""
 
     def test_find_first_unchecked_task(self, tmp_path):
         """Should find the first unchecked task"""
-        spec_file = tmp_path / "spec.md"
-        spec_file.write_text("""# Test Project
+        spec_path = (SpecFileBuilder()
+                     .with_title("Test Project")
+                     .add_section("## Tasks")
+                     .add_tasks("Task 1", "Task 2", "Task 3")
+                     .write_to(tmp_path))
 
-## Tasks
-
-- [ ] Task 1
-- [ ] Task 2
-- [ ] Task 3
-""")
-
-        result = find_next_available_task(str(spec_file))
+        result = find_next_available_task(str(spec_path))
         assert result is not None
         task_index, task_text = result
         assert task_index == 1
@@ -37,17 +35,14 @@ class TestFindNextAvailableTask:
 
     def test_find_next_task_after_completed(self, tmp_path):
         """Should find the next unchecked task after completed tasks"""
-        spec_file = tmp_path / "spec.md"
-        spec_file.write_text("""# Test Project
+        spec_path = (SpecFileBuilder()
+                     .with_title("Test Project")
+                     .add_section("## Tasks")
+                     .add_completed_task("Task 1")
+                     .add_tasks("Task 2", "Task 3")
+                     .write_to(tmp_path))
 
-## Tasks
-
-- [x] Task 1
-- [ ] Task 2
-- [ ] Task 3
-""")
-
-        result = find_next_available_task(str(spec_file))
+        result = find_next_available_task(str(spec_path))
         assert result is not None
         task_index, task_text = result
         assert task_index == 2
@@ -113,17 +108,15 @@ class TestFindNextAvailableTask:
 
     def test_return_none_when_all_tasks_complete(self, tmp_path):
         """Should return None when all tasks are completed"""
-        spec_file = tmp_path / "spec.md"
-        spec_file.write_text("""# Test Project
+        spec_path = (SpecFileBuilder()
+                     .with_title("Test Project")
+                     .add_section("## Tasks")
+                     .add_completed_task("Task 1")
+                     .add_completed_task("Task 2")
+                     .add_completed_task("Task 3")
+                     .write_to(tmp_path))
 
-## Tasks
-
-- [x] Task 1
-- [x] Task 2
-- [x] Task 3
-""")
-
-        result = find_next_available_task(str(spec_file))
+        result = find_next_available_task(str(spec_path))
         assert result is None
 
     def test_return_none_when_no_tasks(self, tmp_path):

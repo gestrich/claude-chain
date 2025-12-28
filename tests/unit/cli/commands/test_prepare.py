@@ -8,6 +8,8 @@ from unittest.mock import Mock, patch, mock_open
 from claudestep.cli.commands.prepare import cmd_prepare
 from claudestep.domain.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
 
+from tests.builders import ConfigBuilder, SpecFileBuilder
+
 
 class TestCmdPrepare:
     """Test suite for cmd_prepare functionality"""
@@ -35,24 +37,21 @@ class TestCmdPrepare:
 
     @pytest.fixture
     def sample_config(self):
-        """Fixture providing sample configuration"""
-        return {
-            "reviewers": [
-                {"username": "alice", "maxOpenPRs": 2},
-                {"username": "bob", "maxOpenPRs": 2}
-            ]
-        }
+        """Fixture providing sample configuration using ConfigBuilder"""
+        return (ConfigBuilder()
+                .with_reviewer("alice", 2)
+                .with_reviewer("bob", 2)
+                .build())
 
     @pytest.fixture
     def sample_spec_content(self):
-        """Fixture providing sample spec.md content"""
-        return """# Project Spec
-
-## Tasks
-- [x] Task 1
-- [ ] Task 2
-- [ ] Task 3
-"""
+        """Fixture providing sample spec.md content using SpecFileBuilder"""
+        return (SpecFileBuilder()
+                .with_title("Project Spec")
+                .add_section("## Tasks")
+                .add_completed_task("Task 1")
+                .add_tasks("Task 2", "Task 3")
+                .build())
 
     def test_successful_preparation_workflow(
         self, args, mock_gh, mock_env, sample_config, sample_spec_content

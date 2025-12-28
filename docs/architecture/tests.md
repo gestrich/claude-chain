@@ -676,6 +676,119 @@ def test_find_task(sample_spec_file):
 - `mock_subprocess` - Mocked subprocess module
 - `mock_github_api` - Mocked GitHub API client
 
+### Using Test Data Builders
+
+The `tests/builders/` directory provides **builder pattern helpers** for creating complex test data with fluent interfaces and sensible defaults. Builders make tests more readable and reduce duplication.
+
+**Available Builders:**
+
+- **`ConfigBuilder`** - Build configuration dictionaries
+- **`SpecFileBuilder`** - Build spec.md file content
+- **`PRDataBuilder`** - Build GitHub PR response data
+- **`ArtifactBuilder`** - Build ProjectArtifact and TaskMetadata objects
+
+**Example: ConfigBuilder**
+
+```python
+from tests.builders import ConfigBuilder
+
+def test_reviewer_assignment():
+    """Builder makes config creation clean and readable"""
+    # ✅ GOOD - Using builder
+    config = (ConfigBuilder()
+              .with_reviewer("alice", max_prs=2)
+              .with_reviewer("bob", max_prs=3)
+              .with_project("my-project")
+              .build())
+
+    # vs ❌ Manual dictionary construction (harder to read)
+    config = {
+        "reviewers": [
+            {"username": "alice", "maxOpenPRs": 2},
+            {"username": "bob", "maxOpenPRs": 3}
+        ],
+        "project": "my-project"
+    }
+```
+
+**Example: SpecFileBuilder**
+
+```python
+from tests.builders import SpecFileBuilder
+
+def test_task_counting(tmp_path):
+    """Builder makes spec file creation declarative"""
+    # ✅ GOOD - Using builder
+    spec_path = (SpecFileBuilder()
+                 .with_title("My Project")
+                 .add_completed_task("Task 1")
+                 .add_completed_task("Task 2")
+                 .add_task("Task 3")
+                 .add_task("Task 4")
+                 .write_to(tmp_path))
+
+    result = count_tasks(str(spec_path))
+    assert result == (4, 2)  # 4 total, 2 completed
+```
+
+**Example: PRDataBuilder**
+
+```python
+from tests.builders import PRDataBuilder
+
+def test_pr_processing():
+    """Builder handles GitHub API response structure"""
+    # ✅ GOOD - Using builder
+    pr = (PRDataBuilder()
+          .with_number(123)
+          .with_task(3, "Implement feature", "my-project")
+          .with_user("alice")
+          .as_merged()
+          .build())
+
+    assert pr["state"] == "closed"
+    assert pr["merged"] == True
+```
+
+**When to Use Builders:**
+
+- ✅ When creating the same type of test data repeatedly
+- ✅ When test data structure is complex (nested dicts, multiple fields)
+- ✅ When you want to emphasize *what* the test data represents, not *how* it's structured
+- ✅ When you need sensible defaults with occasional overrides
+
+**When NOT to Use Builders:**
+
+- ❌ For simple, one-off test data (use inline dicts/strings)
+- ❌ When testing edge cases of data structure itself
+- ❌ When the builder would be more complex than the data
+
+**Quick Helper Methods:**
+
+Builders provide static methods for common cases:
+
+```python
+# Default configuration (alice, bob, charlie)
+config = ConfigBuilder.default()
+
+# Single reviewer
+config = ConfigBuilder.single_reviewer("alice", max_prs=2)
+
+# Spec with all tasks completed
+spec_content = SpecFileBuilder.all_completed(num_tasks=5)
+
+# Spec with mixed progress
+spec_content = SpecFileBuilder.mixed_progress(completed=2, pending=3)
+
+# Open PR
+pr = PRDataBuilder.open_pr(number=123, task_index=3)
+
+# Merged PR
+pr = PRDataBuilder.merged_pr(number=456, task_index=1)
+```
+
+For more details, see the builder implementations in `tests/builders/`.
+
 ### Parametrized Tests for Boundary Conditions
 
 Use `@pytest.mark.parametrize` to test multiple cases with the same logic:

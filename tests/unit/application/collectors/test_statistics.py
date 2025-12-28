@@ -7,6 +7,8 @@ from datetime import datetime
 from claudestep.domain.models import TeamMemberStats, ProjectStats, StatisticsReport
 from claudestep.application.collectors.statistics_collector import count_tasks
 
+from tests.builders import SpecFileBuilder
+
 
 class TestProgressBar:
     """Test progress bar formatting"""
@@ -63,32 +65,28 @@ class TestTaskCounting:
 
     def test_count_tasks_all_pending(self, tmp_path):
         """Test counting with all tasks pending"""
-        spec = tmp_path / "spec.md"
-        spec.write_text("""
-# My Project
+        spec_path = (SpecFileBuilder()
+                     .with_title("My Project")
+                     .add_section("## Checklist")
+                     .add_tasks("Task 1", "Task 2", "Task 3")
+                     .write_to(tmp_path))
 
-## Checklist
-- [ ] Task 1
-- [ ] Task 2
-- [ ] Task 3
-        """)
-        total, completed = count_tasks(str(spec))
+        total, completed = count_tasks(str(spec_path))
         assert total == 3
         assert completed == 0
 
     def test_count_tasks_mixed(self, tmp_path):
         """Test counting with mixed completion status"""
-        spec = tmp_path / "spec.md"
-        spec.write_text("""
-# My Project
+        spec_path = (SpecFileBuilder()
+                     .with_title("My Project")
+                     .add_section("## Checklist")
+                     .add_completed_task("Task 1 (done)")
+                     .add_task("Task 2 (pending)")
+                     .add_completed_task("Task 3 (done)")
+                     .add_task("Task 4 (pending)")
+                     .write_to(tmp_path))
 
-## Checklist
-- [x] Task 1 (done)
-- [ ] Task 2 (pending)
-- [x] Task 3 (done)
-- [ ] Task 4 (pending)
-        """)
-        total, completed = count_tasks(str(spec))
+        total, completed = count_tasks(str(spec_path))
         assert total == 4
         assert completed == 2
 
@@ -120,13 +118,12 @@ class TestTaskCounting:
 
     def test_count_tasks_empty_file(self, tmp_path):
         """Test counting with no tasks"""
-        spec = tmp_path / "spec.md"
-        spec.write_text("""
-# Project
+        spec_path = (SpecFileBuilder()
+                     .with_title("Project")
+                     .add_section("No tasks yet!")
+                     .write_to(tmp_path))
 
-No tasks yet!
-        """)
-        total, completed = count_tasks(str(spec))
+        total, completed = count_tasks(str(spec_path))
         assert total == 0
         assert completed == 0
 
