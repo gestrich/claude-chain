@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write  # For coverage comments
 
 jobs:
   test:
@@ -39,6 +40,17 @@ jobs:
         run: |
           coverage report --show-missing
           coverage html
+          coverage xml
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage HTML report
         if: always()
@@ -53,3 +65,74 @@ jobs:
         with:
           name: coverage-data
           path: .coverage
+
+      - name: Extract coverage percentage
+        if: github.event_name == 'pull_request'
+        id: coverage
+        run: |
+          COVERAGE=$(coverage report | grep TOTAL | awk '{print $NF}' | sed 's/%//')
+          echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+          coverage report > coverage.txt
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = '${{ steps.coverage.outputs.percentage }}';
+            const coverageReport = fs.readFileSync('coverage.txt', 'utf8');
+
+            // Determine badge color based on coverage
+            let badgeColor = 'red';
+            if (coverage >= 80) badgeColor = 'brightgreen';
+            else if (coverage >= 70) badgeColor = 'green';
+            else if (coverage >= 60) badgeColor = 'yellow';
+            else if (coverage >= 50) badgeColor = 'orange';
+
+            const body = `## Coverage Report
+
+![Coverage](https://img.shields.io/badge/coverage-${coverage}%25-${badgeColor})
+
+**Total Coverage: ${coverage}%**
+
+<details>
+<summary>📊 Full Coverage Report</summary>
+
+\`\`\`
+${coverageReport}
+\`\`\`
+
+</details>
+
+*Coverage threshold: 70% minimum | Current: ${coverage}%*
+`;
+
+            // Find existing coverage comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Coverage Report')
+            );
+
+            // Update or create comment
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }

@@ -1,5 +1,8 @@
 # ClaudeStep
 
+[![Tests](https://github.com/gestrich/claude-step/actions/workflows/test.yml/badge.svg)](https://github.com/gestrich/claude-step/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/gestrich/claude-step/branch/main/graph/badge.svg)](https://codecov.io/gh/gestrich/claude-step)
+
 ## Overview
 
 ClaudeStep runs Claude Code on individual steps that you define for your project, creating pull requests for each step one at a time. When you merge a PR, it automatically stages the next PR, creating a chain of incremental improvements.
@@ -229,6 +232,20 @@ Markdown file combining instructions and steps. Steps use checkbox syntax (`- [ 
 
 ## Development
 
+**Running Unit Tests:**
+
+```bash
+# Set Python path
+export PYTHONPATH=src:scripts
+
+# Run tests with coverage
+pytest tests/unit/ -v
+
+# View coverage report
+coverage report --show-missing
+coverage html  # Generates htmlcov/index.html
+```
+
 **Running Integration Tests:**
 
 Integration tests are located in the [demo repository](https://github.com/gestrich/claude-step-demo) at `/tests/integration/`.
@@ -239,6 +256,18 @@ cd /path/to/claude-step-demo
 ```
 
 Prerequisites: GitHub CLI, Python 3.11+, pytest. See [claude-step-demo/tests/integration/README.md](https://github.com/gestrich/claude-step-demo/blob/main/tests/integration/README.md) for details.
+
+**Configuring PR Merge Requirements (Maintainers):**
+
+To require tests to pass before merging PRs:
+
+1. Go to **Settings** > **Branches**
+2. Add or edit a branch protection rule for `main`
+3. Enable **Require status checks to pass before merging**
+4. Select **test** from the list of status checks
+5. Optionally enable **Require branches to be up to date before merging**
+
+This ensures all PRs must pass the test suite (493 tests, 85% coverage minimum) before merging.
 
 ## Examples
 
