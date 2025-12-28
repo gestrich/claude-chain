@@ -51,11 +51,21 @@ Use an **ephemeral `e2e-test` branch** that is deleted and recreated fresh for e
 - E2E tests now use the cheapest available model while production users can still specify their preferred model
 - Cost comparison: Haiku 3 ($0.25/$1.25) vs Haiku 3.5 ($1/$5) vs Haiku 4.5 ($1/$5) - Haiku 3 is cheapest
 
-- [ ] **Phase 1: Clean Main Branch**
-  - Remove `claude-step/` directory from main
-  - Remove test-specific workflows from main (statistics.yml, claudestep-test.yml)
-  - Commit: "Remove E2E test infrastructure from main - moving to ephemeral test branches"
-  - Push to main
+- [x] **Phase 1: Clean Main Branch** ✅ COMPLETED
+
+**What was done:**
+- Removed `claude-step/` directory from main (contained 4 test projects)
+- Removed `.github/workflows/claudestep-test.yml` (test-specific workflow)
+- Verified `claudestep-statistics.yml` is an example workflow and should remain on main
+- Verified `e2e-test.yml` and `test.yml` should remain on main (test orchestration, not test-specific)
+- Validated action.yml YAML syntax
+- Verified Python imports work correctly
+
+**Technical notes:**
+- Only `claudestep-test.yml` was test-specific and needed removal
+- `claudestep-statistics.yml` is an example workflow showing how users can use the statistics feature with Slack
+- `e2e-test.yml` orchestrates E2E tests and will be updated in Phase 3 to manage the ephemeral branch
+- Main branch is now clean of test execution artifacts
 
 - [ ] **Phase 2: Add Test Setup Helper**
   - Create `tests/e2e/helpers/test_branch_manager.py` to manage ephemeral branch
