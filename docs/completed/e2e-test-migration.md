@@ -15,7 +15,6 @@ This document outlines a plan to migrate end-to-end integration tests from the s
 **claude-step repository:**
 - Contains the GitHub Action implementation
 - Has unit tests in `tests/unit/` (493 tests, 85% coverage)
-- Has benchmark tests in `tests/benchmarks/`
 - No E2E tests
 
 **claude-step-demo repository:**
@@ -69,7 +68,6 @@ claude-step/
 │       └── e2e-test.yml               # NEW: E2E tests workflow
 ├── tests/
 │   ├── unit/                          # Existing unit tests
-│   ├── benchmarks/                    # Existing benchmarks
 │   └── e2e/                           # NEW: E2E integration tests
 │       ├── __init__.py
 │       ├── conftest.py                # Shared E2E fixtures

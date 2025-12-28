@@ -116,7 +116,9 @@ Integrated Codecov for automatic coverage badge updates:
 
 ### Phase 6: Test Performance Monitoring ✅
 
-- [x] **Add pytest-benchmark for performance-critical code**
+**NOTE:** Benchmarking was later removed on 2025-12-28 as overkill for this project's scope. See `docs/proposed/remove-benchmarking.md` for details.
+
+- [x] **Add pytest-benchmark for performance-critical code** (REMOVED 2025-12-28)
 
 **Purpose:** Ensure tests remain fast as codebase grows.
 

@@ -171,9 +171,16 @@ Any documentation referencing "504 tests" should be updated to "493 tests" after
 - Test collection verified - 511 tests collecting successfully
 - Configuration validation successful
 
-### Phase 5: Update Documentation (Optional)
-- [ ] Update references in `docs/completed/test-coverage-improvement-2.md` (optional)
-- [ ] Update references in `docs/completed/e2e-test-migration.md` (optional)
+### Phase 5: Update Documentation ✅
+- [x] Update references in `docs/completed/test-coverage-improvement-2.md`
+- [x] Update references in `docs/completed/e2e-test-migration.md`
+
+**Technical Notes:**
+- Added deprecation notice to Phase 6 section in test-coverage-improvement-2.md noting benchmarking was removed 2025-12-28
+- Removed benchmark directory references from e2e-test-migration.md (lines 18 and 73)
+- Note: Line 820 reference to "Performance benchmarks" in e2e-test-migration.md refers to E2E workflow execution time measurement (unrelated to pytest-benchmark), so it was kept
+- All 506 tests still collect properly
+- Build verification successful (80 domain tests pass in 0.32s)
 
 ### Phase 6: Final Verification
 - [ ] Run local tests to verify everything still works
