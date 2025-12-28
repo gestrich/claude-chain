@@ -82,10 +82,12 @@ scripts/                # Can be removed entirely if empty
 - Tests are now correctly looking for template at new location (they fail because tests haven't been updated yet - that's Phase 3)
 - The path change is backward compatible with GitHub Actions environment
 
-### Phase 3: Update Tests
+### Phase 3: Update Tests ✅
+
+**Status**: COMPLETED
 
 **Tasks**:
-- [ ] Update `tests/unit/cli/commands/test_prepare_summary.py`:
+- [x] Update `tests/unit/cli/commands/test_prepare_summary.py`:
   - Change all references from `tmp_path / "scripts" / "claudestep" / "prompts" / "summary_prompt.md"`
   - To `tmp_path / "src" / "claudestep" / "resources" / "prompts" / "summary_prompt.md"`
   - Update `ACTION_PATH` mock setup in tests
@@ -93,12 +95,11 @@ scripts/                # Can be removed entirely if empty
 **Files Modified**:
 - `tests/unit/cli/commands/test_prepare_summary.py`
 
-**Test Cases to Update**:
-- `test_prepare_summary_success()` - line 32
-- `test_prepare_summary_no_pr_number()` - line 156
-- `test_prepare_summary_missing_task()` - line 184
-- `test_prepare_summary_template_not_found()` - line 211
-- `test_prepare_summary_substitution()` - line 235
+**Technical Notes**:
+- Updated all 5 test cases that create template paths using `replace_all=true` for consistent replacement
+- All 9 tests in `test_prepare_summary.py` pass successfully
+- Full test suite runs successfully with 84.72% coverage (above 70% requirement)
+- Template path changes correctly reflected in all test scenarios
 
 ### Phase 4: Update Documentation
 

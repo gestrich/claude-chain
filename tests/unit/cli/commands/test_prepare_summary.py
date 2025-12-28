@@ -29,7 +29,7 @@ class TestPrepareSummary:
 ## Your Task
 Generate a summary of the changes.
 """
-        template_path = tmp_path / "scripts" / "claudestep" / "prompts" / "summary_prompt.md"
+        template_path = tmp_path / "src" / "claudestep" / "resources" / "prompts" / "summary_prompt.md"
         template_path.parent.mkdir(parents=True, exist_ok=True)
         template_path.write_text(template_content)
 
@@ -153,7 +153,7 @@ Generate a summary of the changes.
 PR: {PR_NUMBER}
 URL: {WORKFLOW_URL}
 """
-        template_path = tmp_path / "scripts" / "claudestep" / "prompts" / "summary_prompt.md"
+        template_path = tmp_path / "src" / "claudestep" / "resources" / "prompts" / "summary_prompt.md"
         template_path.parent.mkdir(parents=True, exist_ok=True)
         template_path.write_text(template_content)
 
@@ -181,7 +181,7 @@ URL: {WORKFLOW_URL}
         args = argparse.Namespace()
 
         template_content = "Template with {PR_NUMBER}"
-        template_path = tmp_path / "scripts" / "claudestep" / "prompts" / "summary_prompt.md"
+        template_path = tmp_path / "src" / "claudestep" / "resources" / "prompts" / "summary_prompt.md"
         template_path.parent.mkdir(parents=True, exist_ok=True)
         template_path.write_text(template_content)
 
@@ -208,7 +208,7 @@ URL: {WORKFLOW_URL}
         args = argparse.Namespace()
 
         template_content = "{WORKFLOW_URL}"
-        template_path = tmp_path / "scripts" / "claudestep" / "prompts" / "summary_prompt.md"
+        template_path = tmp_path / "src" / "claudestep" / "resources" / "prompts" / "summary_prompt.md"
         template_path.parent.mkdir(parents=True, exist_ok=True)
         template_path.write_text(template_content)
 
@@ -232,7 +232,7 @@ URL: {WORKFLOW_URL}
 
         # Create template
         template_content = "Test"
-        template_path = tmp_path / "scripts" / "claudestep" / "prompts" / "summary_prompt.md"
+        template_path = tmp_path / "src" / "claudestep" / "resources" / "prompts" / "summary_prompt.md"
         template_path.parent.mkdir(parents=True, exist_ok=True)
         template_path.write_text(template_content)
 
