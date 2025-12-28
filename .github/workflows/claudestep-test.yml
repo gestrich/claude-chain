@@ -19,6 +19,8 @@ permissions:
 jobs:
   run-claudestep:
     runs-on: ubuntu-latest
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,4 +35,4 @@ jobs:
           project_name: ${{ github.event.inputs.project_name }}
           base_branch: ${{ github.event.inputs.base_branch || 'e2e-test' }}
           claude_model: 'claude-3-haiku-20240307'
-          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          slack_webhook_url: ${{ env.SLACK_WEBHOOK_URL }}
