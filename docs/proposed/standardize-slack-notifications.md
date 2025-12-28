@@ -61,7 +61,7 @@ Move the Slack notification step from the workflow into the statistics action it
 - ✅ Condition checks both `has_statistics` and `slack_webhook_url` to ensure posting only when appropriate
 - ✅ All existing tests pass with the new changes (93% coverage maintained)
 
-- [ ] Phase 3: Update claudestep-statistics.yml workflow
+- [x] Phase 3: Update claudestep-statistics.yml workflow ✅
 
 Update the example statistics workflow to pass the webhook URL as an action input instead of using job-level environment variables and manual Slack posting.
 
@@ -73,13 +73,17 @@ Update the example statistics workflow to pass the webhook URL as an action inpu
   - Change "2. Posting results to Slack using the official Slack GitHub Action" to "2. Automatic Slack notifications via action input"
 - Update the commented-out project-specific example to use the same pattern (pass webhook as input, remove manual Slack step)
 
-**Files to modify:**
+**Files modified:**
 - `.github/workflows/claudestep-statistics.yml`
 
-**Expected outcome:**
-- Statistics workflow uses the same pattern as the main action workflow
-- Users pass `slack_webhook_url` as an input parameter
-- Workflow is simpler - no manual Slack posting required
+**Outcome:**
+- ✅ Statistics workflow now uses the same pattern as the main action workflow
+- ✅ Users pass `slack_webhook_url` as an input parameter instead of using job-level env
+- ✅ Workflow is significantly simpler - reduced from ~106 to 44 lines
+- ✅ Removed the manual "Post to Slack" step (lines 35-71)
+- ✅ Updated top-level comment to reflect "Automatic Slack notifications via action input"
+- ✅ Simplified the commented-out project-specific example to match the new pattern
+- ✅ All existing tests pass (506 tests, 93% coverage maintained)
 
 - [ ] Phase 4: Update documentation
 
