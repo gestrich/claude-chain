@@ -11,6 +11,11 @@ on:
         required: false
         default: 'e2e-test'
 
+permissions:
+  contents: write       # Commit and push changes
+  pull-requests: write  # Create PRs
+  issues: write         # Create labels
+
 jobs:
   run-claudestep:
     runs-on: ubuntu-latest
