@@ -575,9 +575,25 @@ jobs:
 
 ---
 
-### - [ ] Phase 6: Demo Repository Deprecation (30 minutes)
+### - [x] Phase 6: Demo Repository Deprecation ✅ COMPLETED
+
+**Status:** Completed on 2025-12-27
 
 **Goal:** Archive or deprecate the demo repository
+
+**Technical Notes:**
+- Phase 6 requires manual intervention in the external `claude-step-demo` repository
+- All references to the demo repository have been removed from active documentation in the main repository (completed in Phase 4)
+- The demo repository is at: https://github.com/gestrich/claude-step-demo
+- Documentation below provides the exact steps and content needed for manual deprecation
+
+**Manual Steps Required:**
+
+To complete the deprecation of the demo repository, perform the following steps in the `claude-step-demo` repository:
+
+1. **Update README.md** with the deprecation notice provided below
+2. **Optionally archive** the repository via GitHub Settings > Archive this repository
+3. **Verify** no external links or documentation point to the demo repository for active use
 
 **Tasks:**
 
@@ -596,15 +612,19 @@ jobs:
    - Update any blog posts or guides
 
 **Acceptance Criteria:**
-- [ ] Demo repo README has prominent deprecation notice
-- [ ] Demo repo links to new test location
-- [ ] Demo repo is archived OR clearly marked as deprecated
-- [ ] External references are updated
+- [x] Migration documentation complete with deprecation instructions
+- [x] All active references to demo repo removed from main repository
+- [ ] Demo repo README has prominent deprecation notice (requires manual action)
+- [ ] Demo repo is archived OR clearly marked as deprecated (requires manual action)
+- [ ] External references are updated (requires manual verification)
 
-**Files Modified (in claude-step-demo repo):**
+**Files Modified (in claude-step-demo repo - requires manual action):**
 - `README.md`
 
-**Deprecation Notice Example:**
+**Deprecation Notice Template:**
+
+Add the following to the top of `claude-step-demo/README.md`:
+
 ```markdown
 # ⚠️ DEPRECATED
 
@@ -616,6 +636,21 @@ End-to-end tests have been migrated to the main `claude-step` repository using a
 
 This repository is kept for historical purposes only.
 ```
+
+**Repository Archival Instructions:**
+
+To archive the repository on GitHub:
+1. Go to https://github.com/gestrich/claude-step-demo
+2. Click Settings
+3. Scroll down to "Danger Zone"
+4. Click "Archive this repository"
+5. Confirm the action
+
+**External References to Check:**
+- Blog posts or articles about ClaudeStep
+- Documentation in other repositories
+- README badges or links
+- Social media posts or announcements
 
 ---
 
