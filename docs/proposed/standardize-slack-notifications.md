@@ -17,7 +17,7 @@ This inconsistency is confusing for users because:
 
 ## Phases
 
-- [ ] Phase 1: Add slack_webhook_url input to statistics action
+- [x] Phase 1: Add slack_webhook_url input to statistics action ✅
 
 Add the `slack_webhook_url` input parameter to `statistics/action.yml` to match the pattern used in the main action.
 
@@ -29,14 +29,15 @@ Add the `slack_webhook_url` input parameter to `statistics/action.yml` to match 
 - Pass the input to the statistics step environment as `SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}`
 - Update the statistics command to read from environment and output as step output (similar to prepare.py:59,151)
 
-**Files to modify:**
-- `statistics/action.yml`
-- `src/claudestep/cli/commands/statistics.py` (if needed to output the webhook URL)
+**Files modified:**
+- `statistics/action.yml` - Added input, output, and environment variable
+- `src/claudestep/cli/commands/statistics.py` - Read env var and write output
 
-**Expected outcome:**
-- Statistics action accepts `slack_webhook_url` as an input parameter
-- The value is available in the statistics step environment
-- The value is output as a step output for use in later steps
+**Outcome:**
+- ✅ Statistics action accepts `slack_webhook_url` as an input parameter
+- ✅ The value is available in the statistics step environment
+- ✅ The value is output as a step output for use in later steps (Phase 2)
+- ✅ All existing tests pass with the new changes
 
 - [ ] Phase 2: Move Slack posting into statistics action
 

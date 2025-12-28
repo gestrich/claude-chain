@@ -26,6 +26,7 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         format_type = os.environ.get(
             "STATS_FORMAT", "slack"
         )  # slack, json, summary
+        slack_webhook_url = os.environ.get("SLACK_WEBHOOK_URL", "")  # From action input
 
         print("=== ClaudeStep Statistics Collection ===")
         print(f"Days back: {days_back}")
@@ -50,6 +51,7 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
             slack_text = report.format_for_slack()
             gh.write_output("slack_message", slack_text)
             gh.write_output("has_statistics", "true")
+            gh.write_output("slack_webhook_url", slack_webhook_url)
             print("=== Slack Output ===")
             print(slack_text)
             print()

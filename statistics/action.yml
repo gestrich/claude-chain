@@ -22,6 +22,10 @@ inputs:
     description: 'Working directory for the action'
     required: false
     default: '.'
+  slack_webhook_url:
+    description: 'Slack webhook URL for statistics notifications (optional)'
+    required: false
+    default: ''
 
 outputs:
   slack_message:
@@ -33,6 +37,9 @@ outputs:
   has_statistics:
     description: 'Whether statistics were generated (true/false)'
     value: ${{ steps.stats.outputs.has_statistics }}
+  slack_webhook_url:
+    description: 'Slack webhook URL (passed through from input)'
+    value: ${{ steps.stats.outputs.slack_webhook_url }}
 
 runs:
   using: 'composite'
@@ -57,6 +64,7 @@ runs:
         STATS_DAYS_BACK: ${{ inputs.days_back }}
         STATS_FORMAT: 'slack'
         ACTION_PATH: ${{ github.action_path }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
       run: |
         # ACTION_PATH points to statistics/ subdir, need parent for src/
         ACTION_ROOT=$(dirname "$ACTION_PATH")
