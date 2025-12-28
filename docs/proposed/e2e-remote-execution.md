@@ -74,24 +74,43 @@ Outcome:
 - Proper exit codes for CI/CD integration (0 for success, 1 for failure)
 - Easy access to detailed logs via `gh run view` command or GitHub UI link
 
-- [ ] Phase 3: Update documentation
+- [x] Phase 3: Update documentation
 
-Update documentation to reflect the new remote execution model:
-- Update `docs/architecture/e2e-testing.md`:
-  - Explain that `run_test.sh` now triggers remote execution
-  - Remove references to local pytest execution polluting git state
-  - Update prerequisites (no longer need pytest/Python locally)
-  - Add section on monitoring remote test execution
-  - Clarify that tests still run via pytest, just on GitHub's runners
-- Update any inline comments in `run_test.sh` about what it does
+**Status: COMPLETED**
 
-Files to modify:
+Updated documentation to reflect the new remote execution model:
+- ✓ Updated `docs/architecture/e2e-testing.md`:
+  - Explained that `run_test.sh` now triggers remote execution on GitHub
+  - Removed references to local pytest/Python/git requirements
+  - Updated prerequisites section (only need gh CLI and repo access)
+  - Added "Remote Execution Model" section explaining benefits
+  - Added "Monitoring Remote Test Execution" section with example output
+  - Updated "Manual Workflow Monitoring" section with gh CLI commands
+  - Removed pytest-specific troubleshooting (not needed locally)
+  - Updated "Important Notes" section to highlight remote execution benefits
+- ✓ Updated inline comments in `run_test.sh`:
+  - Clarified that tests run via pytest on GitHub's runners
+  - Noted that Python/pytest are NOT needed locally
+  - Listed all 4 steps the script performs (check, trigger, monitor, report)
+  - Added note about ephemeral e2e-test branch
+
+Files modified:
 - `docs/architecture/e2e-testing.md`
-- `tests/e2e/run_test.sh` (comments)
+- `tests/e2e/run_test.sh`
 
-Expected outcome:
-- Documentation accurately reflects new execution model
-- Developers understand the benefits and how to use it
+Technical notes:
+- Emphasized "zero local git mutations" as key benefit
+- Clarified that tests still use pytest, just remotely on GitHub runners
+- Added clear examples of what developers see when running the script
+- Documented that Ctrl+C stops monitoring but workflow continues
+- Removed outdated troubleshooting for local pytest issues
+- Kept recursive workflow pattern documentation intact (still applies)
+
+Outcome:
+- Documentation accurately reflects remote execution model
+- Developers understand they only need gh CLI, not Python/pytest
+- Clear instructions for monitoring remote test execution
+- Benefits of remote execution are well documented
 
 - [ ] Phase 4: Optional - Add support for passing branch/ref
 

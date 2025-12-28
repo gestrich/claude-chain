@@ -7,16 +7,20 @@
 #
 # Prerequisites:
 # - GitHub CLI (gh) installed and authenticated
-# - Repository write access
+# - Repository write access to trigger workflows
 # - ANTHROPIC_API_KEY configured as a repository secret
 #
 # Usage:
 #   ./tests/e2e/run_test.sh
 #
 # The script will:
-# - Trigger the e2e-test.yml workflow on GitHub
-# - Run tests remotely using the current branch's code
-# - Report the workflow run ID for tracking
+# 1. Check prerequisites (gh CLI authentication)
+# 2. Trigger the e2e-test.yml workflow on GitHub for the current branch
+# 3. Monitor the workflow execution and stream logs to the terminal
+# 4. Report success/failure with proper exit codes
+#
+# Note: Tests run via pytest on GitHub's runners. You do NOT need Python or pytest
+# installed locally. All git operations happen remotely on the ephemeral e2e-test branch.
 
 set -e  # Exit on error
 

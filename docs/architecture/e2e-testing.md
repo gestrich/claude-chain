@@ -89,19 +89,9 @@ The key innovation is that the `claude-step` repository tests itself:
 
 ## Prerequisites
 
-The e2e tests require several tools and access to GitHub:
+The e2e tests are executed remotely on GitHub's infrastructure. To trigger and monitor tests, you need:
 
-### 1. Python 3 and pytest
-
-```bash
-# Check Python version
-python3 --version
-
-# Install pytest (may require --break-system-packages on macOS)
-python3 -m pip install pytest --break-system-packages
-```
-
-### 2. GitHub CLI (gh)
+### 1. GitHub CLI (gh)
 
 ```bash
 # Check if gh is installed
@@ -114,31 +104,30 @@ brew install gh
 gh auth login
 ```
 
-### 3. Git Configuration
+### 2. Repository Access
 
-```bash
-# Check git config
-git config user.name
-git config user.email
-
-# Configure if needed
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
-```
-
-### 4. Repository Access
-
-You need write access to the `claude-step` repository:
+You need write access to the `claude-step` repository to trigger the e2e-test.yml workflow:
 - The tests will create/delete the ephemeral `e2e-test` branch
 - The tests will create/delete test projects in `claude-step/test-*` on the `e2e-test` branch
 - The tests will create and close test PRs (with `e2e-test` as base branch)
 - The tests will create and delete test branches for each PR
 
+**Note:** Python 3, pytest, and git configuration are NOT required locally. The test runner script (`run_test.sh`) triggers remote execution on GitHub's infrastructure where these dependencies are already configured.
+
 ## Running the Tests
 
-### Option 1: Use the Test Runner Script (Recommended)
+### Remote Execution Model
 
-The easiest way to run the tests:
+**Important:** The `run_test.sh` script now triggers remote execution on GitHub's infrastructure. This means:
+
+- **Zero local git mutations** - All test execution happens on GitHub's runners
+- **No local Python/pytest required** - Dependencies are configured on GitHub
+- **Clean separation** - Your local branch remains untouched during test execution
+- **Live monitoring** - The script streams workflow logs to your terminal in real-time
+
+### Using the Test Runner Script
+
+The recommended way to run the tests:
 
 ```bash
 # From the claude-step repository root
@@ -147,39 +136,78 @@ cd /path/to/claude-step
 ```
 
 This script will:
-- Check all prerequisites automatically (gh CLI, pytest, Python 3.11+, git config)
-- Optionally check for ANTHROPIC_API_KEY (with user confirmation)
-- Run the E2E test suite with proper settings
-- Display colored output for easy reading
-- Support passing pytest arguments (e.g., `-v`, `-k test_name`, `--pdb`)
+1. **Check prerequisites** - Verify gh CLI is installed and authenticated
+2. **Trigger workflow** - Run `gh workflow run e2e-test.yml --ref <current-branch>` to start tests on GitHub
+3. **Monitor execution** - Stream live logs from the workflow run to your terminal
+4. **Report results** - Display success/failure with colored output and proper exit codes
 
-### Option 2: Run pytest Directly
+The workflow runs on GitHub's infrastructure using the code from your current branch. Tests execute via pytest on GitHub's runners, creating the ephemeral `e2e-test` branch and running all test scenarios remotely.
 
-If you prefer to run pytest directly:
+### Monitoring Remote Test Execution
 
-```bash
-# From the claude-step repository root
-cd /path/to/claude-step
-pytest tests/e2e/test_workflow_e2e.py -v -s
+When you run `./tests/e2e/run_test.sh`, you'll see:
+
+```
+========================================
+ClaudeStep E2E Test Runner
+========================================
+
+Checking prerequisites...
+✓ GitHub CLI (gh) is installed
+✓ GitHub CLI is authenticated
+✓ Current branch: main
+
+========================================
+Triggering E2E Tests on GitHub
+========================================
+
+Branch: main
+Workflow: e2e-test.yml
+
+✓ Workflow triggered successfully!
+
+Waiting for workflow run to start...
+Workflow run ID: 12345678
+
+========================================
+Monitoring Workflow Execution
+========================================
+
+Streaming logs from GitHub Actions...
+[Live workflow logs appear here...]
+
+========================================
+Workflow Execution Complete
+========================================
+
+✓ E2E Tests PASSED
 ```
 
-**Flags explained:**
-- `-v` - Verbose output (shows test names)
-- `-s` - Show print statements (important for test progress)
-- `-k <pattern>` - Run only tests matching the pattern
+You can press **Ctrl+C** to stop monitoring at any time - the workflow will continue running on GitHub.
 
-### Running Individual Tests
+### Manual Workflow Monitoring
+
+If you prefer to monitor the workflow separately:
 
 ```bash
-# Run only the workflow test
-pytest tests/e2e/test_workflow_e2e.py -v -s
+# Trigger the workflow
+gh workflow run e2e-test.yml --ref main
 
-# Run only the statistics test
-pytest tests/e2e/test_statistics_e2e.py -v -s
+# List recent runs
+gh run list --workflow=e2e-test.yml
 
-# Run a specific test function
-pytest tests/e2e/test_workflow_e2e.py::test_creates_pr_with_summary -v -s
+# Watch a specific run
+gh run watch <run-id> --exit-status
+
+# View run details
+gh run view <run-id>
+
+# View run logs
+gh run view <run-id> --log
 ```
+
+Or visit the GitHub Actions UI:
+`https://github.com/<owner>/<repo>/actions/workflows/e2e-test.yml`
 
 ## What the Tests Do
 
@@ -269,13 +297,6 @@ PASSED
 
 ## Common Issues and Solutions
 
-### Issue: "pytest not found"
-
-```bash
-# Solution: Install pytest
-python3 -m pip install pytest --break-system-packages
-```
-
 ### Issue: "gh CLI not authenticated"
 
 ```bash
@@ -284,13 +305,14 @@ gh auth login
 # Follow the prompts to authenticate
 ```
 
-### Issue: "git not configured"
+### Issue: "Failed to trigger workflow"
 
-```bash
-# Solution: Configure git
-git config --global user.name "Your Name"
-git config --global user.email "your.email@example.com"
-```
+This usually means:
+1. You don't have write access to the repository
+2. The workflow file doesn't exist on your branch
+3. GitHub API is experiencing issues
+
+**Solution:** Verify repository access and that `.github/workflows/e2e-test.yml` exists on your branch.
 
 ### Issue: "No AI-generated summary found"
 
@@ -423,15 +445,18 @@ jobs:
 
 ## Important Notes
 
-1. **Real GitHub Operations**: These tests create real PRs and trigger real workflows in the claude-step repository
-2. **Ephemeral Test Branch**: All test execution happens on the `e2e-test` branch, which is created fresh and deleted after each run
-3. **Main Branch Protection**: The main branch never contains test artifacts - it stays completely clean
-4. **API Costs**: Each test run uses Claude API credits (using cheapest model: claude-3-haiku-20240307)
-5. **Cleanup**: Tests clean up after themselves automatically using pytest fixtures and `TestBranchManager`
-6. **Test Isolation**: Each test uses unique project IDs (`test-project-{uuid}`) to prevent conflicts
-7. **Self-Testing**: The action tests itself using the recursive workflow pattern (`uses: ./`)
-8. **Test Artifacts**: All test projects, PRs, and branches are temporary and cleaned up automatically
-9. **Debugging Failed Tests**: On test failure, the `e2e-test` branch is left intact for investigation
+1. **Remote Execution**: The `run_test.sh` script triggers remote execution on GitHub - no local git mutations occur
+2. **Real GitHub Operations**: Tests create real PRs and trigger real workflows in the claude-step repository (on GitHub's runners)
+3. **Ephemeral Test Branch**: All test execution happens on the `e2e-test` branch, which is created fresh and deleted after each run
+4. **Main Branch Protection**: The main branch never contains test artifacts - it stays completely clean
+5. **No Local Requirements**: Python, pytest, and git configuration are NOT needed locally - everything runs on GitHub
+6. **API Costs**: Each test run uses Claude API credits (using cheapest model: claude-3-haiku-20240307)
+7. **Cleanup**: Tests clean up after themselves automatically using pytest fixtures and `TestBranchManager`
+8. **Test Isolation**: Each test uses unique project IDs (`test-project-{uuid}`) to prevent conflicts
+9. **Self-Testing**: The action tests itself using the recursive workflow pattern (`uses: ./`)
+10. **Test Artifacts**: All test projects, PRs, and branches are temporary and cleaned up automatically
+11. **Debugging Failed Tests**: On test failure, the `e2e-test` branch is left intact for investigation
+12. **Live Monitoring**: The script streams workflow logs in real-time; you can Ctrl+C to stop watching without stopping the workflow
 
 ## Troubleshooting Failed Tests
 
