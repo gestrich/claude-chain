@@ -92,7 +92,7 @@ jobs:
 
             const body = `## Coverage Report
 
-![Coverage](https://img.shields.io/badge/coverage-${coverage}%25-${badgeColor})
+!` + `[Coverage](https://img.shields.io/badge/coverage-${coverage}%25-${badgeColor})
 
 **Total Coverage: ${coverage}%**
 
