@@ -39,7 +39,7 @@ Add the `slack_webhook_url` input parameter to `statistics/action.yml` to match 
 - ✅ The value is output as a step output for use in later steps (Phase 2)
 - ✅ All existing tests pass with the new changes
 
-- [ ] Phase 2: Move Slack posting into statistics action
+- [x] Phase 2: Move Slack posting into statistics action ✅
 
 Move the Slack notification step from the workflow into the statistics action itself, matching the pattern in the main action.
 
@@ -51,13 +51,15 @@ Move the Slack notification step from the workflow into the statistics action it
 - Use `webhook: ${{ steps.stats.outputs.slack_webhook_url }}` to get the URL from step outputs
 - Add `continue-on-error: true` to prevent failures from blocking the workflow
 
-**Files to modify:**
-- `statistics/action.yml`
+**Files modified:**
+- `statistics/action.yml` - Added "Post to Slack" step after the "Generate statistics" step
 
-**Expected outcome:**
-- Statistics action internally posts to Slack when webhook URL is provided
-- Workflow no longer needs to handle Slack posting
-- Error handling prevents Slack failures from failing the entire action
+**Outcome:**
+- ✅ Statistics action now internally posts to Slack when webhook URL is provided
+- ✅ The Slack posting step uses the same payload structure as the workflow example
+- ✅ Error handling with `continue-on-error: true` prevents Slack failures from failing the entire action
+- ✅ Condition checks both `has_statistics` and `slack_webhook_url` to ensure posting only when appropriate
+- ✅ All existing tests pass with the new changes (93% coverage maintained)
 
 - [ ] Phase 3: Update claudestep-statistics.yml workflow
 
