@@ -143,8 +143,13 @@ Any documentation referencing "504 tests" should be updated to "493 tests" after
 - Tests still collect properly (506 tests found)
 - Build verification successful
 
-### Phase 2: Update Dependencies
-- [ ] Remove `pytest-benchmark>=4.0.0` from `pyproject.toml`
+### Phase 2: Update Dependencies ✅
+- [x] Remove `pytest-benchmark>=4.0.0` from `pyproject.toml`
+
+**Technical Notes:**
+- Removed pytest-benchmark from dev dependencies in pyproject.toml (line 31)
+- Syntax validation successful
+- Test collection still works (506 tests found)
 
 ### Phase 3: Update CI Workflow
 - [ ] Remove benchmark pip install from `.github/workflows/test.yml`
