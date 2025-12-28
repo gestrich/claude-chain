@@ -76,7 +76,8 @@ class GitHubHelper:
         self,
         workflow_name: str,
         timeout: int = 600,
-        poll_interval: int = 10
+        poll_interval: int = 10,
+        branch: str = "e2e-test"
     ) -> Dict[str, Any]:
         """Wait for a workflow to complete.
 
@@ -84,6 +85,7 @@ class GitHubHelper:
             workflow_name: Name of the workflow file
             timeout: Maximum time to wait in seconds
             poll_interval: Time between status checks in seconds
+            branch: Branch to filter runs by (defaults to "e2e-test")
 
         Returns:
             Final workflow run info
@@ -95,7 +97,7 @@ class GitHubHelper:
         start_time = time.time()
 
         while time.time() - start_time < timeout:
-            run = self.get_latest_workflow_run(workflow_name)
+            run = self.get_latest_workflow_run(workflow_name, branch=branch)
             if not run:
                 time.sleep(poll_interval)
                 continue
