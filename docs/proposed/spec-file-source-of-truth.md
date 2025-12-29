@@ -81,16 +81,16 @@ Add infrastructure support for fetching files from specific branches via GitHub 
 **Expected Outcome:**
 ✅ Python code can fetch any file from any branch via GitHub API without filesystem access
 
-- [ ] Phase 3: Update Prepare Command to Validate Spec Existence
+- [x] Phase 3: Update Prepare Command to Validate Spec Existence ✅
 
 Modify the prepare command to check that spec files exist in base branch before proceeding.
 
 **Tasks:**
-- Update `src/claudestep/cli/commands/prepare.py`:
-  - Get base branch from environment (default: "main")
-  - Before loading spec, check if `claude-step/{project}/spec.md` exists in base branch
-  - Check if `claude-step/{project}/configuration.yml` exists in base branch
-  - If either doesn't exist, return error with clear message:
+- ✅ Update `src/claudestep/cli/commands/prepare.py`:
+  - ✅ Get base branch from environment (default: "main")
+  - ✅ Before loading spec, check if `claude-step/{project}/spec.md` exists in base branch
+  - ✅ Check if `claude-step/{project}/configuration.yml` exists in base branch
+  - ✅ If either doesn't exist, return error with clear message:
     ```
     Error: Spec files not found in branch '{base_branch}'
     Required files:
@@ -99,13 +99,22 @@ Modify the prepare command to check that spec files exist in base branch before 
 
     Please merge your spec files to the '{base_branch}' branch before running ClaudeStep.
     ```
-  - Exit with code 1 (error)
+  - ✅ Exit with code 1 (error)
 
-**Files to Modify:**
-- `src/claudestep/cli/commands/prepare.py`
+**Files Modified:**
+- `src/claudestep/cli/commands/prepare.py` - Added validation logic at lines 55-81
+- `tests/integration/cli/commands/test_prepare.py` - Updated all tests to mock `file_exists_in_branch` and added new test case
+
+**Technical Notes:**
+- Added import for `file_exists_in_branch` from `claudestep.infrastructure.github.operations` (line 11)
+- The validation occurs immediately after detecting project paths and before loading configuration (lines 55-81)
+- The validation checks both `spec.md` and `configuration.yml` files in the base branch
+- Error message includes all missing files and clearly instructs users to merge their spec files
+- All 20 integration tests for prepare command are passing
+- Added new test `test_preparation_fails_when_spec_files_missing_in_base_branch` to specifically test the validation error case
 
 **Expected Outcome:**
-Users get clear error message if they try to run ClaudeStep without spec in base branch
+✅ Users get clear error message if they try to run ClaudeStep without spec in base branch
 
 - [ ] Phase 4: Update All Spec File Access to Use GitHub API
 

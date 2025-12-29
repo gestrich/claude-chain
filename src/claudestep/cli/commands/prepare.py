@@ -8,7 +8,7 @@ from claudestep.domain.config import load_config, validate_spec_format
 from claudestep.domain.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
 from claudestep.infrastructure.git.operations import run_git_command
 from claudestep.infrastructure.github.actions import GitHubActionsHelper
-from claudestep.infrastructure.github.operations import ensure_label_exists
+from claudestep.infrastructure.github.operations import ensure_label_exists, file_exists_in_branch
 from claudestep.application.services.pr_operations import format_branch_name
 from claudestep.application.services.project_detection import detect_project_from_pr, detect_project_paths
 from claudestep.application.services.reviewer_management import find_available_reviewer
@@ -51,6 +51,34 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 
         # Determine paths (always use claude-step/ directory structure)
         config_path, spec_path, pr_template_path, project_path = detect_project_paths(detected_project)
+
+        # Validate spec files exist in base branch before proceeding
+        base_branch = os.environ.get("BASE_BRANCH", "main")
+        print(f"Validating spec files exist in branch '{base_branch}'...")
+
+        # Check if spec.md exists
+        spec_file_path = f"claude-step/{detected_project}/spec.md"
+        config_file_path = f"claude-step/{detected_project}/configuration.yml"
+
+        spec_exists = file_exists_in_branch(repo, base_branch, spec_file_path)
+        config_exists = file_exists_in_branch(repo, base_branch, config_file_path)
+
+        if not spec_exists or not config_exists:
+            missing_files = []
+            if not spec_exists:
+                missing_files.append(f"  - {spec_file_path}")
+            if not config_exists:
+                missing_files.append(f"  - {config_file_path}")
+
+            error_msg = f"""Error: Spec files not found in branch '{base_branch}'
+Required files:
+{chr(10).join(missing_files)}
+
+Please merge your spec files to the '{base_branch}' branch before running ClaudeStep."""
+            gh.set_error(error_msg)
+            return 1
+
+        print(f"✅ Spec files validated in branch '{base_branch}'")
 
         # === STEP 2: Load and Validate Configuration ===
         print("\n=== Step 2/6: Loading configuration ===")
