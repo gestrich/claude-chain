@@ -1976,7 +1976,7 @@ latest_pr = max(prs_for_task, key=lambda pr: pr.created_at)
 - Status calculation: Derived from PR state on load, cached in Task object
 - Backward compatibility: New schema version "2.0", can still read "1.0"
 
-## Phase 5: Comparison Matrix
+## Phase 5: Comparison Matrix ✅
 
 **Tasks:**
 - Create comparison table for all models:
@@ -1996,6 +1996,466 @@ latest_pr = max(prs_for_task, key=lambda pr: pr.created_at)
 - Clear comparison showing trade-offs
 - Recommendation for which model to pursue
 - Migration path from current model
+
+### Comparison Table
+
+| Aspect | Current Model | Alt 1: Spec/Exec | Alt 2: PR-Centric | Alt 3: Hybrid |
+|--------|--------------|------------------|-------------------|---------------|
+| **Clarity of Relationships** | 👌 OK<br/>Step conflates task and PR | 👍 Good<br/>Clear spec vs execution separation | 👌 OK<br/>PR is central, tasks implicit | 👍 Good<br/>Task and PR clearly separated |
+| **Ease of Querying for Statistics** | 👌 OK<br/>Iterate steps, check optional fields | 👎 Poor<br/>Must join tasks and executions | 👌 OK<br/>Simple for PRs, complex for tasks | 👍 Good<br/>Direct status enum checks |
+| **Handling Not-Yet-Started Tasks** | 👌 OK<br/>Minimal Step with optional fields | 👍 Good<br/>In spec, no executions | 👎 Poor<br/>Not represented, must infer | 👍 Good<br/>Explicit pending status |
+| **Handling Refinements** | 👍 Good<br/>Array of AITasks per Step | 👍 Good<br/>Array of AIOperations per Execution | 👍 Good<br/>Array of AIOperations per PR | 👍 Good<br/>Array of AIOperations per PR |
+| **Handling Retries** | 👎 Poor<br/>Not supported | 👍 Good<br/>Multiple executions per task | 👌 OK<br/>Multiple PRs per task_index | 👍 Good<br/>Multiple PRs per task_index |
+| **JSON Verbosity** | 👍 Good<br/>Compact for pending tasks | 👎 Poor<br/>Extra Spec wrapper level | 👍 Good<br/>Most compact | 👌 OK<br/>All tasks always present |
+| **Code Complexity** | 👌 OK<br/>Optional field handling | 👎 Poor<br/>Most complex, joins needed | 👍 Good<br/>Simplest structure | 👍 Good<br/>Balanced complexity |
+| **Self-Contained Metadata** | 👍 Good<br/>All task info in metadata | 👍 Good<br/>Full spec stored | 👎 Poor<br/>Requires spec.md reads | 👍 Good<br/>All task info in metadata |
+| **Migration Effort** | N/A<br/>Already implemented | 👎 Poor<br/>Major restructuring | 👌 OK<br/>Moderate changes | 👌 OK<br/>Moderate changes |
+| **Support for Future Features** | 👎 Poor<br/>Retries not supported | 👍 Good<br/>Designed for evolution | 👌 OK<br/>Limited by structure | 👍 Good<br/>Extensible status enum |
+| **Mental Model Alignment** | 👌 OK<br/>Step is ambiguous | 👍 Good<br/>Matches plan vs execution | 👌 OK<br/>PR-focused workflows | 👍 Good<br/>Tasks with status |
+| **Overall Score** | 👌 6/10<br/>Works but has pain points | 👌 7/10<br/>Thorough but complex | 👎 5/10<br/>Too minimal for needs | 👍 9/10<br/>Best balance |
+
+### Detailed Aspect Analysis
+
+#### 1. Clarity of Relationships
+
+**Current Model: 👌 OK**
+- Step tries to be both task definition and PR execution
+- Relationships are implicit (Step contains PR fields)
+- Works but creates conceptual confusion
+
+**Alt 1 (Spec/Exec): 👍 Good**
+- Clearest separation: Spec (immutable) vs Executions (mutable)
+- Explicit relationship via task_index
+- Most intellectually pure design
+
+**Alt 2 (PR-Centric): 👌 OK**
+- PRs are central, tasks are implicit
+- Simple but loses task visibility
+- Relationship between PR and task is clear (task_index)
+
+**Alt 3 (Hybrid): 👍 Good**
+- Clear separation: Task (what) vs PullRequest (how)
+- Explicit relationship via task_index
+- Balances clarity with simplicity
+
+**Winner: Tie between Alt 1 and Alt 3**
+
+#### 2. Ease of Querying for Statistics
+
+**Current Model: 👌 OK**
+```python
+completed = sum(1 for s in project.steps if s.pr_state == "merged")
+pending = sum(1 for s in project.steps if not s.is_started())
+```
+- Works but requires checking optional fields and method calls
+
+**Alt 1 (Spec/Exec): 👎 Poor**
+```python
+started_indices = {e.task_index for e in project.executions}
+pending = [t for t in project.spec.tasks if t.index not in started_indices]
+```
+- Requires joining tasks and executions
+- Most complex for common queries
+
+**Alt 2 (PR-Centric): 👌 OK**
+```python
+completed = sum(1 for pr in project.pull_requests if pr.pr_state == "merged")
+pending = project.total_tasks - len(project.pull_requests)
+```
+- Simple for PR stats, but pending count only (not specific tasks)
+
+**Alt 3 (Hybrid): 👍 Good**
+```python
+completed = sum(1 for t in project.tasks if t.status == TaskStatus.COMPLETED)
+pending = sum(1 for t in project.tasks if t.status == TaskStatus.PENDING)
+```
+- Clearest and simplest
+- Direct status enum checks
+- No joins or optional field checks
+
+**Winner: Alt 3 (Hybrid)**
+
+#### 3. Handling Not-Yet-Started Tasks
+
+**Current Model: 👌 OK**
+- Minimal Step object with just index and description
+- Most fields are optional
+- Works but creates "two modes" problem
+
+**Alt 1 (Spec/Exec): 👍 Good**
+- Task exists in spec, no executions
+- Natural representation
+- No special cases
+
+**Alt 2 (PR-Centric): 👎 Poor**
+- Tasks not represented at all
+- Must infer from missing indices
+- Must read spec.md to get descriptions
+
+**Alt 3 (Hybrid): 👍 Good**
+- Explicit Task with status "pending"
+- Always visible in task list
+- No ambiguity
+
+**Winner: Tie between Alt 1 and Alt 3**
+
+#### 4. Handling Refinements
+
+**All models: 👍 Good**
+
+All models handle refinements the same way:
+- Array of AI operations/tasks
+- Each refinement adds another entry
+- Chronological order preserved
+
+No significant difference between models.
+
+**Winner: Tie (all models)**
+
+#### 5. Handling Retries
+
+**Current Model: 👎 Poor**
+- Not supported without major restructuring
+- Would need to add array of PR attempts
+
+**Alt 1 (Spec/Exec): 👍 Good**
+- Multiple executions can reference same task_index
+- Natural representation
+- Complete history preserved
+
+**Alt 2 (PR-Centric): 👌 OK**
+- Multiple PRs can reference same task_index
+- Works but feels less natural
+- No explicit retry concept
+
+**Alt 3 (Hybrid): 👍 Good**
+- Multiple PRs can reference same task_index
+- Task status reflects latest attempt
+- Clean retry support
+
+**Winner: Tie between Alt 1 and Alt 3**
+
+#### 6. JSON Verbosity
+
+**Current Model: 👍 Good**
+```json
+{"step_index": 3, "step_description": "Task 3"}
+```
+- Pending tasks are minimal (2 fields)
+
+**Alt 1 (Spec/Exec): 👎 Poor**
+```json
+{
+  "spec": {
+    "tasks": [{"index": 1, "description": "..."}]
+  },
+  "executions": []
+}
+```
+- Extra nesting level (Spec wrapper)
+- Most verbose structure
+
+**Alt 2 (PR-Centric): 👍 Good**
+```json
+{"total_tasks": 5, "pull_requests": []}
+```
+- Most compact for pending tasks (not in list)
+- Smallest JSON for early projects
+
+**Alt 3 (Hybrid): 👌 OK**
+```json
+{"tasks": [{"index": 1, "description": "...", "status": "pending"}], "pull_requests": []}
+```
+- All tasks always present
+- Moderate verbosity
+
+**Winner: Alt 2 (PR-Centric)**
+
+#### 7. Code Complexity
+
+**Current Model: 👌 OK**
+- Two-level hierarchy
+- Optional field handling throughout
+- Mixed responsibilities in Step
+
+**Alt 1 (Spec/Exec): 👎 Poor**
+- Most complex structure
+- Requires joins for common queries
+- More concepts to understand
+
+**Alt 2 (PR-Centric): 👍 Good**
+- Simplest structure
+- Flat list of PRs
+- But requires spec.md reads
+
+**Alt 3 (Hybrid): 👍 Good**
+- Balanced complexity
+- No joins needed
+- Clear entity boundaries
+
+**Winner: Tie between Alt 2 and Alt 3**
+
+#### 8. Self-Contained Metadata
+
+**Current Model: 👍 Good**
+- All task descriptions in metadata
+- No spec.md reads needed for queries
+
+**Alt 1 (Spec/Exec): 👍 Good**
+- Full spec stored in metadata
+- Completely self-contained
+
+**Alt 2 (PR-Centric): 👎 Poor**
+- Pending task descriptions not available
+- Must read spec.md for many queries
+
+**Alt 3 (Hybrid): 👍 Good**
+- All task descriptions in metadata
+- Fully self-contained
+
+**Winner: Tie between Current, Alt 1, and Alt 3**
+
+#### 9. Migration Effort
+
+**Current Model: N/A**
+- Already implemented
+
+**Alt 1 (Spec/Exec): 👎 Poor**
+- Major restructuring required
+- Extract spec from steps
+- Transform Step → Execution
+- Most code changes
+
+**Alt 2 (PR-Centric): 👌 OK**
+- Filter out pending steps
+- Add total_tasks field
+- Moderate code changes
+
+**Alt 3 (Hybrid): 👌 OK**
+- Rename Step → Task
+- Extract PR fields → PullRequest
+- Add status enum
+- Moderate code changes
+
+**Winner: Alt 2 and Alt 3 (similar effort)**
+
+#### 10. Support for Future Features
+
+**Current Model: 👎 Poor**
+- Retries not supported
+- Hard to extend with optional field pattern
+
+**Alt 1 (Spec/Exec): 👍 Good**
+- Designed for multiple executions
+- Clear extension points
+- Spec/Exec pattern is flexible
+
+**Alt 2 (PR-Centric): 👌 OK**
+- Can add retry support
+- But limited by minimal structure
+
+**Alt 3 (Hybrid): 👍 Good**
+- Status enum extensible
+- Supports retries
+- Can add task metadata later
+
+**Winner: Tie between Alt 1 and Alt 3**
+
+#### 11. Mental Model Alignment
+
+**Current Model: 👌 OK**
+- "Step" is ambiguous
+- Conflates plan and execution
+
+**Alt 1 (Spec/Exec): 👍 Good**
+- Matches "plan vs execution" mental model
+- Clean conceptual separation
+
+**Alt 2 (PR-Centric): 👌 OK**
+- Good for PR-focused workflows
+- Less clear for planning
+
+**Alt 3 (Hybrid): 👍 Good**
+- "Tasks with status" matches user thinking
+- Natural progression: pending → in_progress → completed
+
+**Winner: Tie between Alt 1 and Alt 3**
+
+### Overall Recommendation
+
+**Winner: Alternative 3 (Hybrid Approach)**
+
+#### Rationale
+
+**Why Alternative 3 wins:**
+
+1. **Best Balance**: Combines simplicity of Alt 2 with completeness of Alt 1
+2. **Clearest Queries**: Status enum makes common queries simple and explicit
+3. **Self-Contained**: All task info available without spec.md reads
+4. **Future-Proof**: Supports retries, extensible status enum
+5. **Mental Model Match**: Tasks with status maps to how users think about projects
+6. **Moderate Migration**: Similar effort to Alt 2, less than Alt 1
+7. **No Optional Fields**: Eliminates current model's main pain point
+
+**Why not Alternative 1 (Spec/Exec)?**
+
+While intellectually pure, it's over-engineered for ClaudeStep's current needs:
+- Extra complexity (joins) for common queries
+- Most verbose JSON
+- Hardest migration
+- Benefit (complete spec/exec separation) doesn't outweigh costs
+
+**Why not Alternative 2 (PR-Centric)?**
+
+Too minimal:
+- Loses pending task visibility
+- Requires spec.md reads for common operations
+- Makes progress tracking harder
+- Simplicity comes at cost of usability
+
+**Why not Current Model?**
+
+Has identified pain points:
+- Optional fields create confusion
+- Mixed responsibilities in Step
+- No retry support
+- Status checking is implicit
+
+### Migration Path
+
+From Current Model to Alternative 3 (Hybrid):
+
+#### Phase 1: Add New Dataclasses
+```python
+from enum import Enum
+
+class TaskStatus(Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+@dataclass
+class Task:
+    index: int
+    description: str
+    status: TaskStatus
+
+@dataclass
+class PullRequest:
+    task_index: int
+    pr_number: int
+    branch_name: str
+    reviewer: str
+    pr_state: str
+    created_at: datetime
+    ai_operations: List[AIOperation]
+
+@dataclass
+class AIOperation:  # Renamed from AITask
+    type: str
+    model: str
+    cost_usd: float
+    created_at: datetime
+    workflow_run_id: int
+    tokens_input: int = 0
+    tokens_output: int = 0
+    duration_seconds: float = 0.0
+```
+
+#### Phase 2: Migration Function
+```python
+def migrate_to_hybrid(current_project: Project) -> HybridProject:
+    """Convert current model to hybrid model"""
+    tasks = []
+    pull_requests = []
+
+    for step in current_project.steps:
+        # Create Task
+        if step.pr_state == "merged":
+            status = TaskStatus.COMPLETED
+        elif step.pr_number is not None:
+            status = TaskStatus.IN_PROGRESS
+        else:
+            status = TaskStatus.PENDING
+
+        task = Task(
+            index=step.step_index,
+            description=step.step_description,
+            status=status
+        )
+        tasks.append(task)
+
+        # Create PullRequest if started
+        if step.pr_number is not None:
+            pr = PullRequest(
+                task_index=step.step_index,
+                pr_number=step.pr_number,
+                branch_name=step.branch_name,
+                reviewer=step.reviewer,
+                pr_state=step.pr_state,
+                created_at=step.created_at,
+                ai_operations=[
+                    AIOperation(**ai_task.to_dict())
+                    for ai_task in step.ai_tasks
+                ]
+            )
+            pull_requests.append(pr)
+
+    return HybridProject(
+        schema_version="2.0",
+        project=current_project.project,
+        last_updated=current_project.last_updated,
+        tasks=tasks,
+        pull_requests=pull_requests
+    )
+```
+
+#### Phase 3: Update Readers/Writers
+- Update `MetadataStorage.read()` to detect schema version
+- Support both "1.0" (current) and "2.0" (hybrid)
+- Auto-migrate on read if needed
+- Always write in "2.0" format
+
+#### Phase 4: Update Queries
+Replace:
+```python
+# Old
+completed = sum(1 for s in project.steps if s.pr_state == "merged")
+next_step = next(s for s in project.steps if not s.is_started())
+```
+
+With:
+```python
+# New
+completed = sum(1 for t in project.tasks if t.status == TaskStatus.COMPLETED)
+next_task = next(t for t in project.tasks if t.status == TaskStatus.PENDING)
+```
+
+#### Phase 5: Validation
+- Run full test suite
+- Verify migration with real data
+- Ensure backward compatibility reads work
+- Monitor for edge cases
+
+### Implementation Checklist
+
+- [ ] Create new dataclasses (Task, TaskStatus, PullRequest, AIOperation)
+- [ ] Write migration function from current model
+- [ ] Add schema version detection to MetadataStorage
+- [ ] Update all query patterns in codebase
+- [ ] Update tests to use new model
+- [ ] Add migration tests
+- [ ] Update documentation
+- [ ] Deploy with migration support
+- [ ] Monitor for issues
+- [ ] Deprecate old model after validation period
+
+**Technical Notes:**
+- Schema version bumps to "2.0"
+- Migration is one-way (no downgrade path needed)
+- Old metadata auto-migrates on first read
+- Status is derived from PR state, then cached
+- All datetime fields continue using ISO 8601 format
 
 ## Phase 6: Detailed Design for Recommended Model
 
