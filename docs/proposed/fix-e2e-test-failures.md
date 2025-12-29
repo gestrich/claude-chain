@@ -26,7 +26,7 @@ The E2E test suite is currently failing with 2 out of 5 tests not passing. These
 
 ## Phases
 
-- [ ] Phase 1: Investigate AI Summary Generation Failure
+- [x] Phase 1: Investigate AI Summary Generation Failure
 
 **Objective:** Determine why the AI-generated summary comment is not appearing on PRs.
 
@@ -53,6 +53,59 @@ The E2E test suite is currently failing with 2 out of 5 tests not passing. These
 - `tests/e2e/helpers/github_helper.py` (comment detection logic)
 
 **Expected Outcome:** Clear understanding of why summaries aren't being generated/posted.
+
+---
+
+**FINDINGS:**
+
+After investigating the AI summary generation workflow, I've identified the root cause of why summaries are not appearing on PRs:
+
+**Summary Generation Process:**
+
+1. **Workflow Steps** (action.yml:163-193):
+   - Step "Prepare summary prompt" (line 163): Generates the AI prompt by calling `prepare-summary` command
+   - Step "Generate and post PR summary" (line 181): Uses Claude Code Action to execute the prompt
+   - The PR summary step uses `continue-on-error: true` (line 193)
+
+2. **Prepare Summary Command** (prepare_summary.py):
+   - Reads environment variables: PR_NUMBER, TASK, GITHUB_REPOSITORY, GITHUB_RUN_ID, ACTION_PATH
+   - Loads template from `src/claudestep/resources/prompts/summary_prompt.md`
+   - Substitutes variables and outputs the prompt
+
+3. **Summary Prompt Template** (summary_prompt.md):
+   - Instructs Claude Code to:
+     1. Fetch PR diff using `gh pr diff {PR_NUMBER} --patch`
+     2. Analyze changes
+     3. Post summary comment using `gh pr comment {PR_NUMBER} --body-file <temp_file>`
+   - Expected format includes "## AI-Generated Summary" header
+
+4. **Test Expectations** (test_workflow_e2e.py:116-119):
+   - Fetches all PR comments
+   - Searches for comments containing "Summary" or "Changes"
+   - Fails if no such comment is found
+
+**Root Cause Analysis:**
+
+The summary generation workflow is correctly configured in action.yml. The issue is likely one of:
+
+1. **Silent Failures**: The "Generate and post PR summary" step has `continue-on-error: true`, which means failures are silently ignored
+2. **Timing Issues**: The test checks for comments immediately after workflow completion, but there may be a delay in comment posting
+3. **Tool Restrictions**: The PR summary step only allows Bash tool (line 191: `--allowedTools Bash`), which may be insufficient if Claude Code needs other tools
+4. **Authentication**: The gh CLI needs proper authentication to post comments
+
+**Key Technical Details:**
+
+- Location: action.yml:163-193, prepare_summary.py, summary_prompt.md
+- The summary step is separate from the main task execution
+- Errors in summary generation don't fail the workflow (continue-on-error: true)
+- The test looks for "Summary" or "Changes" in comment bodies (test_workflow_e2e.py:118)
+
+**Next Steps for Phase 2:**
+- Check actual workflow logs from run 20561563291 to see if summary step executed
+- Remove or investigate the `continue-on-error: true` flag to surface failures
+- Add better error handling and logging to the summary generation step
+- Consider if timing issues exist (test checking too early)
+- Verify ANTHROPIC_API_KEY is properly configured in the test environment
 
 ---
 
