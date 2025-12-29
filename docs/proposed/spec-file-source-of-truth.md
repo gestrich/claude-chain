@@ -206,20 +206,40 @@ Ensure statistics collection fetches all data via API from base branch.
 **Expected Outcome:**
 ✅ Statistics can run successfully, fetching specs from base branch via API
 
-- [ ] Phase 6: Clean Up Existing Metadata
+- [x] Phase 6: Clean Up Existing Metadata ✅
 
 Delete existing project JSON files to start fresh with the new approach.
 
 **Tasks:**
-- Delete all files in `claudestep-metadata` branch under `projects/` directory:
+- ✅ Delete all files in `claudestep-metadata` branch under `projects/` directory:
+  - `projects/test-project-0a92ce82.json`
   - `projects/test-project-0d044eb4.json`
+  - `projects/test-project-89c6649a.json`
   - `projects/test-project-8dce0510.json`
   - `projects/test-project-b1ce74de.json`
-- Can do this via GitHub API or manually via git commands
-- Document that this is a one-time cleanup for the refactor
+- ✅ Done via git commands on claudestep-metadata branch
+- ✅ Document that this is a one-time cleanup for the refactor
+
+**Files Modified:**
+- Deleted 5 project JSON files from `claudestep-metadata` branch (committed as f6ddbca)
+
+**Technical Notes:**
+- Switched to the `claudestep-metadata` branch locally using `git checkout`
+- Used `git rm projects/*.json` to delete all project metadata files
+- Created a commit with detailed explanation of the one-time cleanup
+- Pushed changes directly to the `claudestep-metadata` branch
+- Total of 5 files were deleted (143 lines removed):
+  - test-project-0a92ce82.json (500 bytes)
+  - test-project-0d044eb4.json (500 bytes)
+  - test-project-89c6649a.json (500 bytes)
+  - test-project-8dce0510.json (843 bytes)
+  - test-project-b1ce74de.json (843 bytes)
+- These were orphaned metadata files from previous E2E test runs
+- Future workflows will create fresh metadata only for projects that have specs in the base branch
+- Verified build still works after cleanup (all Python imports successful)
 
 **Expected Outcome:**
-Clean slate - no orphaned project metadata without corresponding specs
+✅ Clean slate - no orphaned project metadata without corresponding specs
 
 - [ ] Phase 7: Update Documentation
 
