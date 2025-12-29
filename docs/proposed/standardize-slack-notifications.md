@@ -85,7 +85,7 @@ Update the example statistics workflow to pass the webhook URL as an action inpu
 - ✅ Simplified the commented-out project-specific example to match the new pattern
 - ✅ All existing tests pass (506 tests, 93% coverage maintained)
 
-- [ ] Phase 4: Update documentation
+- [x] Phase 4: Update documentation ✅
 
 Update README.md and other documentation to reflect the consistent Slack notification pattern across both actions.
 
@@ -99,13 +99,25 @@ Update README.md and other documentation to reflect the consistent Slack notific
   - What notifications you'll receive (PR creation + statistics)
 - Update any references to the statistics workflow pattern
 
-**Files to modify:**
-- `README.md`
+**Files modified:**
+- `README.md` - Added comprehensive "Slack Notifications" section with setup instructions
+- `docs/architecture/architecture.md` - Updated statistics action examples to show the consistent pattern
 
-**Expected outcome:**
-- Documentation clearly explains the consistent pattern
-- Users understand they use the same approach for both actions
-- No confusion about different patterns for different notifications
+**Technical notes:**
+- Added new "Slack Notifications" section to README.md (after "Scaling Up" section)
+- Updated the optional Slack notifications setup note to reference the new section
+- Provided clear examples for both PR creation and statistics notifications
+- Emphasized that `slack_webhook_url` must be passed as an action input
+- Updated architecture documentation to reflect the internal Slack posting pattern
+- Updated the statistics flow diagram to show the webhook URL being passed through outputs to the internal Slack step
+
+**Outcome:**
+- ✅ Documentation clearly explains the consistent pattern across both actions
+- ✅ Users understand they use the same approach for both PR and statistics notifications
+- ✅ No confusion about different patterns for different notifications
+- ✅ Step-by-step setup guide for Slack notifications in a dedicated section
+- ✅ Architecture documentation accurately reflects the implementation
+- ✅ All existing tests pass (493 tests, 84.80% coverage maintained)
 
 - [ ] Phase 5: Update architecture documentation
 

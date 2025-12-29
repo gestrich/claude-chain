@@ -122,9 +122,9 @@ Settings > Secrets and variables > Actions > New repository secret:
 **Optional - Slack Notifications:**
 - Name: `SLACK_WEBHOOK_URL`
 - Value: your Slack webhook URL from [api.slack.com/messaging/webhooks](https://api.slack.com/messaging/webhooks)
-- Uncomment the `slack_webhook_url` line in your workflow file to enable PR creation notifications
+- Uncomment the `slack_webhook_url` line in your workflow file to enable notifications
 
-**Note:** The `slack_webhook_url` input is required for PR creation notifications. If you only have the `SLACK_WEBHOOK_URL` secret set without passing it as an action input, you will not receive PR notifications (though weekly statistics notifications will still work if you have the statistics workflow configured).
+**Note:** Both PR creation notifications and statistics notifications use the same pattern - you must pass `slack_webhook_url` as an action input. Simply setting the `SLACK_WEBHOOK_URL` secret is not enough; you need to pass it to the action via the `slack_webhook_url` input parameter in your workflow file. See the [Slack Notifications](#slack-notifications) section below for details.
 
 #### Enable PR Creation
 
@@ -166,6 +166,68 @@ Review the generated PR, verify it follows your spec, and make any needed fixes.
 - Increasing `maxOpenPRs` per reviewer
 - Adding more reviewers to `configuration.yml`
 - Creating multiple projects in `claude-step/`
+
+## Slack Notifications
+
+ClaudeStep can send Slack notifications for both PR creation and weekly statistics. Both use the same simple pattern: pass your webhook URL as an action input.
+
+### Setting Up Slack Notifications
+
+**1. Get a Slack Webhook URL:**
+- Visit [api.slack.com/messaging/webhooks](https://api.slack.com/messaging/webhooks)
+- Create an incoming webhook for your Slack workspace
+- Copy the webhook URL (it looks like `https://hooks.slack.com/services/...`)
+
+**2. Add as a GitHub Secret:**
+- Go to Settings > Secrets and variables > Actions > New repository secret
+- Name: `SLACK_WEBHOOK_URL`
+- Value: paste your webhook URL
+
+**3. Pass to Actions:**
+
+For **PR creation notifications**, uncomment the `slack_webhook_url` line in your ClaudeStep workflow:
+
+```yaml
+- uses: gestrich/claude-step@v1
+  with:
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    project_name: 'my-refactor'
+    slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}  # Enable PR notifications
+```
+
+For **statistics notifications**, add the ClaudeStep Statistics workflow (`.github/workflows/claudestep-statistics.yml`):
+
+```yaml
+name: ClaudeStep Statistics
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly on Monday at 9 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  statistics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gestrich/claude-step/statistics@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          days_back: 7
+          slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}  # Enable statistics notifications
+```
+
+**What You'll Receive:**
+
+- **PR Notifications:** Posted when a new PR is created, including the step description, assignee, and PR link
+- **Statistics Reports:** Weekly summaries showing team progress, completion rates, reviewer activity, and cost tracking
+
+**Important:** You must pass `slack_webhook_url` as an action input. Simply setting the `SLACK_WEBHOOK_URL` secret without passing it to the action will not enable notifications.
 
 ## Action Inputs & Outputs
 

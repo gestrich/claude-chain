@@ -173,9 +173,15 @@ inputs:
   days_back:
     description: 'Days to look back'
     default: '30'
+  slack_webhook_url:
+    description: 'Slack webhook URL for notifications (optional)'
+    required: false
+    default: ''
 outputs:
   slack_message:
     value: ${{ steps.stats.outputs.slack_message }}
+  slack_webhook_url:
+    value: ${{ steps.stats.outputs.slack_webhook_url }}
 
 runs:
   using: 'composite'
@@ -190,7 +196,20 @@ runs:
       run: python3 -m claudestep statistics
       env:
         STATS_DAYS_BACK: ${{ inputs.days_back }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
         ACTION_PATH: ${{ github.action_path }}
+
+    - name: Post to Slack
+      if: steps.stats.outputs.has_statistics == 'true' && steps.stats.outputs.slack_webhook_url != ''
+      uses: slackapi/slack-github-action@v2
+      with:
+        webhook: ${{ steps.stats.outputs.slack_webhook_url }}
+        webhook-type: incoming-webhook
+        payload: |
+          {
+            "text": ${{ toJSON(steps.stats.outputs.slack_message) }}
+          }
+      continue-on-error: true
 ```
 
 **Python (All Logic)**:
@@ -199,9 +218,14 @@ runs:
 def cmd_statistics(args, gh):
     """All business logic lives here"""
     days_back = int(os.environ.get("STATS_DAYS_BACK", "30"))
+    slack_webhook_url = os.environ.get("SLACK_WEBHOOK_URL", "")
+
     report = collect_all_statistics(days_back=days_back)
     slack_text = report.format_for_slack()
+
     gh.write_output("slack_message", slack_text)
+    gh.write_output("slack_webhook_url", slack_webhook_url)
+    gh.write_output("has_statistics", "true" if report.has_data else "false")
     # ... full implementation
 ```
 
@@ -359,16 +383,20 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 │  • Collect team stats (GitHub API)      │
 │  • Generate reports                     │
 │  • Format for Slack                     │
+│  • Output slack_webhook_url             │
 │  • Output JSON data                     │
 └─────────────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────────┐
-│  Outputs → User's Slack Action          │
+│  Outputs → Internal Slack Step         │
 │                                         │
 │  • slack_message (formatted text)       │
-│  • statistics_json (raw data)           │
+│  • slack_webhook_url (from input)       │
 │  • has_statistics (boolean)             │
+│                                         │
+│  If has_statistics && slack_webhook_url:│
+│  → Post to Slack (continue-on-error)    │
 └─────────────────────────────────────────┘
 ```
 
