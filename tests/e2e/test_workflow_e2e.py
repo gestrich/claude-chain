@@ -85,8 +85,9 @@ def test_basic_workflow_end_to_end(
         timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
     )
 
+    run_url = workflow_run.get("url", f"https://github.com/gestrich/claude-step/actions/runs/{workflow_run.get('databaseId')}")
     assert workflow_run["conclusion"] == "success", \
-        "Workflow should complete successfully"
+        f"Workflow should complete successfully. Run URL: {run_url}"
 
     # Expected branch name for first task
     expected_branch = f"claude-step-{test_project}-1"
@@ -94,21 +95,25 @@ def test_basic_workflow_end_to_end(
     # Get the PR that was created
     pr = gh.get_pull_request(expected_branch)
 
-    assert pr is not None, f"PR should be created on branch {expected_branch}"
-    assert pr["state"] == "OPEN", "PR should be open"
+    assert pr is not None, \
+        f"PR should be created on branch '{expected_branch}'. Workflow run: {run_url}"
+    assert pr["state"] == "OPEN", \
+        f"PR #{pr.get('number')} should be OPEN but is {pr.get('state')}. PR URL: {pr.get('url', 'N/A')}"
 
     # Track PR for cleanup
     cleanup_prs.append(pr["number"])
+    pr_url = pr.get("url", f"https://github.com/gestrich/claude-step/pull/{pr['number']}")
 
     # Verify PR has a title and body
-    assert pr["title"], "PR should have a title"
-    assert pr["body"], "PR should have a body/description"
+    assert pr["title"], f"PR #{pr['number']} should have a title. PR URL: {pr_url}"
+    assert pr["body"], f"PR #{pr['number']} should have a body/description. PR URL: {pr_url}"
 
     # Get PR comments for summary and cost verification
     comments = gh.get_pr_comments(pr["number"])
 
     # Verify there's at least one comment
-    assert len(comments) > 0, "PR should have at least one comment"
+    assert len(comments) > 0, \
+        f"PR #{pr['number']} should have at least one comment. PR URL: {pr_url}"
 
     # Extract comment bodies for analysis
     comment_bodies = [c.get("body", "") for c in comments]
@@ -116,7 +121,9 @@ def test_basic_workflow_end_to_end(
     # Verify PR has an AI-generated summary comment
     # The AI summary typically mentions "Summary" or "Changes"
     has_summary = any("Summary" in body or "Changes" in body for body in comment_bodies)
-    assert has_summary, "PR should have an AI-generated summary comment"
+    assert has_summary, \
+        f"PR #{pr['number']} should have an AI-generated summary comment. " \
+        f"Found {len(comments)} comment(s). PR URL: {pr_url}"
 
     # Verify PR has cost/usage information
     # Cost info typically includes words like "cost", "tokens", "usage", or "$"
@@ -127,7 +134,9 @@ def test_basic_workflow_end_to_end(
         "$" in body
         for body in comment_bodies
     )
-    assert has_cost_info, "PR should have cost/usage information in comments"
+    assert has_cost_info, \
+        f"PR #{pr['number']} should have cost/usage information in comments. " \
+        f"Found {len(comments)} comment(s). PR URL: {pr_url}"
 
     # Clean up: remove test project from repository
     project_manager.remove_and_commit_project(test_project, branch="e2e-test")
@@ -195,12 +204,14 @@ def test_reviewer_capacity_limits(
             workflow_name="claudestep.yml",
             timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
+        run_url_1 = workflow_run_1.get("url", f"https://github.com/gestrich/claude-step/actions/runs/{workflow_run_1.get('databaseId')}")
         assert workflow_run_1["conclusion"] == "success", \
-            "First workflow run should succeed"
+            f"First workflow run should succeed. Run URL: {run_url_1}"
 
         # Verify first PR was created
         pr1 = gh.get_pull_request(f"claude-step-{project_name}-1")
-        assert pr1 is not None, "First PR should be created"
+        assert pr1 is not None, \
+            f"First PR should be created for task 1. Workflow run: {run_url_1}"
         cleanup_prs.append(pr1["number"])
 
         # === Second workflow run: should create PR for task 2 ===
@@ -214,12 +225,14 @@ def test_reviewer_capacity_limits(
             workflow_name="claudestep.yml",
             timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
+        run_url_2 = workflow_run_2.get("url", f"https://github.com/gestrich/claude-step/actions/runs/{workflow_run_2.get('databaseId')}")
         assert workflow_run_2["conclusion"] == "success", \
-            "Second workflow run should succeed"
+            f"Second workflow run should succeed. Run URL: {run_url_2}"
 
         # Verify second PR was created
         pr2 = gh.get_pull_request(f"claude-step-{project_name}-2")
-        assert pr2 is not None, "Second PR should be created"
+        assert pr2 is not None, \
+            f"Second PR should be created for task 2. Workflow run: {run_url_2}"
         cleanup_prs.append(pr2["number"])
 
         # === Third workflow run: should NOT create PR (at capacity) ===
@@ -233,14 +246,16 @@ def test_reviewer_capacity_limits(
             workflow_name="claudestep.yml",
             timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
+        run_url_3 = workflow_run_3.get("url", f"https://github.com/gestrich/claude-step/actions/runs/{workflow_run_3.get('databaseId')}")
         # Workflow should still succeed, but not create a PR
         assert workflow_run_3["conclusion"] == "success", \
-            "Third workflow run should succeed (but not create PR)"
+            f"Third workflow run should succeed (but not create PR). Run URL: {run_url_3}"
 
         # Verify third PR was NOT created (reviewer at capacity)
         pr3 = gh.get_pull_request(f"claude-step-{project_name}-3")
         assert pr3 is None, \
-            "Third PR should NOT be created (reviewer at capacity: 2/2)"
+            f"Third PR should NOT be created (reviewer at capacity: 2/2). " \
+            f"Expected no PR for task 3. Workflow run: {run_url_3}"
 
         # Verify only 2 PRs exist (respecting capacity limit)
         created_prs = []
@@ -250,8 +265,10 @@ def test_reviewer_capacity_limits(
             if pr:
                 created_prs.append(pr)
 
+        pr_list = ", ".join([f"PR #{pr['number']} (task {i+1})" for i, pr in enumerate(created_prs)])
         assert len(created_prs) == 2, \
-            f"Expected exactly 2 PRs (capacity limit), but found {len(created_prs)}"
+            f"Expected exactly 2 PRs (capacity limit=2), but found {len(created_prs)}: {pr_list}. " \
+            f"Workflow runs: [1] {run_url_1}, [2] {run_url_2}, [3] {run_url_3}"
 
         # Clean up branches
         for i in range(1, len(created_prs) + 1):
@@ -342,12 +359,14 @@ def test_workflow_handles_empty_spec(
         )
 
         # Workflow should complete (though it might not create PRs)
+        run_url = workflow_run.get("url", f"https://github.com/gestrich/claude-step/actions/runs/{workflow_run.get('databaseId')}")
         assert workflow_run["conclusion"] == "success", \
-            "Workflow should complete successfully even with no tasks"
+            f"Workflow should complete successfully even with no tasks. Run URL: {run_url}"
 
         # Verify no PRs were created
         pr = gh.get_pull_request(f"claude-step-{project_name}-1")
-        assert pr is None, "No PR should be created when there are no tasks"
+        assert pr is None, \
+            f"No PR should be created when there are no incomplete tasks. Workflow run: {run_url}"
 
     finally:
         # Clean up

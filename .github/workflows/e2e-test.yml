@@ -57,7 +57,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          pytest tests/e2e/ -v --no-cov
+          pytest tests/e2e/ -v --no-cov 2>&1 | tee e2e-test-output.log
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-diagnostics
+          path: |
+            e2e-test-output.log
+            .github/workflows/e2e-test.yml
+            tests/e2e/**/*.py
+          retention-days: 7
 
       - name: Cleanup test branch (on success)
         if: success()
@@ -76,4 +87,17 @@ jobs:
       # Leave branch for debugging on failure
       - name: Branch left for debugging
         if: failure()
-        run: echo "Test branch 'e2e-test' left intact for debugging"
+        run: |
+          echo "========================================="
+          echo "E2E Test Failure - Debugging Information"
+          echo "========================================="
+          echo ""
+          echo "Test branch 'e2e-test' left intact for debugging"
+          echo ""
+          echo "To investigate:"
+          echo "1. Check the uploaded test artifacts for detailed logs"
+          echo "2. View the test branch 'e2e-test' for project state"
+          echo "3. Review workflow run URLs in the test output"
+          echo "4. Check PRs created on the 'e2e-test' branch"
+          echo ""
+          echo "========================================="

@@ -7,7 +7,16 @@ including triggering workflows, checking workflow status, and managing PRs.
 import subprocess
 import time
 import json
+import logging
 from typing import Optional, Dict, Any, List
+
+# Configure logger for E2E test diagnostics
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 class GitHubHelper:
@@ -34,13 +43,21 @@ class GitHubHelper:
             inputs: Dictionary of workflow inputs
             ref: Git ref to run workflow on (branch/tag/SHA)
         """
+        logger.info(f"Triggering workflow '{workflow_name}' on ref '{ref}' with inputs: {inputs}")
+        start_time = time.time()
+
         cmd = ["gh", "workflow", "run", workflow_name, "--repo", self.repo, "--ref", ref]
         for key, value in inputs.items():
             cmd.extend(["-f", f"{key}={value}"])
 
         result = subprocess.run(cmd, capture_output=True, text=True)
+        elapsed = time.time() - start_time
+
         if result.returncode != 0:
+            logger.error(f"Failed to trigger workflow after {elapsed:.2f}s: {result.stderr}")
             raise RuntimeError(f"Failed to trigger workflow: {result.stderr}")
+
+        logger.info(f"Successfully triggered workflow in {elapsed:.2f}s")
 
     def get_latest_workflow_run(
         self,
@@ -61,16 +78,24 @@ class GitHubHelper:
             "--workflow", workflow_name,
             "--branch", branch,
             "--repo", self.repo,
-            "--json", "databaseId,status,conclusion,createdAt",
+            "--json", "databaseId,status,conclusion,createdAt,headBranch,url",
             "--limit", "1"
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
+            logger.error(f"Failed to get workflow runs: {result.stderr}")
             raise RuntimeError(f"Failed to get workflow runs: {result.stderr}")
 
         runs = json.loads(result.stdout)
-        return runs[0] if runs else None
+        run = runs[0] if runs else None
+
+        if run:
+            logger.debug(f"Found workflow run: ID={run.get('databaseId')}, status={run.get('status')}, conclusion={run.get('conclusion')}")
+        else:
+            logger.debug(f"No workflow runs found for '{workflow_name}' on branch '{branch}'")
+
+        return run
 
     def wait_for_workflow_completion(
         self,
@@ -94,28 +119,60 @@ class GitHubHelper:
             TimeoutError: If workflow doesn't complete within timeout
             RuntimeError: If workflow fails
         """
+        logger.info(f"Waiting for workflow '{workflow_name}' to complete (timeout={timeout}s, poll_interval={poll_interval}s)")
         start_time = time.time()
+        last_status = None
+        poll_count = 0
 
         while time.time() - start_time < timeout:
+            elapsed = time.time() - start_time
+            poll_count += 1
+
             run = self.get_latest_workflow_run(workflow_name, branch=branch)
             if not run:
+                logger.warning(f"[Poll {poll_count}, {elapsed:.1f}s] No workflow run found yet, waiting...")
                 time.sleep(poll_interval)
                 continue
 
+            run_id = run.get("databaseId")
             status = run.get("status")
             conclusion = run.get("conclusion")
+            run_url = run.get("url", f"https://github.com/{self.repo}/actions/runs/{run_id}")
+
+            # Log status changes
+            if status != last_status:
+                logger.info(f"[Poll {poll_count}, {elapsed:.1f}s] Workflow status: {status} (conclusion: {conclusion})")
+                logger.info(f"View workflow run: {run_url}")
+                last_status = status
+            else:
+                logger.debug(f"[Poll {poll_count}, {elapsed:.1f}s] Still {status}...")
 
             if status == "completed":
+                total_time = time.time() - start_time
                 if conclusion == "success":
+                    logger.info(f"Workflow completed successfully in {total_time:.1f}s")
+                    logger.info(f"Workflow URL: {run_url}")
                     return run
                 else:
+                    logger.error(f"Workflow failed with conclusion '{conclusion}' after {total_time:.1f}s")
+                    logger.error(f"View failed workflow: {run_url}")
                     raise RuntimeError(
-                        f"Workflow failed with conclusion: {conclusion}"
+                        f"Workflow failed with conclusion: {conclusion}. View details at: {run_url}"
                     )
 
             time.sleep(poll_interval)
 
-        raise TimeoutError(f"Workflow did not complete within {timeout} seconds")
+        elapsed = time.time() - start_time
+        logger.error(f"Workflow timed out after {elapsed:.1f}s (limit: {timeout}s)")
+        if run:
+            run_url = run.get("url", f"https://github.com/{self.repo}/actions/runs/{run.get('databaseId')}")
+            logger.error(f"Last known status: {run.get('status')} - View workflow: {run_url}")
+            raise TimeoutError(
+                f"Workflow did not complete within {timeout} seconds. "
+                f"Last status: {run.get('status')}. View at: {run_url}"
+            )
+        else:
+            raise TimeoutError(f"Workflow did not complete within {timeout} seconds (no run found)")
 
     def get_pull_request(self, branch: str) -> Optional[Dict[str, Any]]:
         """Get PR for a given branch.
@@ -126,20 +183,29 @@ class GitHubHelper:
         Returns:
             Dictionary with PR info, or None if no PR found
         """
+        logger.info(f"Looking for PR on branch '{branch}'")
         cmd = [
             "gh", "pr", "list",
             "--repo", self.repo,
             "--head", branch,
-            "--json", "number,title,body,state",
+            "--json", "number,title,body,state,url",
             "--limit", "1"
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
+            logger.warning(f"Failed to get PR for branch '{branch}': {result.stderr}")
             return None
 
         prs = json.loads(result.stdout)
-        return prs[0] if prs else None
+        pr = prs[0] if prs else None
+
+        if pr:
+            logger.info(f"Found PR #{pr['number']}: {pr['title']} ({pr['state']}) - {pr.get('url', '')}")
+        else:
+            logger.warning(f"No PR found for branch '{branch}'")
+
+        return pr
 
     def get_pr_comments(self, pr_number: int) -> List[Dict[str, Any]]:
         """Get comments on a PR.
@@ -150,6 +216,7 @@ class GitHubHelper:
         Returns:
             List of comment dictionaries
         """
+        logger.info(f"Fetching comments for PR #{pr_number}")
         cmd = [
             "gh", "pr", "view", str(pr_number),
             "--repo", self.repo,
@@ -158,10 +225,19 @@ class GitHubHelper:
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
+            logger.warning(f"Failed to get comments for PR #{pr_number}: {result.stderr}")
             return []
 
         data = json.loads(result.stdout)
-        return data.get("comments", [])
+        comments = data.get("comments", [])
+        logger.info(f"Found {len(comments)} comment(s) on PR #{pr_number}")
+
+        # Log summary of comments for diagnostics
+        for i, comment in enumerate(comments):
+            body_preview = comment.get("body", "")[:100].replace("\n", " ")
+            logger.debug(f"  Comment {i+1}: {body_preview}...")
+
+        return comments
 
     def close_pull_request(self, pr_number: int) -> None:
         """Close a pull request.
@@ -169,8 +245,14 @@ class GitHubHelper:
         Args:
             pr_number: PR number to close
         """
+        logger.info(f"Closing PR #{pr_number}")
         cmd = ["gh", "pr", "close", str(pr_number), "--repo", self.repo]
-        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info(f"Successfully closed PR #{pr_number}")
+        else:
+            logger.warning(f"Failed to close PR #{pr_number}: {result.stderr}")
+            raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
 
     def delete_branch(self, branch: str) -> None:
         """Delete a remote branch.
@@ -178,5 +260,10 @@ class GitHubHelper:
         Args:
             branch: Branch name to delete
         """
+        logger.info(f"Deleting branch '{branch}'")
         cmd = ["gh", "api", f"repos/{self.repo}/git/refs/heads/{branch}", "-X", "DELETE"]
-        subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            logger.info(f"Successfully deleted branch '{branch}'")
+        else:
+            logger.warning(f"Failed to delete branch '{branch}': {result.stderr}")

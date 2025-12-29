@@ -427,7 +427,7 @@ E2E tests will no longer fail due to inapplicable coverage requirements, while u
 
 ---
 
-- [ ] Phase 6: Add Enhanced E2E Test Diagnostics
+- [x] Phase 6: Add Enhanced E2E Test Diagnostics
 
 **Objective:** Improve debugging capabilities for future E2E test failures.
 
@@ -453,6 +453,105 @@ E2E tests will no longer fail due to inapplicable coverage requirements, while u
 - `.github/workflows/e2e-test.yml` (upload artifacts on failure)
 
 **Expected Outcome:** Future E2E failures are much easier to diagnose.
+
+---
+
+**COMPLETED:**
+
+**Objective Achieved:**
+Enhanced E2E test diagnostics to make future test failures significantly easier to debug by adding comprehensive logging, detailed error messages with workflow URLs, and automatic artifact upload on failure.
+
+**Changes Made:**
+
+1. **Enhanced GitHub Helper Logging** (tests/e2e/helpers/github_helper.py):
+   - Added Python logging module with INFO level and timestamped format
+   - Added detailed logging to all GitHub API operations with timing information:
+     - `trigger_workflow`: Logs trigger attempt with inputs and timing
+     - `get_latest_workflow_run`: Logs workflow lookup with run details
+     - `wait_for_workflow_completion`: Enhanced with poll counter, elapsed time tracking, status change detection, and workflow URL logging
+     - `get_pull_request`: Logs PR lookup with PR number, title, and URL
+     - `get_pr_comments`: Logs comment count and previews of comment content
+     - `close_pull_request`: Logs closure attempt with success/failure
+     - `delete_branch`: Logs branch deletion with success/failure
+   - Added workflow run URLs to all relevant operations for easy navigation
+   - Added poll progress tracking in `wait_for_workflow_completion` (poll count, elapsed time)
+   - Workflow URLs now included in timeout and error messages
+
+2. **Enhanced Test Assertions** (tests/e2e/test_workflow_e2e.py):
+   - Added workflow run URL extraction and inclusion in all assertions
+   - Enhanced `test_basic_workflow_end_to_end`:
+     - Workflow completion assertions include run URL
+     - PR existence assertions include expected branch and workflow URL
+     - PR state assertions include PR number, state, and PR URL
+     - Comment verification assertions include comment count and PR URL
+     - Summary and cost assertions include diagnostic context (number of comments found)
+   - Enhanced `test_reviewer_capacity_limits`:
+     - All three workflow run assertions include workflow URLs
+     - PR creation assertions include workflow run context
+     - Capacity limit assertion includes all three workflow URLs and list of created PRs
+   - Enhanced `test_workflow_handles_empty_spec`:
+     - Workflow completion and PR verification include workflow URL
+
+3. **Artifact Upload on Failure** (.github/workflows/e2e-test.yml):
+   - Modified test execution to capture full output: `pytest ... 2>&1 | tee e2e-test-output.log`
+   - Added `upload-artifact` step that runs only on failure (`if: failure()`)
+   - Uploads comprehensive diagnostics package:
+     - Full test output log (e2e-test-output.log)
+     - E2E workflow configuration (.github/workflows/e2e-test.yml)
+     - All E2E test files (tests/e2e/**/*.py)
+   - Artifacts retained for 7 days for investigation
+   - Enhanced failure message with debugging instructions:
+     - Check uploaded test artifacts
+     - View test branch 'e2e-test'
+     - Review workflow run URLs
+     - Check PRs on e2e-test branch
+
+**Technical Details:**
+
+**Logging Infrastructure:**
+- Uses Python's built-in `logging` module with consistent format: `%(asctime)s [%(levelname)s] %(message)s`
+- Timestamp format: `YYYY-MM-DD HH:MM:SS` for easy timeline reconstruction
+- INFO level for normal operations, WARNING for non-critical issues, ERROR for failures
+- DEBUG level for detailed operation tracking (comment previews, workflow status polls)
+
+**Workflow URL Construction:**
+- Primary: Extracted from API response (`run.get("url")`)
+- Fallback: Constructed from run ID (`https://github.com/{repo}/actions/runs/{run_id}`)
+- Included in all error messages and timeout exceptions
+
+**Performance Tracking:**
+- `wait_for_workflow_completion` now tracks:
+  - Poll count (number of status checks)
+  - Elapsed time in seconds (with 0.1s precision)
+  - Status changes (only logs when status actually changes)
+  - Total execution time on completion
+
+**Error Context:**
+- All RuntimeError and TimeoutError exceptions now include workflow URLs
+- Assertion failures include relevant URLs (workflow run, PR, etc.)
+- Comment count and PR details included in verification failures
+
+**Validation:**
+- Python syntax validated for both modified files
+- YAML syntax validated for workflow file
+- Unit tests pass (pre-existing test setup errors unrelated to changes)
+- Changes are backward compatible (no API changes to helper methods)
+
+**Files Modified:**
+- tests/e2e/helpers/github_helper.py (added logging throughout)
+- tests/e2e/test_workflow_e2e.py (enhanced assertions in 3 test functions)
+- .github/workflows/e2e-test.yml (added artifact upload, enhanced failure message)
+
+**Impact:**
+Future E2E test failures will now provide:
+1. Timestamped log of all GitHub API operations with timing
+2. Direct links to workflow runs and PRs in error messages
+3. Downloadable diagnostic artifacts including full test output
+4. Poll progress tracking to identify slow operations
+5. Clear debugging instructions in GitHub Actions UI
+6. Complete context about what was expected vs. what was found
+
+This dramatically reduces the time needed to diagnose E2E test failures, especially timeout issues and workflow execution problems.
 
 ---
 
