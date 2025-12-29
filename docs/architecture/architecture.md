@@ -7,6 +7,7 @@ This document describes the architectural decisions and conventions used in the 
 - [Action Organization](#action-organization)
 - [Python-First Approach](#python-first-approach)
 - [Command Dispatcher Pattern](#command-dispatcher-pattern)
+- [Spec File Source of Truth](#spec-file-source-of-truth)
 - [Data Flow](#data-flow)
 - [Module Organization](#module-organization)
 
@@ -308,6 +309,130 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 
 ---
 
+## Spec File Source of Truth
+
+### Convention: Spec Files Must Live in Base Branch
+
+ClaudeStep follows a **base branch source of truth** pattern where:
+
+- **Spec files** (`spec.md`, `configuration.yml`) must exist in the base branch (typically `main`)
+- **All operations** fetch spec files via GitHub API, never from filesystem
+- **PRs do not modify** spec files - they only contain code changes
+- **Base branch is configurable** via `base_branch` input (defaults to `main`)
+
+### Why Base Branch as Source of Truth?
+
+**Benefits**:
+1. **Consistency** - Single source of truth for all workflow runs
+2. **Reliability** - No "file not found" errors from missing specs in test branches
+3. **Simplicity** - Users create/update specs once, merge to base, then run workflows
+4. **Scalability** - Statistics and discovery work across all projects without filesystem dependencies
+5. **Clear Workflow** - Create spec → Merge to base → Run ClaudeStep (easy to understand)
+
+**Comparison**:
+
+❌ **Filesystem-based approach** (what we avoid):
+```python
+# BAD: Reading from local filesystem
+with open("claude-step/my-project/spec.md", "r") as f:
+    spec_content = f.read()
+# Problem: File might not exist if not merged to current branch
+```
+
+✅ **GitHub API approach** (what we use):
+```python
+# GOOD: Fetching from base branch via API
+spec_content = get_file_from_branch(
+    repo="owner/repo",
+    branch="main",
+    file_path="claude-step/my-project/spec.md"
+)
+# Always fetches from base branch, regardless of current context
+```
+
+### Implementation
+
+**Validation** (`prepare.py`):
+```python
+# Before proceeding, validate spec files exist in base branch
+base_branch = os.getenv("BASE_BRANCH", "main")
+
+if not file_exists_in_branch(repo, base_branch, f"claude-step/{project}/spec.md"):
+    print(f"Error: spec.md not found in branch '{base_branch}'")
+    print(f"Please merge your spec files to '{base_branch}' before running ClaudeStep.")
+    sys.exit(1)
+```
+
+**Loading Specs** (`prepare.py`, `statistics_collector.py`):
+```python
+# Fetch spec content from base branch
+spec_content = get_file_from_branch(
+    repo=repo,
+    branch=base_branch,
+    file_path=f"claude-step/{project}/spec.md"
+)
+
+# Parse tasks from content string (not file path)
+tasks = find_next_available_task(spec_content=spec_content)
+```
+
+**GitHub API Helpers** (`infrastructure/github/operations.py`):
+```python
+def get_file_from_branch(repo: str, branch: str, file_path: str) -> Optional[str]:
+    """Fetch file content from specific branch via GitHub API"""
+    response = gh_api_call(f"/repos/{repo}/contents/{file_path}?ref={branch}")
+    content = base64.b64decode(response["content"]).decode("utf-8")
+    return content
+
+def file_exists_in_branch(repo: str, branch: str, file_path: str) -> bool:
+    """Check if file exists in specific branch"""
+    return get_file_from_branch(repo, branch, file_path) is not None
+```
+
+### User Workflow
+
+**Step 1**: Create spec files in project directory:
+```bash
+mkdir -p claude-step/my-project
+# Create spec.md and configuration.yml
+```
+
+**Step 2**: Merge to base branch:
+```bash
+git add claude-step/my-project/
+git commit -m "Add ClaudeStep project: my-project"
+git push origin main
+```
+
+**Step 3**: Run ClaudeStep workflow:
+- Workflow fetches specs from base branch via API
+- Creates PR with code changes (does not modify specs)
+- Users merge PR when ready
+- Next workflow run fetches updated specs from base branch
+
+### Error Handling
+
+**Missing Spec Files**:
+```
+Error: Spec files not found in branch 'main'
+Required files:
+  - claude-step/my-project/spec.md
+  - claude-step/my-project/configuration.yml
+
+Please merge your spec files to the 'main' branch before running ClaudeStep.
+```
+
+**Custom Base Branch**:
+```yaml
+# .github/workflows/claudestep.yml
+- uses: gestrich/claude-step@v1
+  with:
+    project_name: 'my-project'
+    base_branch: 'master'  # For repos using 'master' instead of 'main'
+```
+
+---
+
 ## Data Flow
 
 ### Main Action Flow
@@ -334,7 +459,9 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 │                                         │
 │  prepare:                               │
 │  • Detect project                       │
-│  • Load configuration                   │
+│  • Validate spec files exist in base    │
+│    branch (via GitHub API)              │
+│  • Load configuration from base branch  │
 │  • Check reviewer capacity              │
 │  • Find next task                       │
 │  • Create branch                        │
@@ -342,7 +469,6 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 │                                         │
 │  finalize:                              │
 │  • Commit changes                       │
-│  • Mark task complete in spec.md        │
 │  • Create pull request                  │
 │  • Upload metadata artifact             │
 │  • Generate summary                     │
@@ -379,7 +505,8 @@ def cmd_statistics(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 │  Python Command                         │
 │                                         │
 │  statistics:                            │
-│  • Collect project stats (spec.md)      │
+│  • Collect project stats from base      │
+│    branch (via GitHub API)              │
 │  • Collect team stats (GitHub API)      │
 │  • Generate reports                     │
 │  • Format for Slack                     │

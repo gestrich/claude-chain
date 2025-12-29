@@ -12,7 +12,7 @@ inputs:
     required: true
     default: ${{ github.token }}
   base_branch:
-    description: 'Base branch where spec files are located'
+    description: 'Base branch where spec files must exist (fetched via GitHub API) for project discovery'
     required: false
     default: 'main'
   working_directory:

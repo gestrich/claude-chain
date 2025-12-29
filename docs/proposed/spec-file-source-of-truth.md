@@ -241,25 +241,37 @@ Delete existing project JSON files to start fresh with the new approach.
 **Expected Outcome:**
 ✅ Clean slate - no orphaned project metadata without corresponding specs
 
-- [ ] Phase 7: Update Documentation
+- [x] Phase 7: Update Documentation ✅
 
 Update user-facing documentation to reflect the new requirement.
 
 **Tasks:**
-- Update `README.md`:
-  - Add section explaining that spec files must be merged to base branch first
-  - Document the `base_branch` input parameter (defaults to "main")
-  - Explain workflow: Create spec → Merge to main → Run ClaudeStep
-- Update `action.yml` description for base_branch input
-- Update `docs/architecture/architecture.md` if needed
+- ✅ Update `README.md`:
+  - ✅ Add section explaining that spec files must be merged to base branch first
+  - ✅ Document the `base_branch` input parameter (defaults to "main")
+  - ✅ Explain workflow: Create spec → Merge to main → Run ClaudeStep
+- ✅ Update `action.yml` description for base_branch input
+- ✅ Update `docs/architecture/architecture.md` if needed
 
-**Files to Modify:**
-- `README.md`
-- `action.yml`
-- Potentially `docs/architecture/architecture.md`
+**Files Modified:**
+- `README.md` - Added important notice in Step 5 about spec file requirements (lines 147-160), updated base_branch input description (line 256), added base_branch to statistics workflow example (line 235)
+- `action.yml` - Updated base_branch description to clarify it's where specs must exist and are fetched via API (line 32)
+- `statistics/action.yml` - Updated base_branch description (line 15)
+- `discovery/action.yml` - Updated base_branch description (line 15)
+- `docs/architecture/architecture.md` - Added new "Spec File Source of Truth" section (lines 312-433) with comprehensive explanation of the pattern, updated data flow diagrams (lines 337-343, 383-384)
+
+**Technical Notes:**
+- README.md now clearly explains in Step 5 that spec files must exist in base branch before running ClaudeStep
+- Added workflow diagram: "Create spec files → Merge to base branch → Run ClaudeStep"
+- Updated base_branch input descriptions across all three actions (main, statistics, discovery) to clarify that specs are fetched via GitHub API
+- Added comprehensive architecture documentation explaining the base branch source of truth pattern
+- Architecture docs include code examples showing the GitHub API approach vs filesystem approach
+- Documented error handling for missing spec files
+- Included examples of custom base branch configuration (e.g., for repos using "master")
+- All changes maintain backward compatibility - base_branch defaults to "main"
 
 **Expected Outcome:**
-Users understand they must merge specs before running workflows
+✅ Users understand they must merge specs before running workflows
 
 - [ ] Phase 8: Update E2E Tests to Use Real Project
 

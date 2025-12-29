@@ -144,7 +144,20 @@ This grants permissions for Claude to read your spec and create pull requests.
 
 #### Push Changes to your base branch
 
-Commit and push your configuration, spec, and workflow file to your base branch, often named "main" 
+**Important:** ClaudeStep requires all spec files to exist in your base branch before running. This ensures a consistent source of truth for all operations.
+
+Commit and push your configuration, spec, and workflow file to your base branch (typically "main"):
+
+```bash
+git add claude-step/my-refactor/
+git add .github/workflows/claude-step.yml
+git commit -m "Add ClaudeStep configuration for my-refactor"
+git push origin main
+```
+
+**Workflow:** Create spec files → Merge to base branch → Run ClaudeStep
+
+If you attempt to run ClaudeStep without spec files in your base branch, you'll receive a clear error message indicating which files are missing.
 
 #### Trigger Initial Workflow
 
@@ -219,6 +232,7 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           days_back: 7
+          base_branch: main  # Optional: specify if using non-default branch
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}  # Enable statistics notifications
 ```
 
@@ -240,7 +254,7 @@ jobs:
 | `project_name` | Y | - | Project folder name under `/claude-step` |
 | `claude_model` | N | `claude-sonnet-4-5` | Claude model to use (e.g., claude-3-haiku-20240307, claude-sonnet-4-5, claude-opus-4-5) |
 | `claude_allowed_tools` | N | `Write,Read,Bash,Edit` | Comma-separated list of tools Claude can use |
-| `base_branch` | N | `main` | Base branch for PRs |
+| `base_branch` | N | `main` | Base branch where spec files must exist and PRs will target. Spec files are fetched from this branch via GitHub API. |
 | `working_directory` | N | `.` | Working directory |
 | `add_pr_summary` | N | `true` | Add AI-generated summary comment to PR |
 | `slack_webhook_url` | N | - | Slack webhook URL for PR notifications |

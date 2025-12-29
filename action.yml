@@ -29,7 +29,7 @@ inputs:
     required: false
     default: 'Write,Read,Bash,Edit'
   base_branch:
-    description: 'Base branch for pull requests'
+    description: 'Base branch where spec files must exist (fetched via GitHub API) and where pull requests will target'
     required: false
     default: 'main'
   working_directory:
