@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from claudestep.application.formatters.table_formatter import TableFormatter
 
@@ -783,3 +784,387 @@ class ProjectMetadata:
             last_updated=datetime.now(),
             tasks=[],
         )
+
+
+# ============================================================================
+# Alternative Model 3: Hybrid Approach
+# ============================================================================
+# This is an alternative data model design that separates tasks (spec.md content)
+# from pull requests (execution details). See docs/proposed/github-model-alternatives.md
+# for full design rationale and comparison with other models.
+#
+# Key characteristics:
+# - Task: Lightweight reference to spec.md with explicit status
+# - PullRequest: Execution details that reference tasks by index
+# - Clear separation: Task = "what" (spec), PR = "how" (execution)
+# - Status enum: Explicit state machine (pending → in_progress → completed)
+# ============================================================================
+
+
+class TaskStatus(str, Enum):
+    """Status of a task in ClaudeStep
+
+    State machine:
+    - PENDING: Not yet started (no PR created)
+    - IN_PROGRESS: PR created but not merged
+    - COMPLETED: PR merged
+    """
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+
+
+@dataclass
+class Task:
+    """Lightweight task reference from spec.md
+
+    Represents a task definition from spec.md with its current status.
+    Status is derived from associated PullRequest state.
+    """
+
+    index: int  # Position in spec.md (1-based)
+    description: str  # Task description from spec.md
+    status: TaskStatus  # Current task status (derived from PR state)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Task":
+        """Parse from JSON dictionary
+
+        Args:
+            data: Dictionary containing task data
+
+        Returns:
+            Task instance
+        """
+        status_str = data.get("status", "pending")
+        status = TaskStatus(status_str)
+
+        return cls(
+            index=data["index"],
+            description=data["description"],
+            status=status,
+        )
+
+    def to_dict(self) -> dict:
+        """Serialize to JSON dictionary
+
+        Returns:
+            Dictionary representation suitable for JSON serialization
+        """
+        return {
+            "index": self.index,
+            "description": self.description,
+            "status": self.status.value,
+        }
+
+
+@dataclass
+class AIOperation:
+    """Metadata for a single AI operation within a PR
+
+    Represents one AI operation (e.g., code generation, PR summary, refinement)
+    that contributes to a pull request.
+
+    This is similar to AITask but renamed to clarify it's an operation
+    within a PR execution.
+    """
+
+    type: str  # Operation type: "PRCreation", "PRRefinement", "PRSummary", etc.
+    model: str  # AI model used (e.g., "claude-sonnet-4", "claude-opus-4")
+    cost_usd: float  # Cost for this specific AI operation
+    created_at: datetime  # When this AI operation was executed
+    workflow_run_id: int  # GitHub Actions run that executed this operation
+    tokens_input: int = 0  # Input tokens used
+    tokens_output: int = 0  # Output tokens generated
+    duration_seconds: float = 0.0  # Time taken for this operation
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AIOperation":
+        """Parse from JSON dictionary
+
+        Args:
+            data: Dictionary containing AI operation data
+
+        Returns:
+            AIOperation instance
+        """
+        created_at = data["created_at"]
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+
+        return cls(
+            type=data["type"],
+            model=data["model"],
+            cost_usd=data["cost_usd"],
+            created_at=created_at,
+            workflow_run_id=data["workflow_run_id"],
+            tokens_input=data.get("tokens_input", 0),
+            tokens_output=data.get("tokens_output", 0),
+            duration_seconds=data.get("duration_seconds", 0.0),
+        )
+
+    def to_dict(self) -> dict:
+        """Serialize to JSON dictionary
+
+        Returns:
+            Dictionary representation suitable for JSON serialization
+        """
+        return {
+            "type": self.type,
+            "model": self.model,
+            "cost_usd": self.cost_usd,
+            "created_at": self.created_at.isoformat(),
+            "workflow_run_id": self.workflow_run_id,
+            "tokens_input": self.tokens_input,
+            "tokens_output": self.tokens_output,
+            "duration_seconds": self.duration_seconds,
+        }
+
+
+@dataclass
+class PullRequest:
+    """Pull request execution details
+
+    Represents a PR created for a task, with all execution metadata.
+    References a Task by task_index.
+
+    Multiple PRs can reference the same task_index (retry scenario).
+    """
+
+    task_index: int  # References Task.index
+    pr_number: int  # GitHub PR number
+    branch_name: str  # Git branch for this PR
+    reviewer: str  # Assigned reviewer username
+    pr_state: str  # "open", "merged", "closed"
+    created_at: datetime  # When PR was created
+    ai_operations: List[AIOperation]  # All AI work for this PR
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "PullRequest":
+        """Parse from JSON dictionary
+
+        Args:
+            data: Dictionary containing pull request data
+
+        Returns:
+            PullRequest instance
+        """
+        created_at = data["created_at"]
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+
+        ai_operations = [
+            AIOperation.from_dict(op_data) for op_data in data.get("ai_operations", [])
+        ]
+
+        return cls(
+            task_index=data["task_index"],
+            pr_number=data["pr_number"],
+            branch_name=data["branch_name"],
+            reviewer=data["reviewer"],
+            pr_state=data["pr_state"],
+            created_at=created_at,
+            ai_operations=ai_operations,
+        )
+
+    def to_dict(self) -> dict:
+        """Serialize to JSON dictionary
+
+        Returns:
+            Dictionary representation suitable for JSON serialization
+        """
+        return {
+            "task_index": self.task_index,
+            "pr_number": self.pr_number,
+            "branch_name": self.branch_name,
+            "reviewer": self.reviewer,
+            "pr_state": self.pr_state,
+            "created_at": self.created_at.isoformat(),
+            "ai_operations": [op.to_dict() for op in self.ai_operations],
+        }
+
+    def get_total_cost(self) -> float:
+        """Calculate total cost from all AI operations
+
+        Returns:
+            Total cost in USD
+        """
+        return sum(op.cost_usd for op in self.ai_operations)
+
+
+@dataclass
+class HybridProjectMetadata:
+    """Project metadata using Hybrid model (Alternative 3)
+
+    This model separates tasks (spec.md content) from pull requests (execution).
+    See docs/proposed/github-model-alternatives.md for design rationale.
+
+    Key characteristics:
+    - All tasks from spec.md are always present with explicit status
+    - PRs are separate entities that reference tasks by index
+    - Status is derived from PR state (single source of truth)
+    - Supports multiple PRs per task (retry scenario)
+    """
+
+    schema_version: str  # Should be "2.0" for this model
+    project: str  # Project name/identifier
+    last_updated: datetime  # Last modification timestamp
+    tasks: List[Task]  # All tasks from spec.md (always present)
+    pull_requests: List[PullRequest]  # All PRs created (execution history)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "HybridProjectMetadata":
+        """Parse from JSON dictionary
+
+        Args:
+            data: Dictionary containing project metadata
+
+        Returns:
+            HybridProjectMetadata instance
+        """
+        last_updated = data["last_updated"]
+        if isinstance(last_updated, str):
+            last_updated = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+
+        tasks = [Task.from_dict(task_data) for task_data in data.get("tasks", [])]
+        pull_requests = [
+            PullRequest.from_dict(pr_data) for pr_data in data.get("pull_requests", [])
+        ]
+
+        return cls(
+            schema_version=data.get("schema_version", "2.0"),
+            project=data["project"],
+            last_updated=last_updated,
+            tasks=tasks,
+            pull_requests=pull_requests,
+        )
+
+    def to_dict(self) -> dict:
+        """Serialize to JSON dictionary
+
+        Returns:
+            Dictionary representation suitable for JSON serialization
+        """
+        return {
+            "schema_version": self.schema_version,
+            "project": self.project,
+            "last_updated": self.last_updated.isoformat(),
+            "tasks": [task.to_dict() for task in self.tasks],
+            "pull_requests": [pr.to_dict() for pr in self.pull_requests],
+        }
+
+    def sync_task_statuses(self) -> None:
+        """Synchronize task statuses with PR states
+
+        Updates all task statuses based on their associated PRs.
+        This ensures status is derived from PR state (single source of truth).
+
+        For tasks with multiple PRs (retry scenario), uses the latest PR.
+        """
+        for task in self.tasks:
+            # Find all PRs for this task
+            prs_for_task = [pr for pr in self.pull_requests if pr.task_index == task.index]
+
+            if not prs_for_task:
+                task.status = TaskStatus.PENDING
+                continue
+
+            # Use latest PR to determine status
+            latest_pr = max(prs_for_task, key=lambda pr: pr.created_at)
+
+            if latest_pr.pr_state == "merged":
+                task.status = TaskStatus.COMPLETED
+            elif latest_pr.pr_state in ["open", "closed"]:
+                task.status = TaskStatus.IN_PROGRESS
+            else:
+                task.status = TaskStatus.PENDING
+
+    @classmethod
+    def create_empty(cls, project: str) -> "HybridProjectMetadata":
+        """Create an empty project metadata instance
+
+        Args:
+            project: Project name
+
+        Returns:
+            Empty HybridProjectMetadata instance with current timestamp
+        """
+        return cls(
+            schema_version="2.0",
+            project=project,
+            last_updated=datetime.now(),
+            tasks=[],
+            pull_requests=[],
+        )
+
+    def get_task_by_index(self, index: int) -> Optional[Task]:
+        """Get task by index
+
+        Args:
+            index: Task index (1-based)
+
+        Returns:
+            Task instance or None if not found
+        """
+        for task in self.tasks:
+            if task.index == index:
+                return task
+        return None
+
+    def get_prs_for_task(self, task_index: int) -> List[PullRequest]:
+        """Get all PRs for a specific task
+
+        Args:
+            task_index: Task index (1-based)
+
+        Returns:
+            List of PullRequest instances (may be empty, or multiple for retries)
+        """
+        return [pr for pr in self.pull_requests if pr.task_index == task_index]
+
+    def get_latest_pr_for_task(self, task_index: int) -> Optional[PullRequest]:
+        """Get the latest PR for a specific task
+
+        Args:
+            task_index: Task index (1-based)
+
+        Returns:
+            Latest PullRequest instance or None if no PRs exist
+        """
+        prs = self.get_prs_for_task(task_index)
+        if not prs:
+            return None
+        return max(prs, key=lambda pr: pr.created_at)
+
+    def get_pending_tasks(self) -> List[Task]:
+        """Get all pending tasks
+
+        Returns:
+            List of Task instances with status PENDING
+        """
+        return [task for task in self.tasks if task.status == TaskStatus.PENDING]
+
+    def get_in_progress_tasks(self) -> List[Task]:
+        """Get all in-progress tasks
+
+        Returns:
+            List of Task instances with status IN_PROGRESS
+        """
+        return [task for task in self.tasks if task.status == TaskStatus.IN_PROGRESS]
+
+    def get_completed_tasks(self) -> List[Task]:
+        """Get all completed tasks
+
+        Returns:
+            List of Task instances with status COMPLETED
+        """
+        return [task for task in self.tasks if task.status == TaskStatus.COMPLETED]
+
+    def get_total_cost(self) -> float:
+        """Calculate total cost across all PRs
+
+        Returns:
+            Total cost in USD
+        """
+        return sum(pr.get_total_cost() for pr in self.pull_requests)

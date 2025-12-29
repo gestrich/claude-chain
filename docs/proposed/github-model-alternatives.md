@@ -1332,7 +1332,7 @@ for task_index in range(1, project.total_tasks + 1):
 - Many query patterns would need to add spec.md reading logic
 - Risk of `total_tasks` becoming stale if spec.md changes
 
-## Phase 4: Alternative Model 3 - Hybrid Approach
+## Phase 4: Alternative Model 3 - Hybrid Approach ✅
 
 **Concept:**
 ```
@@ -1352,21 +1352,629 @@ Project
 - **PullRequest**: Execution details, references task by index
 - **Clear separation**: Task is "what" (spec), PR is "how" (execution)
 
-**Tasks:**
+### Detailed Structure Diagram
 
-- Create detailed diagram showing this structure
-- Show example JSON for same 5-task project
-- Document how this handles:
-  - Task status transitions
-  - Linking PRs to tasks (by task_index)
-  - Multiple PRs for same task (if needed)
-  - Statistics queries
-- List pros and cons vs all previous models
+```
+Project
+├── schema_version: str                   # Metadata format version (e.g., "1.0")
+├── project: str                          # Project name/identifier
+├── last_updated: datetime                # Last modification timestamp
+├── tasks: List[Task]                     # All tasks from spec.md (always present)
+│   └── Task
+│       ├── index: int                    # Position in spec.md (1-based)
+│       ├── description: str              # Task description from spec.md
+│       └── status: TaskStatus            # Enum: "pending" | "in_progress" | "completed"
+└── pull_requests: List[PullRequest]      # All PRs created (execution history)
+    └── PullRequest
+        ├── task_index: int               # References Task.index
+        ├── pr_number: int                # GitHub PR number
+        ├── branch_name: str              # Git branch for this PR
+        ├── reviewer: str                 # Assigned reviewer username
+        ├── pr_state: str                 # "open", "merged", "closed"
+        ├── created_at: datetime          # When PR was created
+        └── ai_operations: List[AIOperation]  # All AI work for this PR
+            └── AIOperation
+                ├── type: str                 # "PRCreation", "PRRefinement", "PRSummary"
+                ├── model: str                # AI model used (e.g., "claude-sonnet-4")
+                ├── cost_usd: float           # Cost for this operation
+                ├── created_at: datetime      # When this operation was executed
+                ├── workflow_run_id: int      # GitHub Actions run that executed this
+                ├── tokens_input: int         # Input tokens (default: 0)
+                ├── tokens_output: int        # Output tokens (default: 0)
+                └── duration_seconds: float   # Execution time (default: 0.0)
 
-**Expected Outcome:**
-- Visual diagram of hybrid model
-- Example JSON demonstrating the structure
-- Analysis of balance between simplicity and explicitness
+TaskStatus: Enum
+├── "pending"       # Not yet started
+├── "in_progress"   # PR created but not merged
+└── "completed"     # PR merged
+```
+
+### Key Relationships and Design Decisions
+
+#### 1. Task → PullRequest Relationship
+
+**One-to-One (Primary Case):**
+- Most tasks have exactly one PR
+- PR's `task_index` references `Task.index`
+- Task's `status` is derived from PR state:
+  - No PR for this task → `status = "pending"`
+  - PR exists and `pr_state = "open"` → `status = "in_progress"`
+  - PR exists and `pr_state = "merged"` → `status = "completed"`
+
+**One-to-Many (Retry Case):**
+- If a task has multiple PRs (e.g., first PR was closed, second PR succeeded):
+  - Multiple PRs can reference the same `task_index`
+  - Task status is determined by the latest PR (by `created_at`)
+  - All PR history is preserved
+
+**Example Query:**
+```python
+# Get PR for a specific task
+prs_for_task = [pr for pr in project.pull_requests if pr.task_index == task.index]
+if prs_for_task:
+    latest_pr = max(prs_for_task, key=lambda pr: pr.created_at)
+    # Use latest_pr to determine task status
+```
+
+#### 2. Task Status Synchronization
+
+The `status` field on `Task` is **derived** from PR state, not independently set:
+
+```python
+def calculate_task_status(task: Task, pull_requests: List[PullRequest]) -> TaskStatus:
+    """Calculate task status from PR state"""
+    prs_for_task = [pr for pr in pull_requests if pr.task_index == task.index]
+
+    if not prs_for_task:
+        return TaskStatus.PENDING
+
+    latest_pr = max(prs_for_task, key=lambda pr: pr.created_at)
+
+    if latest_pr.pr_state == "merged":
+        return TaskStatus.COMPLETED
+    elif latest_pr.pr_state in ["open", "closed"]:
+        return TaskStatus.IN_PROGRESS
+    else:
+        return TaskStatus.PENDING
+```
+
+**Why derive instead of store?**
+- Single source of truth (PR state)
+- No risk of status/PR state becoming inconsistent
+- Simpler updates: just update PR state, status follows automatically
+
+#### 3. Explicit vs Implicit Status
+
+**This model chooses: Explicit status field**
+
+Rationale:
+- Makes queries clearer: `task.status == TaskStatus.COMPLETED` vs checking PR state
+- Enables faster filtering without PR lookups
+- Documents the state machine clearly in the type system
+- Status can be computed on load and cached in the object
+
+### Example JSON: Auth Refactor Project
+
+This example shows a project with 5 tasks:
+- Task 1: Merged (completed)
+- Task 2: In progress (open PR)
+- Task 3: Pending (not started)
+- Task 4: Pending (not started)
+- Task 5: Pending (not started)
+
+```json
+{
+  "schema_version": "1.0",
+  "project": "auth-refactor",
+  "last_updated": "2025-12-29T10:30:00Z",
+  "tasks": [
+    {
+      "index": 1,
+      "description": "Set up authentication middleware",
+      "status": "completed"
+    },
+    {
+      "index": 2,
+      "description": "Implement OAuth2 authentication flow",
+      "status": "in_progress"
+    },
+    {
+      "index": 3,
+      "description": "Add email validation to user registration form",
+      "status": "pending"
+    },
+    {
+      "index": 4,
+      "description": "Implement password reset functionality",
+      "status": "pending"
+    },
+    {
+      "index": 5,
+      "description": "Add two-factor authentication support",
+      "status": "pending"
+    }
+  ],
+  "pull_requests": [
+    {
+      "task_index": 1,
+      "pr_number": 41,
+      "branch_name": "claudestep/auth-refactor/step-1",
+      "reviewer": "bob",
+      "pr_state": "merged",
+      "created_at": "2025-12-28T14:20:00Z",
+      "ai_operations": [
+        {
+          "type": "PRCreation",
+          "model": "claude-sonnet-4",
+          "cost_usd": 0.12,
+          "created_at": "2025-12-28T14:20:00Z",
+          "workflow_run_id": 123450,
+          "tokens_input": 4500,
+          "tokens_output": 1800,
+          "duration_seconds": 42.1
+        }
+      ]
+    },
+    {
+      "task_index": 2,
+      "pr_number": 42,
+      "branch_name": "claudestep/auth-refactor/step-2",
+      "reviewer": "alice",
+      "pr_state": "open",
+      "created_at": "2025-12-29T10:30:00Z",
+      "ai_operations": [
+        {
+          "type": "PRCreation",
+          "model": "claude-sonnet-4",
+          "cost_usd": 0.15,
+          "created_at": "2025-12-29T10:30:00Z",
+          "workflow_run_id": 123456,
+          "tokens_input": 5000,
+          "tokens_output": 2000,
+          "duration_seconds": 45.2
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Example: Task with Multiple PRs (Retry Scenario)
+
+This shows Task 1 with two PR attempts: first was closed, second succeeded.
+
+```json
+{
+  "schema_version": "1.0",
+  "project": "auth-refactor",
+  "last_updated": "2025-12-29T16:00:00Z",
+  "tasks": [
+    {
+      "index": 1,
+      "description": "Set up authentication middleware",
+      "status": "completed"
+    }
+  ],
+  "pull_requests": [
+    {
+      "task_index": 1,
+      "pr_number": 40,
+      "branch_name": "claudestep/auth-refactor/step-1-attempt-1",
+      "reviewer": "bob",
+      "pr_state": "closed",
+      "created_at": "2025-12-27T09:00:00Z",
+      "ai_operations": [
+        {
+          "type": "PRCreation",
+          "model": "claude-sonnet-4",
+          "cost_usd": 0.12,
+          "created_at": "2025-12-27T09:00:00Z",
+          "workflow_run_id": 123440,
+          "tokens_input": 4500,
+          "tokens_output": 1800,
+          "duration_seconds": 42.1
+        }
+      ]
+    },
+    {
+      "task_index": 1,
+      "pr_number": 41,
+      "branch_name": "claudestep/auth-refactor/step-1",
+      "reviewer": "bob",
+      "pr_state": "merged",
+      "created_at": "2025-12-28T14:20:00Z",
+      "ai_operations": [
+        {
+          "type": "PRCreation",
+          "model": "claude-sonnet-4",
+          "cost_usd": 0.12,
+          "created_at": "2025-12-28T14:20:00Z",
+          "workflow_run_id": 123450,
+          "tokens_input": 4500,
+          "tokens_output": 1800,
+          "duration_seconds": 42.1
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Note:** Task status is "completed" based on the latest PR (PR #41, merged).
+
+### Example: PR with Multiple AI Operations (Refinements)
+
+This shows a PR with initial creation plus two refinement operations:
+
+```json
+{
+  "task_index": 1,
+  "pr_number": 41,
+  "branch_name": "claudestep/auth-refactor/step-1",
+  "reviewer": "bob",
+  "pr_state": "merged",
+  "created_at": "2025-12-28T14:20:00Z",
+  "ai_operations": [
+    {
+      "type": "PRCreation",
+      "model": "claude-sonnet-4",
+      "cost_usd": 0.12,
+      "created_at": "2025-12-28T14:20:00Z",
+      "workflow_run_id": 123450,
+      "tokens_input": 4500,
+      "tokens_output": 1800,
+      "duration_seconds": 42.1
+    },
+    {
+      "type": "PRRefinement",
+      "model": "claude-sonnet-4",
+      "cost_usd": 0.08,
+      "created_at": "2025-12-28T16:45:00Z",
+      "workflow_run_id": 123451,
+      "tokens_input": 3000,
+      "tokens_output": 1200,
+      "duration_seconds": 28.5
+    },
+    {
+      "type": "PRRefinement",
+      "model": "claude-sonnet-4",
+      "cost_usd": 0.06,
+      "created_at": "2025-12-28T18:15:00Z",
+      "workflow_run_id": 123452,
+      "tokens_input": 2500,
+      "tokens_output": 1000,
+      "duration_seconds": 22.3
+    }
+  ]
+}
+```
+
+### How This Model Handles Different Scenarios
+
+#### 1. Not-Yet-Started Tasks
+
+**Current Model:**
+```json
+{
+  "step_index": 3,
+  "step_description": "Add email validation"
+}
+```
+
+**Alternative 1 (Spec/Exec):**
+```json
+{
+  "spec": {
+    "tasks": [{"index": 3, "description": "Add email validation"}]
+  },
+  "executions": []
+}
+```
+
+**Alternative 2 (PR-Centric):**
+```json
+{
+  "total_tasks": 5,
+  "pull_requests": []  // Task 3 not in list
+}
+```
+
+**Alternative 3 (Hybrid):**
+```json
+{
+  "tasks": [
+    {
+      "index": 3,
+      "description": "Add email validation",
+      "status": "pending"
+    }
+  ],
+  "pull_requests": []
+}
+```
+
+**Key Difference:**
+- Current: Minimal object with optional fields
+- Alternative 1: Task in spec, no execution
+- Alternative 2: Task not represented at all
+- **Alternative 3: Task explicitly present with status "pending"**
+
+**Benefits:**
+- Task always visible in task list
+- Clear status indicator without checking PR list
+- No ambiguity about whether task exists
+
+#### 2. Progress Statistics
+
+```python
+# Current model
+total = len(project.steps)
+completed = sum(1 for s in project.steps if s.pr_state == "merged")
+in_progress = sum(1 for s in project.steps if s.pr_state == "open")
+pending = sum(1 for s in project.steps if not s.is_started())
+
+# Alternative 3 (Hybrid)
+total = len(project.tasks)
+completed = sum(1 for t in project.tasks if t.status == TaskStatus.COMPLETED)
+in_progress = sum(1 for t in project.tasks if t.status == TaskStatus.IN_PROGRESS)
+pending = sum(1 for t in project.tasks if t.status == TaskStatus.PENDING)
+
+completion_pct = (completed / total) * 100 if total > 0 else 0
+```
+
+**Benefits:**
+- Cleaner: iterate tasks, check status enum
+- Faster: no need to check PR list
+- More explicit: status is first-class concept
+
+#### 3. Next Step Selection
+
+```python
+# Current model
+next_step = next(s for s in project.steps if not s.is_started())
+
+# Alternative 3 (Hybrid)
+next_task = next(t for t in project.tasks if t.status == TaskStatus.PENDING)
+```
+
+**Benefits:**
+- Simpler: just check status enum
+- No method call (`is_started()`)
+- Status is explicit, not derived
+
+#### 4. Reviewer Capacity Checking
+
+```python
+# Both models work similarly
+open_prs_by_reviewer = {}
+for pr in project.pull_requests:
+    if pr.pr_state == "open":
+        open_prs_by_reviewer.setdefault(pr.reviewer, []).append(pr)
+```
+
+**No significant difference** - both iterate PRs.
+
+#### 5. Cost Analysis
+
+```python
+# Both models work similarly
+total_cost = 0
+cost_by_model = {}
+
+for pr in project.pull_requests:
+    for op in pr.ai_operations:
+        total_cost += op.cost_usd
+        cost_by_model.setdefault(op.model, 0)
+        cost_by_model[op.model] += op.cost_usd
+```
+
+**No significant difference** - both iterate PRs and operations.
+
+#### 6. Multiple Attempts at Same Task
+
+**Current Model:**
+Not directly supported. Would need major restructuring.
+
+**Alternative 1 (Spec/Exec):**
+```python
+# Multiple executions for same task_index
+executions_for_task = [e for e in project.executions if e.task_index == 1]
+```
+
+**Alternative 3 (Hybrid):**
+```python
+# Multiple PRs for same task_index
+prs_for_task = [pr for pr in project.pull_requests if pr.task_index == 1]
+latest_pr = max(prs_for_task, key=lambda pr: pr.created_at)
+```
+
+**Benefits:**
+- Natural support for retries (like Alternative 1)
+- Complete history preserved
+- Task status reflects latest attempt
+
+### Pros and Cons vs All Previous Models
+
+#### Pros ✅
+
+**vs Current Model:**
+
+1. **Explicit Status Enum**
+   - Current: Must check optional fields and PR state to determine status
+   - Hybrid: `task.status` is explicit and type-safe
+   - Benefit: Clearer code, easier to reason about
+
+2. **No Optional Fields Confusion**
+   - Current: Step has many optional fields (pr_number, branch_name, etc.)
+   - Hybrid: Task has no optional fields, PullRequest has no optional fields
+   - Benefit: Two "modes" eliminated, every entity is fully formed
+
+3. **Clearer Separation of Concerns**
+   - Current: Step mixes task definition and PR execution
+   - Hybrid: Task = "what" (spec), PullRequest = "how" (execution)
+   - Benefit: Entity responsibilities are clear
+
+4. **Better Support for Retries**
+   - Current: Not supported without major changes
+   - Hybrid: Multiple PRs can reference same task_index naturally
+   - Benefit: Future-proof for retry logic
+
+5. **Simpler Queries**
+   ```python
+   # Current: Check optional fields
+   if step.pr_number and step.pr_state == "merged":
+       ...
+
+   # Hybrid: Check status enum
+   if task.status == TaskStatus.COMPLETED:
+       ...
+   ```
+
+**vs Alternative 1 (Spec/Exec):**
+
+1. **Simpler Structure**
+   - Alt 1: Project → Spec → Tasks + Project → Executions → Operations
+   - Hybrid: Project → Tasks + Project → PullRequests → Operations
+   - Benefit: One less nesting level (no Spec wrapper)
+
+2. **Easier Status Checking**
+   - Alt 1: Must join tasks and executions to determine status
+   - Hybrid: Status is directly on Task object
+   - Benefit: Faster queries, no joins needed
+
+3. **Less Conceptual Overhead**
+   - Alt 1: Must understand Spec vs Execution distinction
+   - Hybrid: Task is just a task with a status
+   - Benefit: Simpler mental model
+
+**vs Alternative 2 (PR-Centric):**
+
+1. **Complete Task Visibility**
+   - Alt 2: Pending tasks not visible, must infer from total_tasks
+   - Hybrid: All tasks always visible with explicit status
+   - Benefit: Can iterate all tasks directly
+
+2. **No Spec.md Dependency for Common Queries**
+   - Alt 2: Must read spec.md to get pending task descriptions
+   - Hybrid: Task descriptions always in metadata
+   - Benefit: Metadata is self-contained
+
+3. **Explicit Task List**
+   - Alt 2: `total_tasks` can become stale if spec.md changes
+   - Hybrid: Task list is explicit and kept in sync
+   - Benefit: Easier to detect drift between spec.md and metadata
+
+#### Cons ❌
+
+**vs Current Model:**
+
+1. **Migration Complexity**
+   - Current → Hybrid requires:
+     - Rename Step → Task
+     - Extract PR fields into PullRequest object
+     - Add status enum calculation
+     - Transform AITask → AIOperation
+   - Significant code changes across codebase
+
+2. **More Objects**
+   - Current: Project → Step → AITask (2 nested objects)
+   - Hybrid: Project → Task, Project → PullRequest → AIOperation (3 parallel/nested)
+   - Slightly more complex structure
+
+3. **Status Synchronization**
+   - Current: PR state is single source of truth
+   - Hybrid: Status must be kept in sync with PR state
+   - Risk of status/PR state becoming inconsistent if not careful
+
+**vs Alternative 1 (Spec/Exec):**
+
+1. **Less Conceptual Purity**
+   - Alt 1: Clean separation of immutable spec and mutable executions
+   - Hybrid: Tasks have mutable status, PRs reference tasks
+   - Not as theoretically clean
+
+2. **Status is Derived, Not Stored**
+   - Alt 1: Status is purely derived from execution state
+   - Hybrid: Status is stored (must be kept in sync)
+   - More opportunity for inconsistency
+
+**vs Alternative 2 (PR-Centric):**
+
+1. **More JSON Verbosity**
+   - Alt 2: Minimal JSON for pending tasks (not in list)
+   - Hybrid: Every task is in JSON, even if pending
+   - Larger file size for projects with many pending tasks
+
+2. **Denormalized Data**
+   - Alt 2: Task descriptions in PRs only
+   - Hybrid: Task descriptions in Tasks AND referenced by PRs
+   - Some duplication
+
+#### Neutral Observations 🤔
+
+1. **Status Derivation vs Storage**
+   - Status could be computed on-the-fly from PRs (like Alt 1)
+   - Or stored and updated when PR state changes (current design)
+   - Trade-off: Consistency vs Performance
+
+2. **Task Index Fragility**
+   - All models use task index as identifier
+   - All models break if spec.md tasks are reordered
+   - Not a differentiator
+
+3. **AI Operation vs AI Task Naming**
+   - Alternative 3 uses "AIOperation"
+   - Current uses "AITask"
+   - Just terminology, no functional difference
+
+### Analysis Summary
+
+**Does this feel more natural than other alternatives?**
+
+**Yes, for ClaudeStep's use case.**
+
+**Why Hybrid is the Best Fit:**
+
+1. **Balances Simplicity and Explicitness**
+   - Simpler than Alternative 1 (no Spec wrapper, status on Task)
+   - More complete than Alternative 2 (all tasks visible)
+   - Clearer than Current (explicit status, separated concerns)
+
+2. **Matches Mental Model**
+   - Users think: "Here are my tasks (some pending, some done)"
+   - Model: `tasks` list with status enum
+   - Direct mapping = intuitive
+
+3. **Solves Current Model's Main Pain Points**
+   - ✅ Eliminates optional fields confusion
+   - ✅ Makes status explicit (no more checking multiple fields)
+   - ✅ Separates task definition from PR execution
+   - ✅ Supports retries naturally
+
+4. **Practical for ClaudeStep's Needs**
+   - Fast progress queries (iterate tasks, check status)
+   - Easy next-step selection (find first pending task)
+   - Complete task visibility (no spec.md reads needed)
+   - Self-contained metadata (all info in JSON)
+
+5. **Good for Future Extensions**
+   - Can support retry logic (multiple PRs per task)
+   - Can add task priority/dependencies later
+   - Status enum can be extended (e.g., "blocked", "failed")
+
+**Recommendation:** Alternative 3 (Hybrid) should be the target model for ClaudeStep.
+
+**Migration Strategy:**
+1. Create new dataclasses alongside current ones
+2. Add migration code to convert old format to new
+3. Update all readers/writers to use new model
+4. Deprecate old model after validation period
+
+**Technical Notes:**
+- Implementation files: `src/claudestep/domain/models.py`
+- New dataclasses: `Task`, `TaskStatus` (enum), `PullRequest`, `AIOperation`, `Project`
+- Status calculation: Derived from PR state on load, cached in Task object
+- Backward compatibility: New schema version "2.0", can still read "1.0"
 
 ## Phase 5: Comparison Matrix
 
