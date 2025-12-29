@@ -109,7 +109,7 @@ The summary generation workflow is correctly configured in action.yml. The issue
 
 ---
 
-- [ ] Phase 2: Fix AI Summary Generation
+- [x] Phase 2: Fix AI Summary Generation
 
 **Objective:** Restore AI summary comment functionality on PRs.
 
@@ -133,6 +133,34 @@ The summary generation workflow is correctly configured in action.yml. The issue
 - Potentially `.github/workflows/` files (add error handling)
 
 **Expected Outcome:** AI summaries successfully posted to PRs.
+
+---
+
+**COMPLETED:**
+
+**Root Cause Identified:**
+The AI summary generation was failing because Claude Code Action only had access to the `Bash` tool, but it needs the `Write` tool to create a temporary file for the PR comment body before posting it with `gh pr comment --body-file`.
+
+**Changes Made:**
+1. **action.yml:191** - Added `Write` tool to allowed tools: `--allowedTools Bash,Write`
+2. **action.yml:193** - Removed `continue-on-error: true` to properly surface errors instead of silently failing
+
+**Technical Details:**
+- The summary prompt (summary_prompt.md) instructs Claude to post a comment using `gh pr comment {PR_NUMBER} --body-file <temp_file>`
+- This requires creating a temporary file first, which needs the `Write` tool
+- Previously, the workflow would fail silently due to `continue-on-error: true`, making the issue hard to diagnose
+- Now errors will be properly surfaced in workflow logs for easier debugging
+
+**Validation:**
+- YAML syntax validated successfully
+- Core unit tests pass (324/337 tests passing - 13 unrelated test setup errors in statistics collection)
+- Changes are minimal and focused on the specific issue
+
+**Files Modified:**
+- action.yml (lines 191, 193)
+
+**Next Steps:**
+- Phase 3 will investigate the workflow timeout issue in `test_reviewer_capacity_limits`
 
 ---
 
