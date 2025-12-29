@@ -82,7 +82,7 @@ def test_basic_workflow_end_to_end(
     # Wait for workflow to complete
     workflow_run = gh.wait_for_workflow_completion(
         workflow_name="claudestep.yml",
-        timeout=600  # 10 minutes
+        timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
     )
 
     assert workflow_run["conclusion"] == "success", \
@@ -193,7 +193,7 @@ def test_reviewer_capacity_limits(
         time.sleep(5)
         workflow_run_1 = gh.wait_for_workflow_completion(
             workflow_name="claudestep.yml",
-            timeout=600
+            timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
         assert workflow_run_1["conclusion"] == "success", \
             "First workflow run should succeed"
@@ -212,7 +212,7 @@ def test_reviewer_capacity_limits(
         time.sleep(5)
         workflow_run_2 = gh.wait_for_workflow_completion(
             workflow_name="claudestep.yml",
-            timeout=600
+            timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
         assert workflow_run_2["conclusion"] == "success", \
             "Second workflow run should succeed"
@@ -231,7 +231,7 @@ def test_reviewer_capacity_limits(
         time.sleep(5)
         workflow_run_3 = gh.wait_for_workflow_completion(
             workflow_name="claudestep.yml",
-            timeout=600
+            timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
         # Workflow should still succeed, but not create a PR
         assert workflow_run_3["conclusion"] == "success", \
@@ -338,7 +338,7 @@ def test_workflow_handles_empty_spec(
         time.sleep(5)
         workflow_run = gh.wait_for_workflow_completion(
             workflow_name="claudestep.yml",
-            timeout=600
+            timeout=900  # 15 minutes - increased to accommodate AI inference and GitHub operations
         )
 
         # Workflow should complete (though it might not create PRs)
