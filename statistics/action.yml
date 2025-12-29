@@ -75,9 +75,8 @@ runs:
       if: steps.stats.outputs.has_statistics == 'true' && steps.stats.outputs.slack_webhook_url != ''
       uses: slackapi/slack-github-action@v2
       continue-on-error: true
-      env:
-        SLACK_WEBHOOK_URL: ${{ steps.stats.outputs.slack_webhook_url }}
       with:
+        webhook: ${{ steps.stats.outputs.slack_webhook_url }}
         webhook-type: incoming-webhook
         payload: |
           {
