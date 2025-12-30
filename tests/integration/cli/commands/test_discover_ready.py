@@ -47,14 +47,16 @@ class TestCheckProjectReady:
                 ]
                 mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.get_in_progress_task_indices") as mock_progress:
-                    mock_progress.return_value = set()
+                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                            mock_service = Mock()
+                            mock_service.get_in_progress_task_indices.return_value = set()
+                            mock_service.find_next_available_task.return_value = (2, "Task 2")
+                            mock_service_class.return_value = mock_service
 
-                    with patch("claudestep.cli.commands.discover_ready.find_next_available_task") as mock_task:
-                        mock_task.return_value = {"index": 2, "description": "Task 2"}
-
-                        # Act
-                        result = check_project_ready(project_name, repo)
+                            # Act
+                            result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is True
@@ -244,14 +246,16 @@ class TestCheckProjectReady:
                 mock_capacity_result.reviewer_status = []
                 mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.get_in_progress_task_indices") as mock_progress:
-                    mock_progress.return_value = set()
+                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                            mock_service = Mock()
+                            mock_service.get_in_progress_task_indices.return_value = set()
+                            mock_service.find_next_available_task.return_value = None  # No tasks
+                            mock_service_class.return_value = mock_service
 
-                    with patch("claudestep.cli.commands.discover_ready.find_next_available_task") as mock_task:
-                        mock_task.return_value = None  # No tasks
-
-                        # Act
-                        result = check_project_ready(project_name, repo)
+                            # Act
+                            result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
@@ -287,23 +291,25 @@ class TestCheckProjectReady:
                 mock_capacity_result.reviewer_status = [{"username": "alice", "openPRs": 0, "maxPRs": 2}]
                 mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.get_in_progress_task_indices") as mock_progress:
-                    mock_progress.return_value = set()
+                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                            mock_service = Mock()
+                            mock_service.get_in_progress_task_indices.return_value = set()
+                            mock_service.find_next_available_task.return_value = (1, "Task 1")
+                            mock_service_class.return_value = mock_service
 
-                    with patch("claudestep.cli.commands.discover_ready.find_next_available_task") as mock_task:
-                        mock_task.return_value = {"index": 1}
+                            # Act
+                            check_project_ready(project_name, repo)
 
-                        # Act
-                        check_project_ready(project_name, repo)
+                            # Assert
+                            mock_reviewer.assert_called_once()
+                            _, call_kwargs = mock_reviewer.call_args
+                            # Label is second positional arg
+                            assert mock_reviewer.call_args[0][1] == "claudestep"
 
-                        # Assert
-                        mock_reviewer.assert_called_once()
-                        _, call_kwargs = mock_reviewer.call_args
-                        # Label is second positional arg
-                        assert mock_reviewer.call_args[0][1] == "claudestep"
-
-                        mock_progress.assert_called_once()
-                        assert mock_progress.call_args[0][1] == "claudestep"
+                            mock_service.get_in_progress_task_indices.assert_called_once()
+                            assert mock_service.get_in_progress_task_indices.call_args[0][0] == "claudestep"
 
     def test_check_project_ready_handles_unexpected_errors(self, tmp_path, capsys):
         """Should return False and print error message on unexpected exceptions"""
@@ -353,14 +359,16 @@ class TestCheckProjectReady:
                 ]
                 mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.get_in_progress_task_indices") as mock_progress:
-                    mock_progress.return_value = set()
+                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                            mock_service = Mock()
+                            mock_service.get_in_progress_task_indices.return_value = set()
+                            mock_service.find_next_available_task.return_value = (2, "Task 2")
+                            mock_service_class.return_value = mock_service
 
-                    with patch("claudestep.cli.commands.discover_ready.find_next_available_task") as mock_task:
-                        mock_task.return_value = {"index": 2}
-
-                        # Act
-                        result = check_project_ready(project_name, repo)
+                            # Act
+                            result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is True

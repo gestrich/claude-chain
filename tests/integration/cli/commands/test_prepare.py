@@ -66,8 +66,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string") as mock_validate:
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists") as mock_label:
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command") as mock_git:
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content  # Returns content for both config and spec
@@ -117,8 +117,8 @@ class TestCmdPrepare:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                         with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                         # Setup mocks
                                                         mock_get_file.return_value = sample_spec_content
@@ -245,8 +245,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 # Setup mocks
                                                 mock_get_file.return_value = "config content"
                                                 mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
@@ -281,8 +281,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -318,8 +318,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command") as mock_git:
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -352,8 +352,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command") as mock_git:
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -388,8 +388,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -433,8 +433,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -581,8 +581,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists") as mock_label:
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -615,8 +615,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string") as mock_validate:
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -654,8 +654,8 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                     with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                        with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                            with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                        with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                     # Setup mocks
                                                     mock_get_file.return_value = sample_spec_content
@@ -722,8 +722,8 @@ class TestCmdPrepare:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                         with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                         with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
                                                             with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
@@ -774,8 +774,8 @@ class TestCmdPrepare:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                         with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                         with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
                                                             with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
@@ -824,8 +824,8 @@ class TestCmdPrepare:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                         with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                         with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
                                                             with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
@@ -876,8 +876,8 @@ class TestCmdPrepare:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
                                         with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
-                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
-                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                            with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
                                                         with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
                                                             with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:

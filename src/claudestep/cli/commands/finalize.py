@@ -13,7 +13,7 @@ from claudestep.infrastructure.github.actions import GitHubActionsHelper
 from claudestep.infrastructure.github.operations import run_gh_command, get_file_from_branch
 from claudestep.infrastructure.metadata.github_metadata_store import GitHubMetadataStore
 from claudestep.application.services.metadata_service import MetadataService
-from claudestep.application.services.task_management import mark_task_complete
+from claudestep.application.services.task_management import TaskManagementService
 
 
 def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
@@ -131,7 +131,7 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 
                 # Mark task as complete in the spec file
                 print(f"Marking task {task_index} as complete in spec.md...")
-                mark_task_complete(spec_file_path, task)
+                TaskManagementService.mark_task_complete(spec_file_path, task)
 
                 # Stage and commit the updated spec.md
                 run_git_command(["add", spec_file_path])

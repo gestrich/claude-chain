@@ -3,23 +3,27 @@
 import os
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
 from claudestep.domain.exceptions import FileNotFoundError
-from claudestep.application.services.task_management import (
-    find_next_available_task,
-    generate_task_id,
-    mark_task_complete,
-)
+from claudestep.application.services.task_management import TaskManagementService
 
 from tests.builders import SpecFileBuilder
+
+
+@pytest.fixture
+def task_service():
+    """Fixture to create TaskManagementService with mocked dependencies"""
+    mock_metadata_service = MagicMock()
+    return TaskManagementService(repo="owner/repo", metadata_service=mock_metadata_service)
 
 
 class TestFindNextAvailableTask:
     """Tests for find_next_available_task function"""
 
-    def test_find_first_unchecked_task(self, tmp_path):
+    def test_find_first_unchecked_task(self, tmp_path, task_service):
         """Should find the first unchecked task"""
         spec_path = (SpecFileBuilder()
                      .with_title("Test Project")
@@ -27,13 +31,13 @@ class TestFindNextAvailableTask:
                      .add_tasks("Task 1", "Task 2", "Task 3")
                      .write_to(tmp_path))
 
-        result = find_next_available_task(str(spec_path))
+        result = task_service.find_next_available_task(str(spec_path))
         assert result is not None
         task_index, task_text = result
         assert task_index == 1
         assert task_text == "Task 1"
 
-    def test_find_next_task_after_completed(self, tmp_path):
+    def test_find_next_task_after_completed(self, tmp_path, task_service):
         """Should find the next unchecked task after completed tasks"""
         spec_path = (SpecFileBuilder()
                      .with_title("Test Project")
@@ -42,13 +46,13 @@ class TestFindNextAvailableTask:
                      .add_tasks("Task 2", "Task 3")
                      .write_to(tmp_path))
 
-        result = find_next_available_task(str(spec_path))
+        result = task_service.find_next_available_task(str(spec_path))
         assert result is not None
         task_index, task_text = result
         assert task_index == 2
         assert task_text == "Task 2"
 
-    def test_find_next_task_with_multiple_completed(self, tmp_path):
+    def test_find_next_task_with_multiple_completed(self, tmp_path, task_service):
         """Should correctly index tasks when multiple are completed"""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("""# Test Project
@@ -61,13 +65,13 @@ class TestFindNextAvailableTask:
 - [ ] Task 4
 """)
 
-        result = find_next_available_task(str(spec_file))
+        result = task_service.find_next_available_task(str(spec_file))
         assert result is not None
         task_index, task_text = result
         assert task_index == 3
         assert task_text == "Task 3"
 
-    def test_skip_in_progress_tasks(self, tmp_path):
+    def test_skip_in_progress_tasks(self, tmp_path, task_service):
         """Should skip tasks that are already in progress"""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("""# Test Project
@@ -80,13 +84,13 @@ class TestFindNextAvailableTask:
 """)
 
         # Skip task 1 (it's in progress)
-        result = find_next_available_task(str(spec_file), skip_indices={1})
+        result = task_service.find_next_available_task(str(spec_file), skip_indices={1})
         assert result is not None
         task_index, task_text = result
         assert task_index == 2
         assert task_text == "Task 2"
 
-    def test_skip_multiple_in_progress_tasks(self, tmp_path):
+    def test_skip_multiple_in_progress_tasks(self, tmp_path, task_service):
         """Should skip multiple in-progress tasks"""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("""# Test Project
@@ -100,13 +104,13 @@ class TestFindNextAvailableTask:
 """)
 
         # Skip tasks 1 and 2 (they're in progress)
-        result = find_next_available_task(str(spec_file), skip_indices={1, 2})
+        result = task_service.find_next_available_task(str(spec_file), skip_indices={1, 2})
         assert result is not None
         task_index, task_text = result
         assert task_index == 3
         assert task_text == "Task 3"
 
-    def test_return_none_when_all_tasks_complete(self, tmp_path):
+    def test_return_none_when_all_tasks_complete(self, tmp_path, task_service):
         """Should return None when all tasks are completed"""
         spec_path = (SpecFileBuilder()
                      .with_title("Test Project")
@@ -116,10 +120,10 @@ class TestFindNextAvailableTask:
                      .add_completed_task("Task 3")
                      .write_to(tmp_path))
 
-        result = find_next_available_task(str(spec_path))
+        result = task_service.find_next_available_task(str(spec_path))
         assert result is None
 
-    def test_return_none_when_no_tasks(self, tmp_path):
+    def test_return_none_when_no_tasks(self, tmp_path, task_service):
         """Should return None when there are no tasks"""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("""# Test Project
@@ -127,10 +131,10 @@ class TestFindNextAvailableTask:
 This project has no tasks yet.
 """)
 
-        result = find_next_available_task(str(spec_file))
+        result = task_service.find_next_available_task(str(spec_file))
         assert result is None
 
-    def test_handle_capital_x_in_completed_tasks(self, tmp_path):
+    def test_handle_capital_x_in_completed_tasks(self, tmp_path, task_service):
         """Should recognize both [x] and [X] as completed"""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("""# Test Project
@@ -142,13 +146,13 @@ This project has no tasks yet.
 - [ ] Task 3
 """)
 
-        result = find_next_available_task(str(spec_file))
+        result = task_service.find_next_available_task(str(spec_file))
         assert result is not None
         task_index, task_text = result
         assert task_index == 3
         assert task_text == "Task 3"
 
-    def test_handle_indented_tasks(self, tmp_path):
+    def test_handle_indented_tasks(self, tmp_path, task_service):
         """Should handle tasks with various indentation levels"""
         spec_file = tmp_path / "spec.md"
         spec_file.write_text("""# Test Project
@@ -160,18 +164,18 @@ This project has no tasks yet.
 - [ ] Task 3
 """)
 
-        result = find_next_available_task(str(spec_file))
+        result = task_service.find_next_available_task(str(spec_file))
         assert result is not None
         task_index, task_text = result
         assert task_index == 2
         assert task_text == "Task 2"
 
-    def test_raise_error_when_file_not_found(self):
+    def test_raise_error_when_file_not_found(self, task_service):
         """Should raise FileNotFoundError when spec file doesn't exist"""
         with pytest.raises(FileNotFoundError):
-            find_next_available_task("/nonexistent/path/spec.md")
+            task_service.find_next_available_task("/nonexistent/path/spec.md")
 
-    def test_complex_scenario_merge_trigger(self, tmp_path):
+    def test_complex_scenario_merge_trigger(self, tmp_path, task_service):
         """
         Simulate merge trigger scenario:
         - Task 1 is completed (just merged)
@@ -190,7 +194,7 @@ This project has no tasks yet.
 """)
 
         # Task 2 is in progress (has an open PR)
-        result = find_next_available_task(str(spec_file), skip_indices={2})
+        result = task_service.find_next_available_task(str(spec_file), skip_indices={2})
         assert result is not None
         task_index, task_text = result
         assert task_index == 3
@@ -211,7 +215,7 @@ class TestMarkTaskComplete:
 - [ ] Task 2
 """)
 
-        mark_task_complete(str(spec_file), "Task 1")
+        TaskManagementService.mark_task_complete(str(spec_file), "Task 1")
 
         updated_content = spec_file.read_text()
         assert "- [x] Task 1" in updated_content
@@ -228,7 +232,7 @@ class TestMarkTaskComplete:
     - [ ] Task 2
 """)
 
-        mark_task_complete(str(spec_file), "Task 2")
+        TaskManagementService.mark_task_complete(str(spec_file), "Task 2")
 
         updated_content = spec_file.read_text()
         assert "  - [ ] Task 1" in updated_content
@@ -237,7 +241,7 @@ class TestMarkTaskComplete:
     def test_raise_error_when_file_not_found(self):
         """Should raise FileNotFoundError when spec file doesn't exist"""
         with pytest.raises(FileNotFoundError):
-            mark_task_complete("/nonexistent/path/spec.md", "Task 1")
+            TaskManagementService.mark_task_complete("/nonexistent/path/spec.md", "Task 1")
 
 
 class TestGenerateTaskId:
@@ -246,24 +250,24 @@ class TestGenerateTaskId:
     def test_generate_basic_task_id(self):
         """Should generate sanitized task ID"""
         task = "Create test file"
-        result = generate_task_id(task)
+        result = TaskManagementService.generate_task_id(task)
         assert result == "create-test-file"
 
     def test_handle_special_characters(self):
         """Should replace special characters with dashes"""
         task = "Update config.yml file!"
-        result = generate_task_id(task)
+        result = TaskManagementService.generate_task_id(task)
         assert result == "update-config-yml-file"
 
     def test_truncate_long_ids(self):
         """Should truncate IDs to max length"""
         task = "This is a very long task description that exceeds the maximum length"
-        result = generate_task_id(task, max_length=20)
+        result = TaskManagementService.generate_task_id(task, max_length=20)
         assert len(result) <= 20
         assert result == "this-is-a-very-long"
 
     def test_remove_leading_trailing_dashes(self):
         """Should remove leading and trailing dashes"""
         task = "!!! Important task !!!"
-        result = generate_task_id(task)
+        result = TaskManagementService.generate_task_id(task)
         assert result == "important-task"

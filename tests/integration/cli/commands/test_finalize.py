@@ -79,7 +79,7 @@ class TestCmdFinalize:
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
                     with patch("claudestep.cli.commands.finalize.get_file_from_branch") as mock_get_file:
-                        with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                        with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                             with patch("claudestep.cli.commands.finalize.GitHubMetadataStore"):
                                 with patch("claudestep.cli.commands.finalize.MetadataService"):
                                     with patch("os.path.exists") as mock_exists:
@@ -168,7 +168,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open(read_data="")) as mock_file:
@@ -208,7 +208,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -245,7 +245,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -284,7 +284,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -323,7 +323,7 @@ class TestCmdFinalize:
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
                     with patch("claudestep.cli.commands.finalize.get_file_from_branch") as mock_get_file:
-                        with patch("claudestep.cli.commands.finalize.mark_task_complete") as mock_mark:
+                        with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete") as mock_mark:
                             with patch("os.path.exists") as mock_exists:
                                 with patch("os.getcwd") as mock_cwd:
                                     with patch("builtins.open", mock_open()):
@@ -366,7 +366,7 @@ class TestCmdFinalize:
         # Arrange
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
-                with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                     with patch("os.path.exists") as mock_exists:
                         with patch("os.getcwd") as mock_cwd:
                             # Setup mocks
@@ -398,7 +398,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -433,7 +433,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -473,7 +473,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()) as mock_file:
@@ -510,7 +510,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -543,7 +543,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -595,7 +595,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -640,7 +640,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete") as mock_mark:
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete") as mock_mark:
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -670,7 +670,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -699,7 +699,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("os.makedirs") as mock_makedirs:
@@ -752,7 +752,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -791,7 +791,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -830,7 +830,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -870,7 +870,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -920,7 +920,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("builtins.open", mock_open()):
@@ -962,7 +962,7 @@ class TestCmdFinalize:
         with patch.dict("os.environ", mock_env):
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
-                    with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                    with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                         with patch("os.path.exists") as mock_exists:
                             with patch("os.getcwd") as mock_cwd:
                                 with patch("os.remove") as mock_remove:
@@ -1014,7 +1014,7 @@ class TestCmdFinalize:
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
                     with patch("claudestep.cli.commands.finalize.get_file_from_branch") as mock_get_file:
-                        with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                        with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                             with patch("claudestep.cli.commands.finalize.GitHubMetadataStore"):
                                 with patch("claudestep.cli.commands.finalize.MetadataService"):
                                     with patch("os.path.exists") as mock_exists:
@@ -1052,7 +1052,7 @@ class TestCmdFinalize:
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
                     with patch("claudestep.cli.commands.finalize.get_file_from_branch") as mock_get_file:
-                        with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                        with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                             with patch("claudestep.cli.commands.finalize.GitHubMetadataStore"):
                                 with patch("claudestep.cli.commands.finalize.MetadataService"):
                                     with patch("os.path.exists") as mock_exists:
@@ -1165,7 +1165,7 @@ class TestCmdFinalize:
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
                     with patch("claudestep.cli.commands.finalize.get_file_from_branch") as mock_get_file:
-                        with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                        with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                             with patch("claudestep.cli.commands.finalize.GitHubMetadataStore"):
                                 with patch("claudestep.cli.commands.finalize.MetadataService"):
                                     with patch("os.path.exists") as mock_exists:
@@ -1203,7 +1203,7 @@ class TestCmdFinalize:
             with patch("claudestep.cli.commands.finalize.run_git_command") as mock_git:
                 with patch("claudestep.cli.commands.finalize.run_gh_command") as mock_gh_cmd:
                     with patch("claudestep.cli.commands.finalize.get_file_from_branch") as mock_get_file:
-                        with patch("claudestep.cli.commands.finalize.mark_task_complete"):
+                        with patch("claudestep.cli.commands.finalize.TaskManagementService.mark_task_complete"):
                             with patch("claudestep.cli.commands.finalize.GitHubMetadataStore"):
                                 with patch("claudestep.cli.commands.finalize.MetadataService"):
                                     with patch("os.path.exists") as mock_exists:

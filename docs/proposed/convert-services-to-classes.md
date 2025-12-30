@@ -35,45 +35,32 @@ Each service class will:
 
 ## Phases
 
-- [ ] Phase 1: Convert `task_management.py` to `TaskManagementService`
+- [x] Phase 1: Convert `task_management.py` to `TaskManagementService` ✅
 
-Convert the task management functions to a class-based service. This is a good starting point as it's relatively simple and has clear dependencies.
+**Status: COMPLETED**
 
-**Files to modify:**
-- `src/claudestep/application/services/task_management.py`
-- `src/claudestep/cli/commands/prepare.py` (usage)
-- `src/claudestep/cli/commands/finalize.py` (usage, if applicable)
-- `tests/unit/application/services/test_task_management.py`
-- Any integration tests that use task management functions
+Successfully converted task management functions to a class-based service with proper dependency injection.
 
-**New class structure:**
-```python
-class TaskManagementService:
-    """Service for task finding, marking, and tracking operations"""
+**Changes made:**
+- ✅ Converted `task_management.py` to `TaskManagementService` class
+- ✅ Updated `prepare.py` to instantiate and use `TaskManagementService`
+- ✅ Updated `finalize.py` to use `TaskManagementService.mark_task_complete()` as static method
+- ✅ Updated `discover_ready.py` to instantiate and use `TaskManagementService`
+- ✅ Updated unit tests (`test_task_management.py`) to use the class-based service
+- ✅ Updated integration tests to mock the service class
 
-    def __init__(self, repo: str, metadata_service: MetadataService):
-        self.repo = repo
-        self.metadata_service = metadata_service
+**Implementation notes:**
+- `generate_task_id()` and `mark_task_complete()` are implemented as `@staticmethod` since they don't require instance state
+- `find_next_available_task()` and `get_in_progress_task_indices()` are instance methods that use `self.metadata_service`
+- Service is instantiated once per command execution in CLI commands
+- Eliminated redundant `GitHubMetadataStore` and `MetadataService` creation in `get_in_progress_task_indices()`
+- All 18 unit tests passing
+- Core integration tests updated and passing
 
-    def generate_task_id(self, task: str, max_length: int = 30) -> str:
-        # Static utility, can remain as method or be made @staticmethod
-
-    def find_next_available_task(self, spec_input: str, skip_indices: Optional[set] = None) -> Optional[tuple]:
-        # Use self.metadata_service instead of creating it
-
-    def mark_task_complete(self, plan_file: str, task: str) -> None:
-        # Existing logic
-
-    def get_in_progress_task_indices(self, label: str, project: str) -> set:
-        # Use self.metadata_service instead of creating it
-```
-
-**Update CLI commands:**
-- Instantiate `TaskManagementService` once per command
-- Pass instance to functions that need it
-- Update function calls to method calls
-
-**Expected outcome:** All task management operations use a consistent class-based interface with proper dependency injection.
+**Technical details:**
+- Constructor signature: `__init__(self, repo: str, metadata_service: MetadataService)`
+- Instance variables: `self.repo`, `self.metadata_service`
+- Methods maintain backward-compatible signatures for smooth transition
 
 - [ ] Phase 2: Convert `reviewer_management.py` to `ReviewerManagementService`
 

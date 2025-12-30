@@ -14,7 +14,7 @@ from claudestep.application.services.metadata_service import MetadataService
 from claudestep.application.services.pr_operations import format_branch_name
 from claudestep.application.services.project_detection import detect_project_from_pr, detect_project_paths
 from claudestep.application.services.reviewer_management import find_available_reviewer
-from claudestep.application.services.task_management import find_next_available_task, get_in_progress_task_indices
+from claudestep.application.services.task_management import TaskManagementService
 
 
 def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
@@ -154,12 +154,16 @@ Please merge your spec files to the '{base_branch}' branch before running Claude
 
         # === STEP 4: Find Next Task ===
         print("\n=== Step 4/6: Finding next task ===")
-        in_progress_indices = get_in_progress_task_indices(repo, label, detected_project)
+
+        # Initialize task management service
+        task_service = TaskManagementService(repo, metadata_service)
+
+        in_progress_indices = task_service.get_in_progress_task_indices(label, detected_project)
 
         if in_progress_indices:
             print(f"Found in-progress tasks: {sorted(in_progress_indices)}")
 
-        result = find_next_available_task(spec_content, in_progress_indices)
+        result = task_service.find_next_available_task(spec_content, in_progress_indices)
 
         if not result:
             gh.write_output("has_task", "false")
