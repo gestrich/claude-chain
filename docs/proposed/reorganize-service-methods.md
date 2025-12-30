@@ -56,9 +56,9 @@ Reorganize methods in `src/claudestep/application/services/reviewer_management_s
 - ReviewerManagementService maintains 100% code coverage
 - No changes to public API or functionality
 
-- [ ] Phase 3: Reorganize PROperationsService
+- [x] Phase 3: Reorganize PROperationsService
 
-Reorganize methods in `src/claudestep/application/services/pr_operations.py` following this order:
+Reorganize methods in `src/claudestep/application/services/pr_operations_service.py` following this order:
 
 1. `__init__()` - Constructor
 2. **Public API methods** (high-level first):
@@ -67,11 +67,12 @@ Reorganize methods in `src/claudestep/application/services/pr_operations.py` fol
    - `format_branch_name()` - Format branch names
    - `parse_branch_name()` - Parse branch names
 
-Current issues:
-- Static methods appear before the main public API method `get_project_prs()`
-- Branch naming utilities should be after main operations
-
-Expected result: Main PR operations first, then naming utilities.
+**Completed**: Methods reorganized with clear section comments:
+- Added "# Public API methods" section after constructor
+- Moved static utility methods (`format_branch_name()` and `parse_branch_name()`) to end with "# Static utility methods" section
+- All 21 unit tests pass successfully (100% for PR operations tests)
+- PROperationsService maintains 94.29% code coverage
+- No changes to public API or functionality
 
 - [ ] Phase 4: Reorganize ProjectDetectionService
 

@@ -23,59 +23,7 @@ class PROperationsService:
         """
         self.repo = repo
 
-    @staticmethod
-    def format_branch_name(project_name: str, index: int) -> str:
-        """Format branch name using the standard ClaudeStep format.
-
-        Args:
-            project_name: Project name (e.g., "my-refactor")
-            index: Task index (1-based)
-
-        Returns:
-            Formatted branch name (e.g., "claude-step-my-refactor-1")
-
-        Examples:
-            >>> PROperationsService.format_branch_name("my-refactor", 1)
-            'claude-step-my-refactor-1'
-            >>> PROperationsService.format_branch_name("swift-migration", 5)
-            'claude-step-swift-migration-5'
-        """
-        return f"claude-step-{project_name}-{index}"
-
-    @staticmethod
-    def parse_branch_name(branch: str) -> Optional[Tuple[str, int]]:
-        """Parse branch name to extract project name and task index.
-
-        Expected format: claude-step-{project_name}-{index}
-
-        Args:
-            branch: Branch name to parse
-
-        Returns:
-            Tuple of (project_name, index) or None if parsing fails
-
-        Examples:
-            >>> PROperationsService.parse_branch_name("claude-step-my-refactor-1")
-            ('my-refactor', 1)
-            >>> PROperationsService.parse_branch_name("claude-step-swift-migration-5")
-            ('swift-migration', 5)
-            >>> PROperationsService.parse_branch_name("invalid-branch")
-            None
-        """
-        # Pattern: claude-step-{project}-{index}
-        # Project name can contain hyphens, so we need to match the last number
-        pattern = r"^claude-step-(.+)-(\d+)$"
-        match = re.match(pattern, branch)
-
-        if match:
-            project_name = match.group(1)
-            try:
-                index = int(match.group(2))
-                return (project_name, index)
-            except ValueError:
-                return None
-
-        return None
+    # Public API methods
 
     def get_project_prs(
         self, project_name: str, state: str = "all", label: str = "claudestep"
@@ -149,3 +97,59 @@ class PROperationsService:
             f"Found {len(project_prs)} PR(s) for project '{project_name}' (out of {len(all_prs)} total)"
         )
         return project_prs
+
+    # Static utility methods
+
+    @staticmethod
+    def format_branch_name(project_name: str, index: int) -> str:
+        """Format branch name using the standard ClaudeStep format.
+
+        Args:
+            project_name: Project name (e.g., "my-refactor")
+            index: Task index (1-based)
+
+        Returns:
+            Formatted branch name (e.g., "claude-step-my-refactor-1")
+
+        Examples:
+            >>> PROperationsService.format_branch_name("my-refactor", 1)
+            'claude-step-my-refactor-1'
+            >>> PROperationsService.format_branch_name("swift-migration", 5)
+            'claude-step-swift-migration-5'
+        """
+        return f"claude-step-{project_name}-{index}"
+
+    @staticmethod
+    def parse_branch_name(branch: str) -> Optional[Tuple[str, int]]:
+        """Parse branch name to extract project name and task index.
+
+        Expected format: claude-step-{project_name}-{index}
+
+        Args:
+            branch: Branch name to parse
+
+        Returns:
+            Tuple of (project_name, index) or None if parsing fails
+
+        Examples:
+            >>> PROperationsService.parse_branch_name("claude-step-my-refactor-1")
+            ('my-refactor', 1)
+            >>> PROperationsService.parse_branch_name("claude-step-swift-migration-5")
+            ('swift-migration', 5)
+            >>> PROperationsService.parse_branch_name("invalid-branch")
+            None
+        """
+        # Pattern: claude-step-{project}-{index}
+        # Project name can contain hyphens, so we need to match the last number
+        pattern = r"^claude-step-(.+)-(\d+)$"
+        match = re.match(pattern, branch)
+
+        if match:
+            project_name = match.group(1)
+            try:
+                index = int(match.group(2))
+                return (project_name, index)
+            except ValueError:
+                return None
+
+        return None
