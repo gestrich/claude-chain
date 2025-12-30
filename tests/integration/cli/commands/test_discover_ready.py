@@ -14,7 +14,7 @@ class TestCheckProjectReady:
     """Test suite for check_project_ready functionality"""
 
     def test_check_project_ready_returns_true_when_all_conditions_met(
-        self, tmp_path, capsys
+        self, tmp_path, capsys, monkeypatch
     ):
         """Should return True when project has capacity and available tasks"""
         # Arrange
@@ -30,35 +30,29 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("- [x] Task 1\n- [ ] Task 2\n- [ ] Task 3")
 
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
+
         # Mock the dependencies
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
+            mock_capacity_result = Mock()
+            mock_capacity_result.format_summary.return_value = "Capacity info"
+            mock_capacity_result.reviewer_status = [
+                {"username": "alice", "openPRs": 1, "maxPRs": 2}
+            ]
+            mock_service = MockReviewerService.return_value
+            mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
-                mock_capacity_result = Mock()
-                mock_capacity_result.format_summary.return_value = "Capacity info"
-                mock_capacity_result.reviewer_status = [
-                    {"username": "alice", "openPRs": 1, "maxPRs": 2}
-                ]
-                mock_service = MockReviewerService.return_value
-                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+            with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                    with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                        mock_service = Mock()
+                        mock_service.get_in_progress_task_indices.return_value = set()
+                        mock_service.find_next_available_task.return_value = (2, "Task 2")
+                        mock_service_class.return_value = mock_service
 
-                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
-                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
-                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
-                            mock_service = Mock()
-                            mock_service.get_in_progress_task_indices.return_value = set()
-                            mock_service.find_next_available_task.return_value = (2, "Task 2")
-                            mock_service_class.return_value = mock_service
-
-                            # Act
-                            result = check_project_ready(project_name, repo)
+                        # Act
+                        result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is True
@@ -66,7 +60,7 @@ class TestCheckProjectReady:
         assert "✅ Ready for work" in captured.out
         assert "(1/2 PRs, 2 tasks remaining)" in captured.out
 
-    def test_check_project_ready_returns_false_when_no_config(self, tmp_path, capsys):
+    def test_check_project_ready_returns_false_when_no_config(self, tmp_path, capsys, monkeypatch):
         """Should return False when configuration file is missing"""
         # Arrange
         project_name = "test-project"
@@ -75,24 +69,18 @@ class TestCheckProjectReady:
         base_dir = tmp_path / "claude-step" / project_name
         base_dir.mkdir(parents=True)
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(base_dir / "configuration.yml"),  # Doesn't exist
-                str(base_dir / "spec.md"),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            # Act
-            result = check_project_ready(project_name, repo)
+        # Act
+        result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
         captured = capsys.readouterr()
         assert "⏭️  No configuration file found" in captured.out
 
-    def test_check_project_ready_returns_false_when_no_spec(self, tmp_path, capsys):
+    def test_check_project_ready_returns_false_when_no_spec(self, tmp_path, capsys, monkeypatch):
         """Should return False when spec.md file is missing"""
         # Arrange
         project_name = "test-project"
@@ -104,24 +92,18 @@ class TestCheckProjectReady:
         config_path = base_dir / "configuration.yml"
         config_path.write_text("reviewers:\n  - username: alice\n    maxOpenPRs: 2")
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(base_dir / "spec.md"),  # Doesn't exist
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            # Act
-            result = check_project_ready(project_name, repo)
+        # Act
+        result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
         captured = capsys.readouterr()
         assert "⏭️  No spec.md found" in captured.out
 
-    def test_check_project_ready_returns_false_when_no_reviewers(self, tmp_path, capsys):
+    def test_check_project_ready_returns_false_when_no_reviewers(self, tmp_path, capsys, monkeypatch):
         """Should return False when no reviewers are configured"""
         # Arrange
         project_name = "test-project"
@@ -136,17 +118,11 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("- [ ] Task 1")
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            # Act
-            result = check_project_ready(project_name, repo)
+        # Act
+        result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
@@ -154,7 +130,7 @@ class TestCheckProjectReady:
         assert "⏭️  No reviewers configured" in captured.out
 
     def test_check_project_ready_returns_false_when_invalid_spec_format(
-        self, tmp_path, capsys
+        self, tmp_path, capsys, monkeypatch
     ):
         """Should return False when spec.md has invalid format"""
         # Arrange
@@ -170,27 +146,21 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("Invalid content without checkboxes")
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            with patch("claudestep.cli.commands.discover_ready.validate_spec_format") as mock_validate:
-                mock_validate.side_effect = Exception("Invalid format")
+        with patch("claudestep.cli.commands.discover_ready.validate_spec_format") as mock_validate:
+            mock_validate.side_effect = Exception("Invalid format")
 
-                # Act
-                result = check_project_ready(project_name, repo)
+            # Act
+            result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
         captured = capsys.readouterr()
         assert "⏭️  Invalid spec format: Invalid format" in captured.out
 
-    def test_check_project_ready_returns_false_when_no_capacity(self, tmp_path, capsys):
+    def test_check_project_ready_returns_false_when_no_capacity(self, tmp_path, capsys, monkeypatch):
         """Should return False when no reviewer has available capacity"""
         # Arrange
         project_name = "test-project"
@@ -205,28 +175,22 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("- [ ] Task 1")
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
-                mock_service = MockReviewerService.return_value
-                mock_service.find_available_reviewer.return_value = (None, None)  # No capacity
+        with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
+            mock_service = MockReviewerService.return_value
+            mock_service.find_available_reviewer.return_value = (None, None)  # No capacity
 
-                # Act
-                result = check_project_ready(project_name, repo)
+            # Act
+            result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
         captured = capsys.readouterr()
         assert "⏭️  No reviewer capacity" in captured.out
 
-    def test_check_project_ready_returns_false_when_no_tasks(self, tmp_path, capsys):
+    def test_check_project_ready_returns_false_when_no_tasks(self, tmp_path, capsys, monkeypatch):
         """Should return False when no available tasks remain"""
         # Arrange
         project_name = "test-project"
@@ -241,38 +205,32 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("- [x] Task 1\n- [x] Task 2")  # All completed
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
-                mock_capacity_result = Mock()
-                mock_capacity_result.reviewer_status = []
-                mock_service = MockReviewerService.return_value
-                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+        with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
+            mock_capacity_result = Mock()
+            mock_capacity_result.reviewer_status = []
+            mock_service = MockReviewerService.return_value
+            mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
-                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
-                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
-                            mock_service = Mock()
-                            mock_service.get_in_progress_task_indices.return_value = set()
-                            mock_service.find_next_available_task.return_value = None  # No tasks
-                            mock_service_class.return_value = mock_service
+            with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                    with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                        mock_service = Mock()
+                        mock_service.get_in_progress_task_indices.return_value = set()
+                        mock_service.find_next_available_task.return_value = None  # No tasks
+                        mock_service_class.return_value = mock_service
 
-                            # Act
-                            result = check_project_ready(project_name, repo)
+                        # Act
+                        result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is False
         captured = capsys.readouterr()
         assert "⏭️  No available tasks" in captured.out
 
-    def test_check_project_ready_uses_claudestep_label(self, tmp_path):
+    def test_check_project_ready_uses_claudestep_label(self, tmp_path, monkeypatch):
         """Should use 'claudestep' label for all projects"""
         # Arrange
         project_name = "test-project"
@@ -287,53 +245,49 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("- [ ] Task 1")
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
-                mock_capacity_result = Mock()
-                mock_capacity_result.format_summary.return_value = "Capacity info"
-                mock_capacity_result.reviewer_status = [{"username": "alice", "openPRs": 0, "maxPRs": 2}]
-                mock_service = MockReviewerService.return_value
-                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+        with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
+            mock_capacity_result = Mock()
+            mock_capacity_result.format_summary.return_value = "Capacity info"
+            mock_capacity_result.reviewer_status = [{"username": "alice", "openPRs": 0, "maxPRs": 2}]
+            mock_service = MockReviewerService.return_value
+            mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
-                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
-                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
-                            mock_service = Mock()
-                            mock_service.get_in_progress_task_indices.return_value = set()
-                            mock_service.find_next_available_task.return_value = (1, "Task 1")
-                            mock_service_class.return_value = mock_service
+            with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                    with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                        mock_service = Mock()
+                        mock_service.get_in_progress_task_indices.return_value = set()
+                        mock_service.find_next_available_task.return_value = (1, "Task 1")
+                        mock_service_class.return_value = mock_service
 
-                            # Act
-                            check_project_ready(project_name, repo)
+                        # Act
+                        check_project_ready(project_name, repo)
 
-                            # Assert
-                            # Get the reviewer service mock instance
-                            reviewer_service_instance = MockReviewerService.return_value
-                            reviewer_service_instance.find_available_reviewer.assert_called_once()
-                            _, call_kwargs = reviewer_service_instance.find_available_reviewer.call_args
-                            # Label is second positional arg
-                            assert reviewer_service_instance.find_available_reviewer.call_args[0][1] == "claudestep"
+                        # Assert
+                        # Get the reviewer service mock instance
+                        reviewer_service_instance = MockReviewerService.return_value
+                        reviewer_service_instance.find_available_reviewer.assert_called_once()
+                        _, call_kwargs = reviewer_service_instance.find_available_reviewer.call_args
+                        # Label is second positional arg
+                        assert reviewer_service_instance.find_available_reviewer.call_args[0][1] == "claudestep"
 
-                            mock_service.get_in_progress_task_indices.assert_called_once()
-                            assert mock_service.get_in_progress_task_indices.call_args[0][0] == "claudestep"
+                        mock_service.get_in_progress_task_indices.assert_called_once()
+                        assert mock_service.get_in_progress_task_indices.call_args[0][0] == "claudestep"
 
-    def test_check_project_ready_handles_unexpected_errors(self, tmp_path, capsys):
+    def test_check_project_ready_handles_unexpected_errors(self, tmp_path, capsys, monkeypatch):
         """Should return False and print error message on unexpected exceptions"""
         # Arrange
         project_name = "test-project"
         repo = "owner/repo"
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.side_effect = Exception("Unexpected error")
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
+
+        with patch("claudestep.cli.commands.discover_ready.Project") as MockProject:
+            MockProject.side_effect = Exception("Unexpected error")
 
             # Act
             result = check_project_ready(project_name, repo)
@@ -343,7 +297,7 @@ class TestCheckProjectReady:
         captured = capsys.readouterr()
         assert "❌ Error checking project: Unexpected error" in captured.out
 
-    def test_check_project_ready_counts_remaining_tasks(self, tmp_path, capsys):
+    def test_check_project_ready_counts_remaining_tasks(self, tmp_path, capsys, monkeypatch):
         """Should correctly count remaining uncompleted tasks"""
         # Arrange
         project_name = "test-project"
@@ -358,34 +312,28 @@ class TestCheckProjectReady:
         spec_path = base_dir / "spec.md"
         spec_path.write_text("- [x] Task 1\n- [ ] Task 2\n- [ ] Task 3\n- [ ] Task 4\n- [x] Task 5")
 
-        with patch("claudestep.cli.commands.discover_ready.ProjectDetectionService") as MockProjectService:
-            mock_paths = MockProjectService.detect_project_paths
-            mock_paths.return_value = (
-                str(config_path),
-                str(spec_path),
-                str(base_dir / "pr_template.md"),
-                str(base_dir)
-            )
+        # Change to tmp directory so relative paths work
+        monkeypatch.chdir(tmp_path)
 
-            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
-                mock_capacity_result = Mock()
-                mock_capacity_result.format_summary.return_value = "Capacity info"
-                mock_capacity_result.reviewer_status = [
-                    {"username": "alice", "openPRs": 2, "maxPRs": 5}
-                ]
-                mock_service = MockReviewerService.return_value
-                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+        with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
+            mock_capacity_result = Mock()
+            mock_capacity_result.format_summary.return_value = "Capacity info"
+            mock_capacity_result.reviewer_status = [
+                {"username": "alice", "openPRs": 2, "maxPRs": 5}
+            ]
+            mock_service = MockReviewerService.return_value
+            mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
-                with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
-                    with patch("claudestep.cli.commands.discover_ready.MetadataService"):
-                        with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
-                            mock_service = Mock()
-                            mock_service.get_in_progress_task_indices.return_value = set()
-                            mock_service.find_next_available_task.return_value = (2, "Task 2")
-                            mock_service_class.return_value = mock_service
+            with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
+                with patch("claudestep.cli.commands.discover_ready.MetadataService"):
+                    with patch("claudestep.cli.commands.discover_ready.TaskManagementService") as mock_service_class:
+                        mock_service = Mock()
+                        mock_service.get_in_progress_task_indices.return_value = set()
+                        mock_service.find_next_available_task.return_value = (2, "Task 2")
+                        mock_service_class.return_value = mock_service
 
-                            # Act
-                            result = check_project_ready(project_name, repo)
+                        # Act
+                        result = check_project_ready(project_name, repo)
 
         # Assert
         assert result is True

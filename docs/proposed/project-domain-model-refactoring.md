@@ -718,22 +718,40 @@ Create unit tests for new domain models and repository.
 - Documentation through tests with clear examples of API usage
 - Foundation for Phase 9 integration test updates
 
-- [ ] Phase 9: Update integration tests
+- [x] Phase 9: Update integration tests
 
 Update existing integration tests to use new domain models.
 
-**Files to modify:**
-- `tests/integration/cli/commands/test_statistics.py` - Update assertions for new models
-- Any other tests that mock or interact with project configuration
+**Completed**: 2025-12-30
+
+**Technical Notes**:
+- Successfully updated integration tests in test_prepare.py, test_discover_ready.py, and test_discover.py to use new domain models
+- Updated test_prepare.py (24 tests): Refactored all tests to mock ProjectRepository instead of low-level file operations, created ProjectConfiguration and SpecContent domain models in tests
+- Updated test_discover_ready.py (18 tests): Added monkeypatch.chdir(tmp_path) to all TestCheckProjectReady tests to work with Project domain model's relative path construction, removed obsolete ProjectDetectionService.detect_project_paths mocks
+- test_discover.py (16 tests): No changes required - tests already work correctly as find_all_projects() returns list of strings for backward compatibility
+- test_statistics.py (19 tests): No changes required - tests already properly mock StatisticsService
+- All 73 integration tests for refactored commands pass successfully
+- All 238 domain model and repository unit tests pass (126 from Phase 8 + existing tests)
+- Total test improvement: Reduced integration test failures from 42 to 13 (only pre-existing finalize.py failures remain)
+- Integration test coverage for refactored code is comprehensive and accurate
+
+**Files modified:**
+- `tests/integration/cli/commands/test_prepare.py` - Refactored to use ProjectRepository, ProjectConfiguration, and SpecContent domain models
+- `tests/integration/cli/commands/test_discover_ready.py` - Updated to work with Project domain model using monkeypatch.chdir()
 
 **Changes:**
-- Update test fixtures to create domain models
-- Update assertions to use domain model properties
-- Verify backward compatibility with existing test scenarios
+- Created sample_config_yaml fixture returning YAML string instead of dict for ProjectConfiguration.from_yaml_string()
+- Updated all test_prepare.py tests to create domain models (Project, ProjectConfiguration, SpecContent) at test start
+- Replaced mocks for get_file_from_branch and load_config_from_string with ProjectRepository mocks
+- Updated test_discover_ready.py tests to use monkeypatch.chdir(tmp_path) so Project domain model's relative paths resolve correctly
+- Removed obsolete ProjectDetectionService.detect_project_paths mocks from discover_ready tests
+- All error handling tests updated to return None or raise exceptions appropriately with new repository pattern
 
 **Outcomes:**
-- Integration tests pass with new architecture
-- No regression in functionality
+- Integration tests pass with new architecture (73/73 for refactored commands)
+- No regression in functionality for refactored code
+- Tests accurately reflect new domain model-based architecture
+- Comprehensive coverage of success and failure scenarios with domain models
 
 - [ ] Phase 10: Validation
 
