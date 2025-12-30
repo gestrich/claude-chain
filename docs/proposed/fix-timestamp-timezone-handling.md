@@ -30,32 +30,34 @@ This makes timestamps:
 
 ## Phases
 
-- [ ] Phase 1: Update domain models to parse timezone-aware datetimes
+- [x] Phase 1: Update domain models to parse timezone-aware datetimes ✅ **COMPLETED**
 
 Fix the domain model parsing to handle both old (naive) and new (timezone-aware) formats during transition, but always produce timezone-aware datetimes:
 
-Files to modify:
-- `src/claudestep/domain/models.py` - Update `PullRequest` and `HybridProjectMetadata` dataclasses
-- Add helper function to parse ISO timestamps with automatic UTC assumption if no timezone present
+Files modified:
+- `src/claudestep/domain/models.py` - Updated all dataclasses to use timezone-aware parsing:
+  - Added `parse_iso_timestamp()` helper function
+  - Updated `PullRequest.from_dict()`
+  - Updated `HybridProjectMetadata.from_dict()`
+  - Updated `AIOperation.from_dict()`
+  - Updated `AITask.from_dict()`
+  - Updated `TaskMetadata.from_dict()`
+  - Updated `ProjectMetadata.from_dict()`
 
-Technical considerations:
-- Use `datetime.fromisoformat()` for parsing
-- If timestamp lacks timezone info, assume UTC and add `timezone.utc`
-- All datetime fields in domain models should be timezone-aware
-- Add type hints: `datetime` fields should always have `tzinfo`
+Technical implementation:
+- Added helper function `parse_iso_timestamp()` that:
+  - Handles both "Z" suffix and "+00:00" timezone formats
+  - Automatically adds `timezone.utc` to naive timestamps for backward compatibility
+  - Always returns timezone-aware datetime objects
+- All `from_dict()` methods now use `parse_iso_timestamp()` instead of direct `datetime.fromisoformat()`
+- Added `timezone` to imports: `from datetime import datetime, timezone`
 
-Example parsing logic:
-```python
-def parse_iso_timestamp(timestamp_str: str) -> datetime:
-    """Parse ISO 8601 timestamp, ensuring timezone-aware result"""
-    dt = datetime.fromisoformat(timestamp_str)
-    if dt.tzinfo is None:
-        # Legacy format without timezone - assume UTC
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
-```
+Test results:
+- ✅ All 32 domain model tests passed (`tests/unit/domain/test_hybrid_metadata_models.py`)
+- ✅ All 57 statistics service tests passed (`tests/unit/services/test_statistics_service.py`)
+- ✅ No timezone comparison errors observed
 
-Expected outcome: Domain models always produce timezone-aware datetimes regardless of input format
+Expected outcome: ✅ Domain models always produce timezone-aware datetimes regardless of input format
 
 - [ ] Phase 2: Update metadata writing to always include timezone
 

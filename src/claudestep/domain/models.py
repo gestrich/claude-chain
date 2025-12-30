@@ -1,10 +1,31 @@
 """Data models for ClaudeStep operations"""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from claudestep.services.formatters.table_formatter import TableFormatter
+
+
+def parse_iso_timestamp(timestamp_str: str) -> datetime:
+    """Parse ISO 8601 timestamp, ensuring timezone-aware result
+
+    Handles both legacy format (naive) and new format (timezone-aware):
+    - "2025-12-29T23:47:49.299060" → parsed with UTC timezone added
+    - "2025-12-29T23:47:49.299060+00:00" → parsed as-is
+    - "2025-12-29T23:47:49.299060Z" → parsed as-is
+
+    Args:
+        timestamp_str: ISO 8601 formatted timestamp string
+
+    Returns:
+        Timezone-aware datetime object (always has tzinfo)
+    """
+    dt = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        # Legacy format without timezone - assume UTC
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 class MarkdownFormatter:
@@ -603,7 +624,7 @@ class AITask:
         """
         created_at = data["created_at"]
         if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            created_at = parse_iso_timestamp(created_at)
 
         return cls(
             type=data["type"],
@@ -678,7 +699,7 @@ class TaskMetadata:
         # Handle datetime parsing
         created_at = data["created_at"]
         if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            created_at = parse_iso_timestamp(created_at)
 
         # Parse AI tasks if present (new format)
         ai_tasks = []
@@ -818,7 +839,7 @@ class ProjectMetadata:
         # Handle datetime parsing
         last_updated = data["last_updated"]
         if isinstance(last_updated, str):
-            last_updated = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+            last_updated = parse_iso_timestamp(last_updated)
 
         # Parse tasks
         tasks = [TaskMetadata.from_dict(task_data) for task_data in data.get("tasks", [])]
@@ -966,7 +987,7 @@ class AIOperation:
         """
         created_at = data["created_at"]
         if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            created_at = parse_iso_timestamp(created_at)
 
         return cls(
             type=data["type"],
@@ -1033,7 +1054,7 @@ class PullRequest:
         """
         created_at = data["created_at"]
         if isinstance(created_at, str):
-            created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            created_at = parse_iso_timestamp(created_at)
 
         ai_operations = [
             AIOperation.from_dict(op_data) for op_data in data.get("ai_operations", [])
@@ -1126,7 +1147,7 @@ class HybridProjectMetadata:
         """
         last_updated = data["last_updated"]
         if isinstance(last_updated, str):
-            last_updated = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+            last_updated = parse_iso_timestamp(last_updated)
 
         tasks = [Task.from_dict(task_data) for task_data in data.get("tasks", [])]
         pull_requests = [
