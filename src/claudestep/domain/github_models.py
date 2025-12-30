@@ -59,6 +59,7 @@ class GitHubPullRequest:
     merged_at: Optional[datetime]
     assignees: List[GitHubUser]
     labels: List[str] = field(default_factory=list)
+    head_ref_name: Optional[str] = None  # Branch name
 
     @classmethod
     def from_dict(cls, data: dict) -> 'GitHubPullRequest':
@@ -112,6 +113,9 @@ class GitHubPullRequest:
         # Normalize state to lowercase for consistency
         state = data["state"].lower()
 
+        # Get branch name if available
+        head_ref_name = data.get("headRefName")
+
         return cls(
             number=data["number"],
             title=data["title"],
@@ -119,7 +123,8 @@ class GitHubPullRequest:
             created_at=created_at,
             merged_at=merged_at,
             assignees=assignees,
-            labels=labels
+            labels=labels,
+            head_ref_name=head_ref_name
         )
 
     def is_merged(self) -> bool:

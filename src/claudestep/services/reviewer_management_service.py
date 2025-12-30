@@ -7,8 +7,8 @@ for reviewer capacity checking and assignment.
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
-from claudestep.services.artifact_operations_service import find_project_artifacts
-from claudestep.services.metadata_service import MetadataService
+from claudestep.infrastructure.github.operations import list_open_pull_requests
+from claudestep.services.pr_operations_service import PROperationsService
 from claudestep.domain.models import ReviewerCapacityResult
 from claudestep.domain.project_configuration import ProjectConfiguration
 
@@ -16,26 +16,25 @@ from claudestep.domain.project_configuration import ProjectConfiguration
 class ReviewerManagementService:
     """Service Layer class for reviewer management operations.
 
-    Coordinates reviewer capacity checking and assignment by orchestrating
-    artifact operations and metadata queries. Implements business logic for
-    ClaudeStep's reviewer assignment workflow.
+    Coordinates reviewer capacity checking and assignment by querying
+    GitHub API for open PRs. Implements business logic for ClaudeStep's
+    reviewer assignment workflow.
     """
 
-    def __init__(self, repo: str, metadata_service: MetadataService):
+    def __init__(self, repo: str):
         self.repo = repo
-        self.metadata_service = metadata_service
 
     # Public API methods
 
     def find_available_reviewer(
         self, config: ProjectConfiguration, label: str, project: str
     ) -> tuple[Optional[str], ReviewerCapacityResult]:
-        """Find first reviewer with capacity based on artifact metadata
+        """Find first reviewer with capacity based on GitHub API queries
 
         Args:
             config: ProjectConfiguration domain model with reviewers
             label: GitHub label to filter PRs
-            project: Project name to match
+            project: Project name to match (used for filtering by branch name pattern)
 
         Returns:
             Tuple of (username or None, ReviewerCapacityResult)
@@ -47,33 +46,38 @@ class ReviewerManagementService:
         for reviewer in config.reviewers:
             reviewer_prs[reviewer.username] = []
 
-        # Find open PR artifacts for this project
-        artifacts = find_project_artifacts(
-            repo=self.repo,
-            project=project,
-            label=label,
-            pr_state="open",
-            download_metadata=True
-        )
+        # Query open PRs for each reviewer from GitHub API
+        for reviewer in config.reviewers:
+            username = reviewer.username
 
-        # Group open PRs by reviewer from artifact metadata
-        for artifact in artifacts:
-            if artifact.metadata:
-                assigned_reviewer = artifact.metadata.reviewer
+            # Query GitHub for open PRs assigned to this reviewer with the label
+            open_prs = list_open_pull_requests(
+                repo=self.repo,
+                label=label,
+                assignee=username
+            )
 
-                # Check if this reviewer is in our list
-                if assigned_reviewer in reviewer_prs:
-                    task_description = artifact.metadata.task_description or f"Task {artifact.metadata.task_index}"
+            # Filter by project name (extract from branch name)
+            for pr in open_prs:
+                if pr.head_ref_name:
+                    # Parse branch name to get project
+                    parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
+                    if parsed:
+                        pr_project, task_index = parsed
+                        if pr_project == project:
+                            # Extract task description from PR title
+                            # PR titles are in format "ClaudeStep: <task description>"
+                            task_description = pr.title
+                            if task_description.startswith("ClaudeStep: "):
+                                task_description = task_description[len("ClaudeStep: "):]
 
-                    pr_info = {
-                        "pr_number": artifact.metadata.pr_number,
-                        "task_index": artifact.metadata.task_index,
-                        "task_description": task_description
-                    }
-                    reviewer_prs[assigned_reviewer].append(pr_info)
-                    print(f"PR #{artifact.metadata.pr_number}: reviewer={assigned_reviewer}")
-                else:
-                    print(f"Warning: PR #{artifact.metadata.pr_number} has unknown reviewer: {assigned_reviewer}")
+                            pr_info = {
+                                "pr_number": pr.number,
+                                "task_index": task_index,
+                                "task_description": task_description
+                            }
+                            reviewer_prs[username].append(pr_info)
+                            print(f"PR #{pr.number}: reviewer={username}")
 
         # Build result and find first available reviewer
         selected_reviewer = None

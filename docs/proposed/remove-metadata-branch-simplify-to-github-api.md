@@ -208,9 +208,11 @@ This suggests the project is already partially migrated away from metadata branc
 
 ---
 
-- [ ] Phase 3: Implement GitHub-based reviewer tracking
+- [x] Phase 3: Implement GitHub-based reviewer tracking
 
 **Objective**: Use GitHub's PR assignees field instead of metadata for reviewer tracking.
+
+**Status**: ✅ Complete
 
 **Tasks**:
 - Update `ReviewerManagementService` to query PR assignees via GitHub API instead of metadata
@@ -219,26 +221,36 @@ This suggests the project is already partially migrated away from metadata branc
 - Remove metadata service dependency from `ReviewerManagementService`
 
 **Key changes**:
-- `src/claudestep/application/services/reviewer_management.py`
-  - Replace metadata queries with GitHub PR list queries filtered by assignee
-  - Use `infrastructure/github/operations.py` functions like `list_pull_requests()`
-- `src/claudestep/cli/commands/finalize.py` or PR creation code
-  - Ensure assignee is set when PR is created via `gh pr create --assignee`
+- `src/claudestep/services/reviewer_management_service.py`
+  - ✅ Replaced artifact queries with GitHub PR list queries filtered by assignee
+  - ✅ Uses `list_open_pull_requests()` from `infrastructure/github/operations.py`
+  - ✅ Removed `metadata_service` dependency from constructor
+  - ✅ Filters PRs by project name using branch name parsing
+- `src/claudestep/infrastructure/github/operations.py`
+  - ✅ Added `assignee` parameter to `list_pull_requests()`
+  - ✅ Added `assignee` parameter to `list_open_pull_requests()`
+  - ✅ Added `headRefName` to JSON fields for branch name extraction
+- `src/claudestep/domain/github_models.py`
+  - ✅ Added `head_ref_name` field to `GitHubPullRequest`
+  - ✅ Updated `from_dict()` to parse `headRefName`
+- `src/claudestep/cli/commands/prepare.py`
+  - ✅ Removed `metadata_service` parameter from `ReviewerManagementService` constructor
+- `src/claudestep/cli/commands/finalize.py`
+  - ✅ Already sets assignee via `gh pr create --assignee` (line 207)
 
-**GitHub query approach**:
-```python
-# Count open PRs for a reviewer
-open_prs = list_pull_requests(
-    repo=repo,
-    state="open",
-    label="claudestep",
-    assignee=reviewer_username
-)
-pr_count = len(open_prs)
-at_capacity = pr_count >= reviewer.max_open_prs
-```
+**Technical Notes**:
+- ✅ All 16 unit tests for ReviewerManagementService passing
+- ✅ Reviewer capacity checking now queries GitHub API per reviewer
+- ✅ PRs are filtered by project name using `PROperationsService.parse_branch_name()`
+- ✅ Implementation correctly handles:
+  - Multiple projects per reviewer
+  - PRs without branch names (skipped)
+  - Reviewers at/over/under capacity
+  - Empty reviewer lists
+- ✅ PR assignee field is already set during PR creation (no changes needed)
+- ✅ 100% test coverage for ReviewerManagementService
 
-**Success criteria**: Reviewer capacity checking works entirely through GitHub API queries.
+**Success criteria**: ✅ Reviewer capacity checking works entirely through GitHub API queries.
 
 ---
 

@@ -184,23 +184,19 @@ def list_pull_requests(
     repo: str,
     state: str = "all",
     label: Optional[str] = None,
+    assignee: Optional[str] = None,
     since: Optional[datetime] = None,
     limit: int = 100
 ) -> List[GitHubPullRequest]:
     """Fetch PRs with filtering, returns domain models
 
-    This function provides GitHub PR querying capabilities for future use cases.
-    It encapsulates all GitHub CLI command construction and JSON parsing,
-    returning type-safe domain models.
+    This function provides GitHub PR querying capabilities for reviewer capacity
+    checking and other use cases. It encapsulates all GitHub CLI command construction
+    and JSON parsing, returning type-safe domain models.
 
-    **Current Usage**: Not used in normal operations (statistics use metadata instead)
-
-    **Future Usage**: Enables a "synchronize" command that can:
-    - Detect PRs closed/merged outside normal workflow
-    - Backfill metadata from existing ClaudeStep PRs
-    - Audit metadata accuracy against GitHub reality
-    - Correct drift between metadata and actual PR state
-    - Validate consistency across projects
+    **Current Usage**:
+    - Reviewer capacity checking (filter by assignee + state=open)
+    - Project detection (filter by label)
 
     **Design Principles**:
     - Parses GitHub JSON once into GitHubPullRequest domain models
@@ -212,6 +208,7 @@ def list_pull_requests(
         repo: GitHub repository (owner/name)
         state: "open", "closed", "merged", or "all"
         label: Optional label filter (e.g., "claudestep" for ClaudeStep PRs)
+        assignee: Optional assignee filter (e.g., "username" for specific reviewer)
         since: Optional date filter (filters by created_at >= since)
         limit: Max results (default 100)
 
@@ -222,18 +219,14 @@ def list_pull_requests(
         GitHubAPIError: If gh command fails
 
     Example:
-        >>> # Future synchronize command usage
-        >>> prs = list_pull_requests("owner/repo", state="merged", label="claudestep")
-        >>> for pr in prs:
-        ...     print(f"PR #{pr.number}: {pr.title}")
-        ...     if pr.is_merged():
-        ...         print(f"  Merged at: {pr.merged_at}")
+        >>> # Check reviewer capacity
+        >>> prs = list_pull_requests("owner/repo", state="open", label="claudestep", assignee="reviewer1")
+        >>> print(f"Reviewer has {len(prs)} open PRs")
 
     See Also:
         - list_merged_pull_requests(): Convenience wrapper for merged PRs
         - list_open_pull_requests(): Convenience wrapper for open PRs
         - GitHubPullRequest: Domain model with type-safe properties
-        - docs/architecture/architecture.md: "Future: Metadata Synchronization" section
     """
     # Build gh pr list command
     args = [
@@ -241,12 +234,16 @@ def list_pull_requests(
         "--repo", repo,
         "--state", state,
         "--limit", str(limit),
-        "--json", "number,title,state,createdAt,mergedAt,assignees,labels"
+        "--json", "number,title,state,createdAt,mergedAt,assignees,labels,headRefName"
     ]
 
     # Add label filter if specified
     if label:
         args.extend(["--label", label])
+
+    # Add assignee filter if specified
+    if assignee:
+        args.extend(["--assignee", assignee])
 
     # Execute command and parse JSON
     try:
@@ -316,37 +313,33 @@ def list_merged_pull_requests(
 def list_open_pull_requests(
     repo: str,
     label: Optional[str] = None,
+    assignee: Optional[str] = None,
     limit: int = 100
 ) -> List[GitHubPullRequest]:
     """Convenience function for fetching open PRs
 
-    **Current Usage**: Not used in normal operations (reviewer capacity uses metadata instead)
+    **Current Usage**: Reviewer capacity checking (filter by assignee)
 
-    **Future Usage**: Useful for:
-    - Synchronize command: Verify open PR metadata matches GitHub state
+    **Usage Examples**:
+    - Reviewer capacity: Check how many open PRs a reviewer has
     - Stale PR detection: Find open PRs older than expected review time
-    - Reviewer workload audit: Cross-check metadata reviewer assignments with actual assignees
-    - Drift detection: Identify PRs closed manually without updating metadata
+    - Workload balancing: Cross-check reviewer assignments
 
     Args:
         repo: GitHub repository (owner/name)
         label: Optional label filter (e.g., "claudestep")
+        assignee: Optional assignee filter (e.g., "username")
         limit: Max results (default 100)
 
     Returns:
         List of open GitHubPullRequest domain models
 
     Example:
-        >>> # Future synchronize command: Check for stale PRs
-        >>> open_prs = list_open_pull_requests("owner/repo", label="claudestep")
-        >>> print(f"Found {len(open_prs)} open ClaudeStep PRs")
-        >>> from datetime import datetime, timedelta, timezone
-        >>> now = datetime.now(timezone.utc)
-        >>> stale = [pr for pr in open_prs if (now - pr.created_at).days > 7]
-        >>> print(f"  {len(stale)} PRs are stale (>7 days old)")
+        >>> # Check reviewer capacity
+        >>> open_prs = list_open_pull_requests("owner/repo", label="claudestep", assignee="reviewer1")
+        >>> print(f"Reviewer has {len(open_prs)} open PRs")
 
     See Also:
         - list_pull_requests(): Base function with full filtering options
-        - docs/architecture/architecture.md: "Future: Metadata Synchronization" section
     """
-    return list_pull_requests(repo, state="open", label=label, limit=limit)
+    return list_pull_requests(repo, state="open", label=label, assignee=assignee, limit=limit)
