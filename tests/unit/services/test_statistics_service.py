@@ -650,138 +650,67 @@ This PR was generated using Claude Code with the following costs:
 
 
 class TestCollectProjectCosts:
-    """Test project cost collection"""
+    """Test project cost collection (temporarily disabled in Phase 4)"""
 
-    def test_collect_costs_with_metadata(self):
-        """Test collecting costs from metadata storage"""
-        # Mock metadata service
-        mock_metadata_service = Mock()
-
-        # Create mock PullRequests with costs
-        pr1 = Mock()
-        pr1.pr_state = "merged"
-        pr1.get_total_cost.return_value = 0.3
-
-        pr2 = Mock()
-        pr2.pr_state = "merged"
-        pr2.get_total_cost.return_value = 0.2
-
-        # Create mock project metadata
-        project_metadata = Mock()
-        project_metadata.pull_requests = [pr1, pr2]
-
-        mock_metadata_service.get_project.return_value = project_metadata
-
+    def test_collect_costs_returns_zero(self):
+        """Test that cost collection returns 0.0 (Phase 4)"""
         # Create service and test
         mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         cost = service.collect_project_costs("test-project", "claudestep")
 
-        assert cost == 0.5
-        mock_metadata_service.get_project.assert_called_once_with("test-project")
-
-    def test_collect_costs_no_merged_prs(self):
-        """Test collecting costs when no merged PRs found"""
-        # Mock metadata service
-        mock_metadata_service = Mock()
-
-        # Create mock project with only open PRs
-        pr1 = Mock()
-        pr1.pr_state = "open"
-
-        project_metadata = Mock()
-        project_metadata.pull_requests = [pr1]
-
-        mock_metadata_service.get_project.return_value = project_metadata
-
-        # Create service and test
-        mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
-        cost = service.collect_project_costs("test-project", "claudestep")
-
-        assert cost == 0.0
-
-    def test_collect_costs_no_project(self):
-        """Test collecting costs when project not found"""
-        # Mock metadata service
-        mock_metadata_service = Mock()
-        mock_metadata_service.get_project.return_value = None
-
-        # Create service and test
-        mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
-        cost = service.collect_project_costs("test-project", "claudestep")
-
-        assert cost == 0.0
-
-    def test_collect_costs_exception_handling(self):
-        """Test that exceptions are handled gracefully"""
-        # Mock metadata service
-        mock_metadata_service = Mock()
-        mock_metadata_service.get_project.side_effect = Exception("API error")
-
-        # Create service and test
-        mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
-        cost = service.collect_project_costs("test-project", "claudestep")
-
+        # Cost tracking temporarily dropped in Phase 4
         assert cost == 0.0
 
 
 class TestCollectTeamMemberStats:
-    """Test team member statistics collection"""
+    """Test team member statistics collection from GitHub API"""
 
-    def test_collect_stats_basic(self):
-        """Test basic team member stats collection from metadata"""
+    @patch('claudestep.services.statistics_service.list_pull_requests')
+    def test_collect_stats_basic(self, mock_list_prs):
+        """Test basic team member stats collection from GitHub"""
         from datetime import datetime, timezone, timedelta
+        from claudestep.domain.github_models import GitHubPullRequest
 
-        # Create mock metadata service
-        mock_metadata_service = Mock()
+        # Create mock GitHub PRs
+        pr1 = GitHubPullRequest(
+            number=1,
+            title="Fix bug",
+            state="merged",
+            created_at=datetime.now(timezone.utc) - timedelta(days=5),
+            merged_at=datetime.now(timezone.utc) - timedelta(days=4),
+            assignees=["alice"],
+            labels=["claudestep"],
+            head_ref_name="claude-step-test-project-1"
+        )
 
-        # Mock project metadata with PRs
-        task1 = Mock()
-        task1.index = 1
-        task1.description = "Fix bug"
+        pr2 = GitHubPullRequest(
+            number=2,
+            title="Add feature",
+            state="merged",
+            created_at=datetime.now(timezone.utc) - timedelta(days=3),
+            merged_at=datetime.now(timezone.utc) - timedelta(days=2),
+            assignees=["bob"],
+            labels=["claudestep"],
+            head_ref_name="claude-step-test-project-2"
+        )
 
-        task2 = Mock()
-        task2.index = 2
-        task2.description = "Add feature"
+        pr3 = GitHubPullRequest(
+            number=3,
+            title="WIP",
+            state="open",
+            created_at=datetime.now(timezone.utc) - timedelta(days=1),
+            merged_at=None,
+            assignees=["alice"],
+            labels=["claudestep"],
+            head_ref_name="claude-step-test-project-3"
+        )
 
-        task3 = Mock()
-        task3.index = 3
-        task3.description = "WIP"
-
-        pr1 = Mock()
-        pr1.task_index = 1
-        pr1.pr_number = 1
-        pr1.reviewer = "alice"
-        pr1.pr_state = "merged"
-        pr1.created_at = datetime.now(timezone.utc) - timedelta(days=5)
-
-        pr2 = Mock()
-        pr2.task_index = 2
-        pr2.pr_number = 2
-        pr2.reviewer = "bob"
-        pr2.pr_state = "merged"
-        pr2.created_at = datetime.now(timezone.utc) - timedelta(days=3)
-
-        pr3 = Mock()
-        pr3.task_index = 3
-        pr3.pr_number = 3
-        pr3.reviewer = "alice"
-        pr3.pr_state = "open"
-        pr3.created_at = datetime.now(timezone.utc) - timedelta(days=1)
-
-        project_metadata = Mock()
-        project_metadata.tasks = [task1, task2, task3]
-        project_metadata.pull_requests = [pr1, pr2, pr3]
-
-        mock_metadata_service.list_project_names.return_value = ["test-project"]
-        mock_metadata_service.get_project.return_value = project_metadata
+        mock_list_prs.return_value = [pr1, pr2, pr3]
 
         # Create service and test
         mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         stats = service.collect_team_member_stats(["alice", "bob"], days_back=30)
 
         assert "alice" in stats
@@ -791,36 +720,28 @@ class TestCollectTeamMemberStats:
         assert stats["bob"].merged_count == 1
         assert stats["bob"].open_count == 0
 
-    def test_collect_stats_empty_prs(self):
-        """Test stats collection with no PRs in metadata"""
-        # Create mock metadata service
-        mock_metadata_service = Mock()
-
-        project_metadata = Mock()
-        project_metadata.tasks = []
-        project_metadata.pull_requests = []
-
-        mock_metadata_service.list_project_names.return_value = ["test-project"]
-        mock_metadata_service.get_project.return_value = project_metadata
+    @patch('claudestep.services.statistics_service.list_pull_requests')
+    def test_collect_stats_empty_prs(self, mock_list_prs):
+        """Test stats collection with no PRs from GitHub"""
+        mock_list_prs.return_value = []
 
         # Create service and test
         mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         stats = service.collect_team_member_stats(["alice"])
 
         assert "alice" in stats
         assert stats["alice"].merged_count == 0
         assert stats["alice"].open_count == 0
 
-    def test_collect_stats_exception_handling(self):
+    @patch('claudestep.services.statistics_service.list_pull_requests')
+    def test_collect_stats_exception_handling(self, mock_list_prs):
         """Test that exceptions during collection are handled"""
-        # Create mock metadata service that raises exception
-        mock_metadata_service = Mock()
-        mock_metadata_service.list_project_names.side_effect = Exception("Metadata error")
+        mock_list_prs.side_effect = Exception("GitHub API error")
 
         # Create service and test
         mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         stats = service.collect_team_member_stats(["alice"])
 
         # Should return empty stats but not crash
@@ -831,8 +752,12 @@ class TestCollectTeamMemberStats:
 class TestCollectProjectStats:
     """Test project statistics collection"""
 
-    def test_collect_stats_success(self):
+    @patch('claudestep.services.statistics_service.list_open_pull_requests')
+    def test_collect_stats_success(self, mock_list_open_prs):
         """Test successful project stats collection"""
+        from datetime import datetime, timezone
+        from claudestep.domain.github_models import GitHubPullRequest
+
         spec_content = """
 - [x] Task 1
 - [x] Task 2
@@ -840,23 +765,18 @@ class TestCollectProjectStats:
 - [ ] Task 4
         """
 
-        # Mock metadata service
-        mock_metadata_service = Mock()
-        mock_metadata_service.find_in_progress_tasks.return_value = [2]
-
-        # Mock get_project for cost collection
-        pr1 = Mock()
-        pr1.pr_state = "merged"
-        pr1.get_total_cost.return_value = 1.5
-
-        # Mock in-progress task
-        in_progress_task = Mock()
-        in_progress_task.index = 2
-
-        project_metadata = Mock()
-        project_metadata.pull_requests = [pr1]
-        project_metadata.get_in_progress_tasks.return_value = [in_progress_task]
-        mock_metadata_service.get_project.return_value = project_metadata
+        # Mock open PRs from GitHub (one in-progress task)
+        pr1 = GitHubPullRequest(
+            number=3,
+            title="Task 3",
+            state="open",
+            created_at=datetime.now(timezone.utc),
+            merged_at=None,
+            assignees=["alice"],
+            labels=["claudestep"],
+            head_ref_name="claude-step-test-project-3"
+        )
+        mock_list_open_prs.return_value = [pr1]
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -867,7 +787,7 @@ class TestCollectProjectStats:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         stats = service.collect_project_stats("test-project", "main", "claudestep")
 
         assert stats.project_name == "test-project"
@@ -875,30 +795,27 @@ class TestCollectProjectStats:
         assert stats.completed_tasks == 2
         assert stats.in_progress_tasks == 1
         assert stats.pending_tasks == 1
-        assert stats.total_cost_usd == 1.5
+        # Cost tracking disabled in Phase 4
+        assert stats.total_cost_usd == 0.0
 
     def test_collect_stats_missing_spec(self):
         """Test stats collection with missing spec file"""
-        # Create service and test
-        mock_metadata_service = Mock()
-
         # Mock ProjectRepository to return None
         mock_repo = Mock()
         mock_repo.load_spec.return_value = None
 
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         stats = service.collect_project_stats("test-project", "main", "claudestep")
 
         assert stats is None
 
-    def test_collect_stats_in_progress_error(self):
+    @patch('claudestep.services.statistics_service.list_open_pull_requests')
+    def test_collect_stats_in_progress_error(self, mock_list_open_prs):
         """Test stats collection when in-progress task detection fails"""
         spec_content = "- [ ] Task 1\n- [x] Task 2"
 
-        # Mock metadata service
-        mock_metadata_service = Mock()
-        mock_metadata_service.find_in_progress_tasks.side_effect = Exception("API error")
-        mock_metadata_service.get_project.return_value = None
+        # Make GitHub API call fail
+        mock_list_open_prs.side_effect = Exception("API error")
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -909,20 +826,19 @@ class TestCollectProjectStats:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         stats = service.collect_project_stats("test-project", "main", "claudestep")
 
         assert stats.in_progress_tasks == 0
         assert stats.pending_tasks == 1
 
-    def test_collect_stats_custom_base_branch(self):
+    @patch('claudestep.services.statistics_service.list_open_pull_requests')
+    def test_collect_stats_custom_base_branch(self, mock_list_open_prs):
         """Test that custom base_branch value is used correctly"""
         spec_content = "- [x] Task 1\n- [ ] Task 2"
 
-        # Mock metadata service
-        mock_metadata_service = Mock()
-        mock_metadata_service.find_in_progress_tasks.return_value = []
-        mock_metadata_service.get_project.return_value = None
+        # No open PRs
+        mock_list_open_prs.return_value = []
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -933,7 +849,7 @@ class TestCollectProjectStats:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service with custom base_branch
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="develop")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="develop")
         stats = service.collect_project_stats("test-project", "develop", "claudestep")
 
         # Verify the service uses the custom base_branch
@@ -948,7 +864,9 @@ class TestCollectProjectStats:
 class TestCollectAllStatistics:
     """Test full statistics collection"""
 
-    def test_collect_all_single_project(self):
+    @patch('claudestep.services.statistics_service.list_open_pull_requests')
+    @patch('claudestep.services.statistics_service.list_pull_requests')
+    def test_collect_all_single_project(self, mock_list_prs, mock_list_open_prs):
         """Test collecting stats for a single project"""
         config_content = """
 reviewers:
@@ -959,11 +877,10 @@ reviewers:
         """
         spec_content = "- [x] Task 1\n- [ ] Task 2"
 
-        # Mock metadata service
-        mock_metadata_service = Mock()
-        mock_metadata_service.find_in_progress_tasks.return_value = []
-        mock_metadata_service.get_project.return_value = None
-        mock_metadata_service.list_project_names.return_value = []  # No projects in metadata
+        # No open PRs
+        mock_list_open_prs.return_value = []
+        # No PRs for team stats
+        mock_list_prs.return_value = []
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -976,7 +893,7 @@ reviewers:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         report = service.collect_all_statistics("claude-step/project1/configuration.yml")
 
         assert len(report.project_stats) == 1
@@ -988,9 +905,8 @@ reviewers:
     def test_collect_all_no_repository(self):
         """Test that missing GITHUB_REPOSITORY returns empty report"""
         # Create service with empty repo
-        mock_metadata_service = Mock()
         mock_repo = Mock()
-        service = StatisticsService("", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("", mock_repo, base_branch="main")
         report = service.collect_all_statistics()
 
         assert len(report.project_stats) == 0
@@ -998,15 +914,12 @@ reviewers:
 
     def test_collect_all_config_error(self):
         """Test handling of config loading errors"""
-        # Mock metadata service
-        mock_metadata_service = Mock()
-
         # Mock ProjectRepository to return None (config not found)
         mock_repo = Mock()
         mock_repo.load_configuration.return_value = None
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_metadata_service, mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
         report = service.collect_all_statistics("/nonexistent/config.yml")
 
         assert len(report.project_stats) == 0

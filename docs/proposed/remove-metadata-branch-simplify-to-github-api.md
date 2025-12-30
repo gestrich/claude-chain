@@ -254,9 +254,11 @@ This suggests the project is already partially migrated away from metadata branc
 
 ---
 
-- [ ] Phase 4: Implement GitHub-based statistics collection
+- [x] Phase 4: Implement GitHub-based statistics collection
 
 **Objective**: Rewrite statistics service to query GitHub API directly instead of metadata.
+
+**Status**: ✅ Complete
 
 **Tasks**:
 - Update `StatisticsService` to remove metadata service dependency
@@ -270,11 +272,21 @@ This suggests the project is already partially migrated away from metadata branc
 - Add caching or rate limit handling if needed
 
 **Key changes**:
-- `src/claudestep/application/services/statistics_service.py`
-  - Remove `metadata_service` from constructor
-  - Replace all metadata queries with GitHub PR list queries
-  - Use `list_pull_requests()`, `list_merged_pull_requests()`, `list_open_pull_requests()`
-  - Parse project from branch names using `PROperationsService.parse_branch_name()`
+- `src/claudestep/services/statistics_service.py`
+  - ✅ Removed `metadata_service` from constructor
+  - ✅ Replaced all metadata queries with GitHub PR list queries
+  - ✅ Uses `list_pull_requests()`, `list_open_pull_requests()`
+  - ✅ Parses project from branch names using `PROperationsService.parse_branch_name()`
+- `src/claudestep/cli/commands/statistics.py`
+  - ✅ Removed metadata service initialization
+  - ✅ Updated to use new StatisticsService constructor
+- `tests/unit/services/test_statistics_service.py`
+  - ✅ Updated all tests to mock GitHub API calls instead of metadata service
+  - ✅ All 54 unit tests passing
+- `tests/integration/cli/commands/test_statistics.py`
+  - ✅ Updated integration tests to patch ProjectRepository
+  - ✅ Fixed test fixtures to use PRReference objects
+  - ✅ All 15 integration tests passing
 
 **Data flow**:
 ```
@@ -285,9 +297,15 @@ GitHub API → list_pull_requests(label="claudestep")
          → format statistics report
 ```
 
-**Note**: This may be slower than metadata-based approach but eliminates sync issues.
+**Technical Notes**:
+- ✅ Project discovery now queries all PRs with claudestep label and extracts unique project names from branch names
+- ✅ In-progress task counting queries open PRs and filters by project using branch name parsing
+- ✅ Team member stats collection queries all PRs since cutoff date and groups by assignee
+- ✅ Cost tracking temporarily dropped (returns 0.0) - can be re-implemented via PR comments if needed later
+- ✅ All tests updated to use GitHub API mocks with `@patch` decorators
+- ✅ Integration tests use PRReference objects instead of dict fixtures
 
-**Success criteria**: Statistics command generates accurate reports from GitHub data alone.
+**Success criteria**: ✅ Statistics command generates accurate reports from GitHub data alone.
 
 ---
 

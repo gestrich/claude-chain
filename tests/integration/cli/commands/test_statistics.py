@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch, call
 import pytest
 
 from claudestep.cli.commands.statistics import cmd_statistics
-from claudestep.domain.models import StatisticsReport, ProjectStats, TeamMemberStats
+from claudestep.domain.models import StatisticsReport, ProjectStats, TeamMemberStats, PRReference
 
 
 class TestCmdStatistics:
@@ -41,29 +41,30 @@ class TestCmdStatistics:
         project_b.total_cost_usd = 8.25
 
         # Create sample team stats
+        from datetime import datetime, timezone
         alice = TeamMemberStats("alice")
         alice.merged_prs = [
-            {"pr_number": 1, "title": "PR 1", "merged_at": "2024-01-01", "project": "project-a"},
-            {"pr_number": 2, "title": "PR 2", "merged_at": "2024-01-02", "project": "project-a"},
-            {"pr_number": 3, "title": "PR 3", "merged_at": "2024-01-03", "project": "project-b"},
-            {"pr_number": 4, "title": "PR 4", "merged_at": "2024-01-04", "project": "project-b"},
+            PRReference(1, "PR 1", "project-a", datetime(2024, 1, 1, tzinfo=timezone.utc)),
+            PRReference(2, "PR 2", "project-a", datetime(2024, 1, 2, tzinfo=timezone.utc)),
+            PRReference(3, "PR 3", "project-b", datetime(2024, 1, 3, tzinfo=timezone.utc)),
+            PRReference(4, "PR 4", "project-b", datetime(2024, 1, 4, tzinfo=timezone.utc)),
         ]
         alice.open_prs = [
-            {"pr_number": 5, "title": "PR 5", "created_at": "2024-01-05", "project": "project-a"},
+            PRReference(5, "PR 5", "project-a", datetime(2024, 1, 5, tzinfo=timezone.utc)),
         ]
 
         bob = TeamMemberStats("bob")
         bob.merged_prs = [
-            {"pr_number": 6, "title": "PR 6", "merged_at": "2024-01-06", "project": "project-a"},
-            {"pr_number": 7, "title": "PR 7", "merged_at": "2024-01-07", "project": "project-a"},
-            {"pr_number": 8, "title": "PR 8", "merged_at": "2024-01-08", "project": "project-b"},
-            {"pr_number": 9, "title": "PR 9", "merged_at": "2024-01-09", "project": "project-b"},
-            {"pr_number": 10, "title": "PR 10", "merged_at": "2024-01-10", "project": "project-a"},
-            {"pr_number": 11, "title": "PR 11", "merged_at": "2024-01-11", "project": "project-a"},
-            {"pr_number": 12, "title": "PR 12", "merged_at": "2024-01-12", "project": "project-b"},
+            PRReference(6, "PR 6", "project-a", datetime(2024, 1, 6, tzinfo=timezone.utc)),
+            PRReference(7, "PR 7", "project-a", datetime(2024, 1, 7, tzinfo=timezone.utc)),
+            PRReference(8, "PR 8", "project-b", datetime(2024, 1, 8, tzinfo=timezone.utc)),
+            PRReference(9, "PR 9", "project-b", datetime(2024, 1, 9, tzinfo=timezone.utc)),
+            PRReference(10, "PR 10", "project-a", datetime(2024, 1, 10, tzinfo=timezone.utc)),
+            PRReference(11, "PR 11", "project-a", datetime(2024, 1, 11, tzinfo=timezone.utc)),
+            PRReference(12, "PR 12", "project-b", datetime(2024, 1, 12, tzinfo=timezone.utc)),
         ]
         bob.open_prs = [
-            {"pr_number": 13, "title": "PR 13", "created_at": "2024-01-13", "project": "project-a"},
+            PRReference(13, "PR 13", "project-a", datetime(2024, 1, 13, tzinfo=timezone.utc)),
         ]
 
         # Create report and add stats
@@ -87,7 +88,9 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch(
+            "claudestep.cli.commands.statistics.ProjectRepository"
+        ):
             mock_service = Mock()
             mock_service.collect_all_statistics.return_value = sample_statistics_report
             mock_service_class.return_value = mock_service
@@ -134,7 +137,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_service.collect_all_statistics.return_value = sample_statistics_report
             mock_service_class.return_value = mock_service
@@ -175,7 +178,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -199,7 +202,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -228,7 +231,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -262,7 +265,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -296,7 +299,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -322,7 +325,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -359,7 +362,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -392,7 +395,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -419,7 +422,7 @@ class TestCmdStatistics:
         slack_output = "Slack formatted report text"
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -448,7 +451,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -480,7 +483,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -512,7 +515,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service
@@ -537,7 +540,7 @@ class TestCmdStatistics:
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
-        ) as mock_service_class:
+        ) as mock_service_class, patch("claudestep.cli.commands.statistics.ProjectRepository"):
             mock_service = Mock()
             mock_collect = mock_service.collect_all_statistics
             mock_service_class.return_value = mock_service

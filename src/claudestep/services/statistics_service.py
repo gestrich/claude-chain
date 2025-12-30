@@ -1,7 +1,7 @@
 """Service Layer class for statistics operations.
 
 Follows Service Layer pattern (Fowler, PoEAA) - encapsulates business logic
-for collecting and aggregating project statistics from metadata storage and spec.md files.
+for collecting and aggregating project statistics from GitHub API and spec.md files.
 """
 
 import re
@@ -12,14 +12,15 @@ from claudestep.domain.constants import DEFAULT_PR_LABEL
 from claudestep.domain.project import Project
 from claudestep.domain.project_configuration import ProjectConfiguration
 from claudestep.infrastructure.repositories.project_repository import ProjectRepository
-from claudestep.services.metadata_service import MetadataService
-from claudestep.domain.models import HybridProjectMetadata, ProjectStats, StatisticsReport, TeamMemberStats
+from claudestep.infrastructure.github.operations import list_pull_requests, list_open_pull_requests
+from claudestep.services.pr_operations_service import PROperationsService
+from claudestep.domain.models import ProjectStats, StatisticsReport, TeamMemberStats, PRReference
 
 
 class StatisticsService:
     """Service Layer class for statistics operations.
 
-    Coordinates statistics collection by orchestrating metadata queries and
+    Coordinates statistics collection by orchestrating GitHub PR queries and
     spec.md parsing. Implements business logic for ClaudeStep's statistics
     and reporting workflows.
     """
@@ -27,7 +28,6 @@ class StatisticsService:
     def __init__(
         self,
         repo: str,
-        metadata_service: MetadataService,
         project_repository: ProjectRepository,
         base_branch: str = "main"
     ):
@@ -35,12 +35,10 @@ class StatisticsService:
 
         Args:
             repo: GitHub repository (owner/name)
-            metadata_service: MetadataService instance for accessing metadata
             project_repository: ProjectRepository instance for loading project data
             base_branch: Base branch to fetch specs from (default: "main")
         """
         self.repo = repo
-        self.metadata_service = metadata_service
         self.base_branch = base_branch
         self.project_repository = project_repository
 
@@ -93,13 +91,25 @@ class StatisticsService:
                 return report
 
         else:
-            # Multi-project mode - discover all projects from metadata storage
-            print("Multi-project mode: discovering projects from metadata storage...")
+            # Multi-project mode - discover all projects from GitHub PR queries
+            print("Multi-project mode: discovering projects from GitHub PRs...")
 
             try:
-                project_names = self.metadata_service.list_project_names()
+                # Query all PRs with claudestep label
+                all_prs = list_pull_requests(self.repo, state="all", label=label, limit=500)
+
+                # Extract unique project names from branch names
+                project_names = set()
+                for pr in all_prs:
+                    if pr.head_ref_name:
+                        parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
+                        if parsed:
+                            project_name, _ = parsed
+                            project_names.add(project_name)
+
+                print(f"Found {len(project_names)} unique project(s) from {len(all_prs)} PR(s)")
             except Exception as e:
-                print(f"Error accessing metadata storage: {e}")
+                print(f"Error querying GitHub PRs: {e}")
                 return report
 
             if not project_names:
@@ -183,20 +193,21 @@ class StatisticsService:
             print(f"  Warning: Failed to fetch spec file: {e}")
             return None
 
-        # Fetch project metadata once and reuse it for both in-progress and costs
-        project_metadata = None
+        # Get in-progress tasks from GitHub (open PRs for this project)
         try:
-            project_metadata = self.metadata_service.get_project(project_name)
-        except Exception as e:
-            print(f"  Warning: Failed to fetch project metadata: {e}")
+            open_prs = list_open_pull_requests(self.repo, label=label, limit=500)
 
-        # Get in-progress tasks from metadata
-        try:
-            if project_metadata:
-                in_progress_tasks = project_metadata.get_in_progress_tasks()
-                stats.in_progress_tasks = len(in_progress_tasks)
-            else:
-                stats.in_progress_tasks = 0
+            # Filter by project name using branch name parsing
+            in_progress_count = 0
+            for pr in open_prs:
+                if pr.head_ref_name:
+                    parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
+                    if parsed:
+                        pr_project, _ = parsed
+                        if pr_project == project_name:
+                            in_progress_count += 1
+
+            stats.in_progress_tasks = in_progress_count
             print(f"  In-progress: {stats.in_progress_tasks}")
         except Exception as e:
             print(f"  Error: Failed to get in-progress tasks: {e}")
@@ -208,26 +219,21 @@ class StatisticsService:
         )
         print(f"  Pending: {stats.pending_tasks}")
 
-        # Collect costs from merged PRs (reusing the already-fetched metadata)
-        try:
-            stats.total_cost_usd = self.collect_project_costs(
-                project_name, label, project_metadata=project_metadata
-            )
-        except Exception as e:
-            print(f"  Warning: Failed to collect costs: {e}")
-            stats.total_cost_usd = 0.0
+        # Cost tracking temporarily dropped (Phase 4)
+        # TODO: Re-implement cost tracking via PR comments if needed
+        stats.total_cost_usd = 0.0
 
         return stats
 
     def collect_team_member_stats(
         self, reviewers: List[str], days_back: int = 30, label: str = DEFAULT_PR_LABEL
     ) -> Dict[str, TeamMemberStats]:
-        """Collect PR statistics for team members from metadata storage
+        """Collect PR statistics for team members from GitHub API
 
         Args:
             reviewers: List of GitHub usernames to track
             days_back: Number of days to look back
-            label: GitHub label (kept for compatibility, currently unused)
+            label: GitHub label for filtering PRs
 
         Returns:
             Dict of username -> TeamMemberStats
@@ -250,51 +256,47 @@ class StatisticsService:
         open_count = 0
 
         try:
-            # Get all projects from metadata
-            project_names = self.metadata_service.list_project_names()
+            # Query all PRs with claudestep label from GitHub
+            all_prs = list_pull_requests(self.repo, state="all", label=label, since=cutoff_date, limit=500)
 
-            for project_name in project_names:
-                try:
-                    project_metadata = self.metadata_service.get_project(project_name)
-                    if not project_metadata:
-                        continue
-
-                    # Process PRs from metadata
-                    for pr in project_metadata.pull_requests:
-                        # Check date range
-                        if pr.created_at < cutoff_date:
-                            continue
-
-                        # Get task description for better title
-                        task_description = None
-                        matching_tasks = [t for t in project_metadata.tasks if t.index == pr.task_index]
-                        if matching_tasks:
-                            task_description = matching_tasks[0].description
-
-                        # Create PRReference from metadata PR
-                        from claudestep.domain.models import PRReference
-                        pr_ref = PRReference.from_metadata_pr(
-                            pr=pr,
-                            project=project_name,
-                            task_description=task_description
-                        )
-
-                        # Add to reviewer's stats
-                        reviewer = pr.reviewer
-                        if reviewer in stats_dict:
-                            if pr.pr_state == "merged":
-                                stats_dict[reviewer].add_merged_pr(pr_ref)
-                                merged_count += 1
-                            elif pr.pr_state == "open":
-                                stats_dict[reviewer].add_open_pr(pr_ref)
-                                open_count += 1
-
-                except Exception as e:
-                    print(f"Warning: Failed to collect stats for project {project_name}: {e}")
+            for pr in all_prs:
+                # Skip if no assignee or no branch name
+                if not pr.assignees or not pr.head_ref_name:
                     continue
 
+                # Extract project name from branch
+                parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
+                if not parsed:
+                    continue
+
+                project_name, task_index = parsed
+
+                # Create PRReference from GitHub PR
+                # Use task index in title since we don't have task description
+                title = f"Task {task_index}: {pr.title}"
+
+                # Determine timestamp based on state
+                timestamp = pr.merged_at if pr.state == "merged" and pr.merged_at else pr.created_at
+
+                pr_ref = PRReference(
+                    pr_number=pr.number,
+                    title=title,
+                    project=project_name,
+                    timestamp=timestamp
+                )
+
+                # Add to each assignee's stats
+                for assignee in pr.assignees:
+                    if assignee in stats_dict:
+                        if pr.state == "merged":
+                            stats_dict[assignee].add_merged_pr(pr_ref)
+                            merged_count += 1
+                        elif pr.state == "open":
+                            stats_dict[assignee].add_open_pr(pr_ref)
+                            open_count += 1
+
         except Exception as e:
-            print(f"Warning: Failed to access metadata: {e}")
+            print(f"Warning: Failed to query GitHub PRs: {e}")
 
         print(f"Found {merged_count} merged PR(s)")
         print(f"Found {open_count} open PR(s)")
@@ -303,41 +305,21 @@ class StatisticsService:
 
     def collect_project_costs(
         self, project_name: str, label: str = DEFAULT_PR_LABEL,
-        project_metadata: Optional['HybridProjectMetadata'] = None
+        project_metadata: Optional[Dict] = None
     ) -> float:
-        """Collect total costs for a project from metadata storage
+        """Collect total costs for a project (temporarily disabled in Phase 4)
 
         Args:
             project_name: Name of the project to collect costs for
-            label: GitHub label to filter PRs (unused, kept for compatibility)
-            project_metadata: Optional pre-loaded HybridProjectMetadata to avoid re-fetching
+            label: GitHub label to filter PRs (unused)
+            project_metadata: Optional metadata (unused, kept for compatibility)
 
         Returns:
-            Total cost in USD across all merged PRs for this project
+            Total cost in USD (always 0.0 in Phase 4)
         """
-        print(f"  Collecting costs from metadata storage...")
-
-        try:
-            if project_metadata is None:
-                project_metadata = self.metadata_service.get_project(project_name)
-
-            if project_metadata:
-                # Use the hybrid model to get total cost from merged PRs
-                merged_prs = [pr for pr in project_metadata.pull_requests if pr.pr_state == "merged"]
-                if merged_prs:
-                    total_cost = sum(pr.get_total_cost() for pr in merged_prs)
-                    print(f"  Found {len(merged_prs)} merged PR(s)")
-                    print(f"  Total cost: ${total_cost:.6f}")
-                    return total_cost
-                else:
-                    print(f"  No merged PRs found")
-                    return 0.0
-            else:
-                print(f"  Project not found in metadata storage")
-                return 0.0
-        except Exception as e:
-            print(f"  Error: Failed to read from metadata storage: {e}")
-            return 0.0
+        # Cost tracking temporarily dropped (Phase 4)
+        # TODO: Re-implement cost tracking via PR comments if needed
+        return 0.0
 
     # Private helper methods
 
