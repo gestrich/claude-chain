@@ -113,44 +113,29 @@ Test results:
 
 Expected outcome: ✅ All tests pass with timezone-aware datetimes
 
-- [ ] Phase 4: Delete existing metadata in claudestep-metadata branch
+- [x] Phase 4: Delete existing metadata in claudestep-metadata branch ✅ **COMPLETED**
 
 Delete all existing metadata files to force regeneration with correct format:
 
-Files to delete (in `claudestep-metadata` branch):
+Files deleted (in `claudestep-metadata` branch):
 - `projects/e2e-test-project.json`
-- Any other `projects/*.json` files
 
-Technical considerations:
-- Use GitHub API to delete files (or manual PR)
-- Keep the branch structure (`projects/` directory)
-- Keep `README.md` if it exists
-- This is a one-time destructive operation
-- No backup needed per user requirements
+Technical implementation:
+- Checked out `claudestep-metadata` branch
+- Deleted all JSON files in `projects/` directory using `rm -f projects/*.json`
+- Committed deletion with message explaining regeneration with timezone-aware timestamps
+- Pushed changes to remote (commit a6701e1)
+- Returned to main branch
+- Preserved branch structure (`projects/` directory remains empty)
 
-Commands:
-```bash
-# Checkout metadata branch
-git fetch origin claudestep-metadata
-git checkout claudestep-metadata
+Verification:
+- ✅ Branch `claudestep-metadata` updated successfully
+- ✅ All legacy metadata files deleted (1 file removed: e2e-test-project.json, 229 lines deleted)
+- ✅ Commit pushed to remote repository
+- ✅ All 137 timezone-related tests passing after changes
+- ✅ No test failures introduced by metadata deletion
 
-# Delete project metadata files
-rm -rf projects/*.json
-
-# Commit deletion
-git add projects/
-git commit -m "Delete legacy metadata with naive timestamps
-
-Will be regenerated with timezone-aware timestamps per ISO 8601 best practices."
-
-# Push
-git push origin claudestep-metadata
-
-# Return to main
-git checkout main
-```
-
-Expected outcome: Clean slate for metadata generation
+Expected outcome: ✅ Clean slate for metadata generation - all legacy naive timestamp metadata removed
 
 - [ ] Phase 5: Add validation to prevent naive datetimes
 
