@@ -1,0 +1,577 @@
+# Refactor Statistics Service Architecture
+
+## Background
+
+The current `StatisticsService` violates several architectural principles documented in our codebase:
+
+### Current Issues
+
+**1. Raw GitHub Commands in Service Layer**
+- Lines 271-286 and 329-344 use `run_gh_command()` directly with raw command strings
+- Service layer shouldn't know GitHub CLI command syntax details
+- This belongs in the infrastructure layer with a clean API
+
+**2. JSON Parsing in Service Layer**
+- Lines 287, 345 parse JSON directly from GitHub API responses
+- Lines 292-321, 349-361 navigate JSON dictionaries with string keys
+- No type safety, easy to break with API changes
+- Service layer should work with well-formed domain objects, not raw JSON
+
+**3. Dual Source of Truth for Reviewer Information**
+- Currently fetching reviewer data from GitHub API directly (lines 243-366)
+- We already have project configuration with reviewer information
+- This creates inconsistency - metadata configuration should be the single source of truth
+- GitHub API should only be used for synchronization in the future
+
+### Architectural Goals
+
+Per our architecture documentation ([docs/architecture/python-code-style.md](../architecture/python-code-style.md)):
+
+1. **Parse once into well-formed models** - Create GitHub domain models (GitHubPullRequest, GitHubUser, etc.) that encapsulate parsing
+2. **Infrastructure layer owns external integrations** - Move GitHub API calls to infrastructure/repositories
+3. **Single source of truth** - Use metadata configuration for all project/reviewer information
+4. **Type safety** - Services work with typed domain objects, not JSON dictionaries
+
+### Future Vision
+
+- Keep infrastructure layer GitHub methods for future "synchronize" command
+- For now, statistics rely entirely on metadata configuration
+- Metadata is updated by merge triggers, contains all necessary information
+- No direct GitHub API calls from statistics service
+
+## Phases
+
+- [ ] Phase 1: Create GitHub Domain Models
+
+Create domain models in `src/claudestep/domain/github_models.py` to represent GitHub API objects:
+
+**Models to create:**
+- `GitHubUser` - Represents a GitHub user (login, name, avatar_url)
+- `GitHubPullRequest` - Represents a PR (number, title, state, created_at, merged_at, assignees, labels)
+- `GitHubPullRequestList` - Collection with filtering/grouping methods
+
+**Design principles:**
+- Parse JSON once in `@classmethod from_dict()` constructors
+- Provide type-safe properties and methods
+- No JSON parsing outside these models
+- Follow pattern in `ProjectConfiguration.from_yaml_string()`
+
+**Example structure:**
+```python
+@dataclass
+class GitHubUser:
+    """Domain model for GitHub user"""
+    login: str
+    name: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'GitHubUser':
+        """Parse from GitHub API response"""
+        return cls(
+            login=data["login"],
+            name=data.get("name")
+        )
+
+@dataclass
+class GitHubPullRequest:
+    """Domain model for GitHub PR"""
+    number: int
+    title: str
+    state: str  # "open", "closed", "merged"
+    created_at: datetime
+    merged_at: Optional[datetime]
+    assignees: List[GitHubUser]
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'GitHubPullRequest':
+        """Parse from GitHub API response"""
+        # Parse dates, nested objects, etc.
+        ...
+
+    def is_merged(self) -> bool:
+        """Check if PR was merged"""
+        return self.state == "merged" or self.merged_at is not None
+```
+
+**Files to create:**
+- `src/claudestep/domain/github_models.py`
+
+**Tests to create:**
+- `tests/unit/domain/test_github_models.py`
+
+- [ ] Phase 2: Add Pull Request Operations to Infrastructure Layer
+
+Add PR querying functions to existing `infrastructure/github/operations.py` that return domain models:
+
+**Location:** `src/claudestep/infrastructure/github/operations.py`
+
+**Functions to add:**
+```python
+def list_pull_requests(
+    repo: str,
+    state: str = "all",
+    label: Optional[str] = None,
+    since: Optional[datetime] = None,
+    limit: int = 100
+) -> List[GitHubPullRequest]:
+    """Fetch PRs with filtering, returns domain models
+
+    Args:
+        repo: GitHub repository (owner/name)
+        state: "open", "closed", "merged", or "all"
+        label: Optional label filter
+        since: Optional date filter (merged_at or created_at)
+        limit: Max results
+
+    Returns:
+        List of GitHubPullRequest domain models
+    """
+    # Build gh pr list command
+    # Call run_gh_command with appropriate args
+    # Parse JSON response
+    # Return list of GitHubPullRequest.from_dict()
+
+def list_merged_pull_requests(
+    repo: str,
+    since: datetime,
+    label: Optional[str] = None,
+    limit: int = 100
+) -> List[GitHubPullRequest]:
+    """Convenience function for merged PRs"""
+    # Calls list_pull_requests with state="merged"
+
+def list_open_pull_requests(
+    repo: str,
+    label: Optional[str] = None,
+    limit: int = 100
+) -> List[GitHubPullRequest]:
+    """Convenience function for open PRs"""
+    # Calls list_pull_requests with state="open"
+```
+
+**Design principles:**
+- Follows existing pattern in `operations.py` (functions, not classes)
+- Similar to `get_file_from_branch()` - takes repo as parameter, returns parsed data
+- All GitHub CLI command construction happens here
+- All JSON parsing happens here via domain model factories
+- Service layer receives typed domain objects
+- Keep functions generic for future reuse (synchronize command)
+
+**Files to modify:**
+- `src/claudestep/infrastructure/github/operations.py`
+
+**Tests to create:**
+- `tests/unit/infrastructure/github/test_pr_operations.py` (or extend existing test file)
+
+- [ ] Phase 3: Refactor collect_team_member_stats to Use Metadata
+
+**Current behavior (lines 243-366):**
+- Queries GitHub API directly for merged and open PRs
+- Parses JSON and groups by assignee
+- No connection to project metadata
+
+**New behavior:**
+- Get all projects from metadata service
+- For each project, get pull requests from `HybridProjectMetadata`
+- Filter PRs by date range using `created_at` or merged timestamp
+- Group PRs by reviewer (from PR metadata, not GitHub API)
+- Aggregate statistics per reviewer across all projects
+
+**Changes to `collect_team_member_stats()`:**
+```python
+def collect_team_member_stats(
+    self, reviewers: List[str], days_back: int = 30, label: str = DEFAULT_PR_LABEL
+) -> Dict[str, TeamMemberStats]:
+    """Collect PR statistics for team members from metadata storage
+
+    Args:
+        reviewers: List of GitHub usernames to track
+        days_back: Number of days to look back
+        label: GitHub label (kept for compatibility, currently unused)
+
+    Returns:
+        Dict of username -> TeamMemberStats
+    """
+    stats_dict = {username: TeamMemberStats(username) for username in reviewers}
+
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
+
+    # Get all projects from metadata
+    project_names = self.metadata_service.list_project_names()
+
+    for project_name in project_names:
+        project_metadata = self.metadata_service.get_project(project_name)
+        if not project_metadata:
+            continue
+
+        # Process PRs from metadata
+        for pr in project_metadata.pull_requests:
+            # Check date range
+            if pr.created_at < cutoff_date:
+                continue
+
+            # Get task description for better title
+            task_description = None
+            matching_tasks = [t for t in project_metadata.tasks if t.index == pr.task_index]
+            if matching_tasks:
+                task_description = matching_tasks[0].description
+
+            # Create well-formed PRReference domain model
+            pr_ref = PRReference.from_metadata_pr(pr, project_name, task_description)
+
+            # Add to reviewer's stats (type-safe)
+            reviewer = pr.reviewer
+            if reviewer in stats_dict:
+                if pr.pr_state == "merged":
+                    stats_dict[reviewer].add_merged_pr(pr_ref)
+                elif pr.pr_state == "open":
+                    stats_dict[reviewer].add_open_pr(pr_ref)
+
+    return stats_dict
+```
+
+**Note:** This code will be written in Phase 4 after creating PRReference model.
+
+**Benefits:**
+- Single source of truth (metadata configuration)
+- No GitHub API calls
+- Type-safe (using HybridProjectMetadata models)
+- Project information included in stats
+- Consistent with merge trigger workflow
+
+**Files to modify:**
+- `src/claudestep/services/statistics_service.py` (lines 243-366)
+
+**Tests to update:**
+- `tests/unit/services/test_statistics_service.py`
+  - Update `test_collect_team_member_stats_*` tests to mock metadata service instead of GitHub API
+  - Add tests for date filtering from metadata
+  - Add tests for cross-project aggregation
+
+- [ ] Phase 4: Create PRReference Domain Model
+
+Currently, `TeamMemberStats` stores raw dictionaries for PR information (lines 136-137):
+```python
+self.merged_prs = []  # List of {pr_number, title, merged_at, project}
+self.open_prs = []    # List of {pr_number, title, created_at, project}
+```
+
+This violates the "parse once into well-formed models" principle. Create a proper domain model:
+
+**Create `PRReference` in `domain/models.py`:**
+```python
+@dataclass
+class PRReference:
+    """Reference to a pull request for statistics
+
+    Lightweight model that stores just the information needed for
+    statistics display, not the full PR details.
+    """
+    pr_number: int
+    title: str
+    project: str
+    timestamp: datetime  # merged_at or created_at depending on context
+
+    @classmethod
+    def from_metadata_pr(
+        cls,
+        pr: 'PullRequest',
+        project: str,
+        task_description: Optional[str] = None
+    ) -> 'PRReference':
+        """Create from HybridProjectMetadata PullRequest
+
+        Args:
+            pr: PullRequest from metadata
+            project: Project name
+            task_description: Optional task description to use as title
+
+        Returns:
+            PRReference instance
+        """
+        return cls(
+            pr_number=pr.pr_number,
+            title=pr.title or task_description or f"Task {pr.task_index}",
+            project=project,
+            timestamp=pr.created_at  # Could use merged_at if available
+        )
+
+    def format_display(self) -> str:
+        """Format for display: '[project] #123: Title'"""
+        return f"[{self.project}] #{self.pr_number}: {self.title}"
+```
+
+**Update `TeamMemberStats` to use PRReference:**
+```python
+class TeamMemberStats:
+    """Statistics for a single team member"""
+
+    def __init__(self, username: str):
+        self.username = username
+        self.merged_prs: List[PRReference] = []  # Type-safe list
+        self.open_prs: List[PRReference] = []    # Type-safe list
+
+    def add_merged_pr(self, pr_ref: PRReference):
+        """Add merged PR reference"""
+        self.merged_prs.append(pr_ref)
+
+    def add_open_pr(self, pr_ref: PRReference):
+        """Add open PR reference"""
+        self.open_prs.append(pr_ref)
+
+    def get_prs_by_project(self, pr_list: List[PRReference]) -> Dict[str, List[PRReference]]:
+        """Group PR references by project"""
+        by_project = {}
+        for pr_ref in pr_list:
+            if pr_ref.project not in by_project:
+                by_project[pr_ref.project] = []
+            by_project[pr_ref.project].append(pr_ref)
+        return by_project
+```
+
+**Benefits:**
+- ✅ Type safety - IDEs can autocomplete, typos caught early
+- ✅ Single source of truth - parsing happens once in factory method
+- ✅ Encapsulation - formatting logic in domain model
+- ✅ Reusability - can be used anywhere PR references are needed
+- ✅ Validation - constructor ensures required fields are present
+
+**Files to modify:**
+- `src/claudestep/domain/models.py` - Add PRReference, update TeamMemberStats
+
+**Tests to create:**
+- `tests/unit/domain/test_models.py` - Add tests for PRReference and updated TeamMemberStats
+
+- [ ] Phase 5: Add PR Title to Metadata Model
+
+Currently, PR title is not stored in `HybridProjectMetadata`. We need it for statistics display.
+
+**Changes to `PullRequest` model in `domain/models.py`:**
+
+```python
+@dataclass
+class PullRequest:
+    task_index: int
+    pr_number: int
+    branch_name: str
+    reviewer: str
+    pr_state: str
+    created_at: datetime
+    title: Optional[str] = None  # Add this field
+    ai_operations: List['AIOperation'] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'PullRequest':
+        """Parse from metadata JSON"""
+        return cls(
+            task_index=data["task_index"],
+            pr_number=data["pr_number"],
+            branch_name=data["branch_name"],
+            reviewer=data["reviewer"],
+            pr_state=data["pr_state"],
+            created_at=datetime.fromisoformat(data["created_at"].replace("Z", "+00:00")),
+            title=data.get("title"),  # Add this
+            ai_operations=[AIOperation.from_dict(op) for op in data.get("ai_operations", [])]
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to dict for JSON storage"""
+        return {
+            "task_index": self.task_index,
+            "pr_number": self.pr_number,
+            "branch_name": self.branch_name,
+            "reviewer": self.reviewer,
+            "pr_state": self.pr_state,
+            "created_at": self.created_at.isoformat(),
+            "title": self.title,  # Add this
+            "ai_operations": [op.to_dict() for op in self.ai_operations]
+        }
+```
+
+**Update metadata schema documentation:**
+- `docs/architecture/metadata-schema.md` - Add `title` field to PullRequest schema
+
+**Update finalize command to save PR title:**
+- `src/claudestep/cli/commands/finalize.py` - Capture PR title when creating PR and save to metadata
+
+**Files to modify:**
+- `src/claudestep/domain/models.py`
+- `docs/architecture/metadata-schema.md`
+- `src/claudestep/cli/commands/finalize.py`
+
+**Tests to update:**
+- `tests/unit/domain/test_models.py` - Update PullRequest serialization tests
+- `tests/integration/cli/commands/test_finalize.py` - Verify title is saved
+
+- [ ] Phase 6: Verify PRReference Uses PR Title from Metadata
+
+Now that we have PR titles in metadata (Phase 5), verify that `PRReference.from_metadata_pr()` handles them correctly:
+
+**Verification:**
+The `PRReference.from_metadata_pr()` factory method (created in Phase 4) already uses:
+```python
+title=pr.title or task_description or f"Task {pr.task_index}"
+```
+
+This provides a fallback chain:
+1. Use `pr.title` from metadata (if available after Phase 5)
+2. Fall back to `task_description` from tasks array
+3. Fall back to generic "Task N" format
+
+**No code changes needed** - Phase 4's PRReference already handles this correctly.
+
+**Tests to verify:**
+- `tests/unit/domain/test_models.py` - Test PRReference with and without title in metadata
+- Test fallback behavior: title → task_description → generic format
+
+- [ ] Phase 7: Remove GitHub API Dependencies from StatisticsService
+
+Clean up the service by removing all direct GitHub API usage:
+
+**Remove:**
+- All `run_gh_command()` calls (lines 271-286, 329-344)
+- All `json.loads()` calls (lines 287, 345)
+- All JSON dictionary navigation (lines 292-321, 349-361)
+
+**Verify:**
+- No imports from `claudestep.infrastructure.github.operations` except `get_file_from_branch` (used by ProjectRepository)
+- No `json` module imports in the service
+- No raw string command construction
+- All data comes from `metadata_service` or `project_repository`
+
+**Files to modify:**
+- `src/claudestep/services/statistics_service.py`
+
+**Tests to verify:**
+- `tests/unit/services/test_statistics_service.py` - All tests should pass without mocking `run_gh_command`
+- Tests should only mock `metadata_service` and `project_repository`
+
+- [ ] Phase 8: Document GitHub PR Operations for Future Use
+
+Although we're not using the GitHub PR query functions in statistics yet, document them for future "synchronize" command:
+
+**Create documentation:**
+- Purpose: Future command to sync metadata with GitHub state
+- Use case: Detect PRs closed outside normal workflow
+- Use case: Backfill metadata from existing PRs
+- Use case: Audit metadata accuracy
+
+**Add to architecture docs:**
+
+`docs/architecture/architecture.md` - Add section on synchronization strategy:
+
+```markdown
+## Future: Metadata Synchronization
+
+The GitHub PR operations in `infrastructure/github/operations.py` provide
+functions for querying GitHub's actual state. This enables a future
+"synchronize" command that can:
+
+- Detect PRs that were merged/closed outside the normal workflow
+- Backfill metadata from existing ClaudeStep PRs
+- Audit metadata configuration against GitHub reality
+- Correct drift between metadata and actual PR state
+
+For now, statistics rely entirely on metadata configuration, which is kept
+up-to-date by merge triggers and workflow runs. Direct GitHub API queries
+are not used in normal operations.
+```
+
+**Files to create/modify:**
+- `docs/architecture/architecture.md` - Add synchronization section
+- `src/claudestep/infrastructure/github/operations.py` - Add docstrings to PR functions explaining future use
+
+- [ ] Phase 9: Update Architecture Documentation
+
+Update all architecture documents to reflect the changes:
+
+**Update `docs/architecture/architecture.md`:**
+- Document the single source of truth principle (metadata configuration)
+- Explain why GitHub API is not used for statistics
+- Show the data flow: merge triggers → metadata → statistics
+
+**Update `docs/architecture/python-code-style.md`:**
+- Add StatisticsService as an example of proper layering
+- Show before/after of JSON parsing → domain models
+
+**Create decision record:**
+- `docs/architecture/decisions/adr-001-metadata-as-source-of-truth.md`
+- Explain why we chose metadata over GitHub API for statistics
+- Document trade-offs and future evolution path
+
+**Files to modify:**
+- `docs/architecture/architecture.md`
+- `docs/architecture/python-code-style.md`
+
+**Files to create:**
+- `docs/architecture/decisions/adr-001-metadata-as-source-of-truth.md`
+
+- [ ] Phase 10: Validation
+
+**Unit Tests:**
+```bash
+# Run statistics service tests
+PYTHONPATH=src:scripts pytest tests/unit/services/test_statistics_service.py -v
+
+# Run domain model tests (GitHub models, TeamMemberStats)
+PYTHONPATH=src:scripts pytest tests/unit/domain/test_github_models.py -v
+PYTHONPATH=src:scripts pytest tests/unit/domain/test_models.py -v
+
+# Run infrastructure tests (GitHubRepository)
+PYTHONPATH=src:scripts pytest tests/unit/infrastructure/repositories/test_github_repository.py -v
+```
+
+**Integration Tests:**
+```bash
+# Run statistics command integration test
+PYTHONPATH=src:scripts pytest tests/integration/cli/commands/test_statistics.py -v
+
+# Verify no GitHub API mocking needed - only metadata service
+```
+
+**Manual Verification:**
+```bash
+# Run statistics command locally
+source .venv/bin/activate
+python -m claudestep statistics \
+  --repo "gestrich/claude-step" \
+  --config-path claude-step/e2e-test-project/configuration.yml
+
+# Verify output shows:
+# - Project statistics from metadata
+# - Team member stats from metadata (not GitHub API)
+# - Proper project names in reviewer breakdown
+# - PR titles displayed correctly
+```
+
+**E2E Test (Optional):**
+```bash
+# Run e2e statistics test
+pytest tests/e2e/test_statistics_e2e.py -v -s
+
+# Verify statistics workflow runs successfully with new implementation
+```
+
+**Success Criteria:**
+- ✅ All unit tests pass (493+ tests, 85%+ coverage)
+- ✅ No direct GitHub API calls in StatisticsService
+- ✅ All data sourced from metadata configuration
+- ✅ Type-safe domain models used throughout
+- ✅ Project names included in team member stats
+- ✅ PR titles displayed from metadata
+- ✅ Statistics command runs successfully locally
+- ✅ GitHub repository infrastructure ready for future synchronize command
+
+**Code Quality Checks:**
+```bash
+# Check for architectural violations
+grep -r "run_gh_command" src/claudestep/services/statistics_service.py
+# Should return: no results
+
+grep -r "json.loads" src/claudestep/services/statistics_service.py
+# Should return: no results
+
+# Verify proper imports
+grep -r "from claudestep.infrastructure.github.operations import" src/claudestep/services/statistics_service.py
+# Should only show: get_file_from_branch (used by ProjectRepository, not directly)
+```
