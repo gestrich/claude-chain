@@ -21,24 +21,7 @@ class TaskManagementService:
         self.repo = repo
         self.metadata_service = metadata_service
 
-    @staticmethod
-    def generate_task_id(task: str, max_length: int = 30) -> str:
-        """Generate sanitized task ID from task description
-
-        Args:
-            task: Task description text
-            max_length: Maximum length for the ID
-
-        Returns:
-            Sanitized task ID (lowercase, alphanumeric + dashes, truncated)
-        """
-        # Convert to lowercase and replace non-alphanumeric with dashes
-        sanitized = re.sub(r"[^a-z0-9]+", "-", task.lower())
-        # Remove leading/trailing dashes
-        sanitized = sanitized.strip("-")
-        # Truncate to max length and remove trailing dash if present
-        sanitized = sanitized[:max_length].rstrip("-")
-        return sanitized
+    # Public API methods
 
     def find_next_available_task(self, spec_input: str, skip_indices: Optional[set] = None) -> Optional[tuple]:
         """Find first unchecked task not in skip_indices
@@ -127,3 +110,24 @@ class TaskManagementService:
         except Exception as e:
             print(f"Error: Failed to read from metadata storage: {e}")
             return set()
+
+    # Static utility methods
+
+    @staticmethod
+    def generate_task_id(task: str, max_length: int = 30) -> str:
+        """Generate sanitized task ID from task description
+
+        Args:
+            task: Task description text
+            max_length: Maximum length for the ID
+
+        Returns:
+            Sanitized task ID (lowercase, alphanumeric + dashes, truncated)
+        """
+        # Convert to lowercase and replace non-alphanumeric with dashes
+        sanitized = re.sub(r"[^a-z0-9]+", "-", task.lower())
+        # Remove leading/trailing dashes
+        sanitized = sanitized.strip("-")
+        # Truncate to max length and remove trailing dash if present
+        sanitized = sanitized[:max_length].rstrip("-")
+        return sanitized

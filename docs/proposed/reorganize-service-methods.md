@@ -23,9 +23,9 @@ The services to reorganize are:
 
 ## Phases
 
-- [ ] Phase 1: Reorganize TaskManagementService
+- [x] Phase 1: Reorganize TaskManagementService
 
-Reorganize methods in `src/claudestep/application/services/task_management.py` following this order:
+Reorganize methods in `src/claudestep/application/services/task_management_service.py` following this order:
 
 1. `__init__()` - Constructor
 2. **Public API methods** (high-level operations first):
@@ -35,11 +35,11 @@ Reorganize methods in `src/claudestep/application/services/task_management.py` f
 3. **Static/utility methods**:
    - `generate_task_id()` - Utility: Generate task IDs
 
-Current issues:
-- Static method `generate_task_id()` is placed between constructor and main methods
-- Methods are not clearly grouped by abstraction level
-
-Expected result: Methods ordered from highest-level public API to lowest-level utilities, making the service's purpose immediately clear.
+**Completed**: Methods reorganized with clear section comments:
+- Added "# Public API methods" section after constructor
+- Moved `generate_task_id()` static method to end with "# Static utility methods" section
+- All 18 unit tests pass successfully
+- No changes to public API or functionality
 
 - [ ] Phase 2: Reorganize ReviewerManagementService
 
