@@ -225,20 +225,41 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 - `statistics.py`: Already correct - no changes needed
 - `discover_ready.py`: Fixed import (line 9) and function call (line 28) to use `ProjectDetectionService`
 
-- [ ] Phase 7: Update Architecture Documentation
+- [x] Phase 7: Update Architecture Documentation ✅
 
-Update documentation to reflect the new class-based service pattern.
+**Status: COMPLETED**
 
-**Files to modify:**
-- `docs/architecture/architecture.md` - Update "Services" section
-- `docs/architecture/testing-guide.md` - Update service testing examples
-- Add examples of service instantiation and usage
+Successfully updated documentation to reflect the new class-based service pattern.
 
-**Documentation updates:**
-- Explain service constructor pattern
-- Show how to instantiate services in commands
-- Update testing examples to show mocking services
-- Add benefits of class-based approach
+**Changes made:**
+- ✅ Added comprehensive "Services" section to `docs/architecture/architecture.md`
+- ✅ Updated `docs/architecture/testing-guide.md` with service class testing examples
+- ✅ Documented service constructor pattern and dependency injection
+- ✅ Provided examples of service instantiation in CLI commands
+- ✅ Updated testing examples to show mocking service classes
+- ✅ Explained benefits of class-based approach
+- ✅ Documented all available services with their constructors and methods
+- ✅ Added migration notes explaining transition from function-based to class-based
+
+**Implementation notes:**
+- Added new "Services" section to table of contents in architecture.md
+- Documented the three-section pattern for CLI commands:
+  1. Get common dependencies
+  2. Initialize infrastructure
+  3. Initialize services
+- Provided clear examples of static vs instance methods
+- Updated testing guide with both unit test and integration test patterns for service classes
+- Explained when to use dependency injection vs static methods
+- Listed all 7 services with their signatures and purposes
+
+**Technical details:**
+- Documentation includes code examples for:
+  - Service class pattern
+  - Service instantiation in commands
+  - Unit testing services with mocked dependencies
+  - Integration testing commands with mocked services
+- Added before/after examples showing migration from function-based to class-based approach
+- Updated summary section to include "Class-Based Services" as a key architectural principle
 
 **Expected outcome:** Documentation accurately reflects the class-based service architecture.
 

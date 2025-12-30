@@ -10,6 +10,7 @@ This document describes the architectural decisions and conventions used in the 
 - [Spec File Source of Truth](#spec-file-source-of-truth)
 - [Data Flow](#data-flow)
 - [Module Organization](#module-organization)
+- [Services](#services)
 
 ---
 
@@ -710,6 +711,239 @@ src/claudestep/
 
 ---
 
+## Services
+
+### Convention: Class-Based Services with Dependency Injection
+
+ClaudeStep uses a **class-based service architecture** where:
+
+- **Services are classes** with constructor-based dependency injection
+- **Services encapsulate** business logic for a specific domain area
+- **Services are instantiated** once per CLI command execution
+- **Services share state** through instance variables (repo, metadata_service, etc.)
+
+### Why Class-Based Services?
+
+**Benefits**:
+1. **Consistency** - All services follow the same pattern
+2. **Dependency Injection** - Dependencies injected via constructor, not passed as function parameters
+3. **Testability** - Easier to mock dependencies and control test setup
+4. **Reduced Repetition** - Eliminates redundant object creation (e.g., GitHubMetadataStore)
+5. **State Management** - Services cache configuration and avoid redundant API calls
+6. **Future Flexibility** - Easier to add methods or refactor without changing signatures everywhere
+
+### Service Architecture Pattern
+
+All services follow this design:
+
+```python
+class ServiceName:
+    """Service for handling domain-specific operations"""
+
+    def __init__(self, repo: str, metadata_service: MetadataService):
+        """Initialize service with required dependencies"""
+        self.repo = repo
+        self.metadata_service = metadata_service
+
+    def instance_method(self, param: str) -> Result:
+        """Instance methods use self.repo and self.metadata_service"""
+        # Use injected dependencies
+        data = self.metadata_service.get_data()
+        return process(data, param)
+
+    @staticmethod
+    def static_method(param: str) -> Result:
+        """Static methods for pure functions with no state dependency"""
+        return pure_computation(param)
+```
+
+### Available Services
+
+**Application Services** (`src/claudestep/application/services/`):
+
+1. **TaskManagementService** - Task finding, marking, and tracking
+   - Constructor: `__init__(self, repo: str, metadata_service: MetadataService)`
+   - Instance methods: `find_next_available_task()`, `get_in_progress_task_indices()`
+   - Static methods: `generate_task_id()`, `mark_task_complete()`
+
+2. **ReviewerManagementService** - Reviewer capacity and assignment
+   - Constructor: `__init__(self, repo: str, metadata_service: MetadataService)`
+   - Instance methods: `find_available_reviewer()`
+
+3. **PROperationsService** - PR and branch naming utilities
+   - Constructor: `__init__(self, repo: str)`
+   - Instance methods: `get_project_prs()`
+   - Static methods: `format_branch_name()`, `parse_branch_name()`
+
+4. **ProjectDetectionService** - Project detection from PRs and paths
+   - Constructor: `__init__(self, repo: str)`
+   - Instance methods: `detect_project_from_pr()`
+   - Static methods: `detect_project_paths()`
+
+5. **StatisticsService** - Statistics collection and aggregation
+   - Constructor: `__init__(self, repo: str, metadata_service: MetadataService)`
+   - Instance methods: `collect_project_costs()`, `collect_team_member_stats()`, `collect_project_stats()`, `collect_all_statistics()`
+   - Static methods: `extract_cost_from_comment()`, `count_tasks()`
+
+6. **MetadataService** - Project and artifact metadata management
+   - Constructor: `__init__(self, metadata_store: GitHubMetadataStore)`
+   - Instance methods: `get_project()`, `save_project()`, `update_project()`, `get_artifact()`, `save_artifact()`
+
+7. **ArtifactService** - Artifact operations
+   - Constructor and methods follow same pattern
+
+### Service Instantiation in CLI Commands
+
+Services are instantiated **once** at the beginning of each command execution:
+
+```python
+def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
+    # === Get common dependencies ===
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+
+    # === Initialize infrastructure ===
+    metadata_store = GitHubMetadataStore(repo)
+    metadata_service = MetadataService(metadata_store)
+
+    # === Initialize services ===
+    project_service = ProjectDetectionService(repo)
+    task_service = TaskManagementService(repo, metadata_service)
+    reviewer_service = ReviewerManagementService(repo, metadata_service)
+    pr_service = PROperationsService(repo)
+
+    # === Use services throughout command ===
+    project = project_service.detect_project_from_pr(pr_number)
+    task = task_service.find_next_available_task(spec_content)
+    reviewer = reviewer_service.find_available_reviewer(reviewers, label, project)
+    branch = pr_service.format_branch_name(project, task_index)
+
+    # ... rest of command logic
+```
+
+### Service Instantiation Pattern
+
+All CLI commands follow this three-section pattern:
+
+1. **Get common dependencies** - Extract `repo` and other config from environment
+2. **Initialize infrastructure** - Create `GitHubMetadataStore` and `MetadataService`
+3. **Initialize services** - Instantiate all needed services with their dependencies
+
+This pattern:
+- Eliminates redundant service creation
+- Makes dependencies explicit and testable
+- Provides consistent structure across all commands
+- Enables easy addition of new services
+
+### Static vs Instance Methods
+
+**Use instance methods when:**
+- The method needs access to `self.repo` or `self.metadata_service`
+- The method performs I/O or makes API calls
+- The method needs to share state with other methods
+
+**Use static methods when:**
+- The method is a pure function with no state dependency
+- The method performs pure computation or string manipulation
+- The method can be called without instantiating the service
+
+**Example**:
+```python
+class PROperationsService:
+    def __init__(self, repo: str):
+        self.repo = repo
+
+    def get_project_prs(self, project: str) -> List[dict]:
+        """Instance method - needs self.repo"""
+        return fetch_prs_from_github(self.repo, project)
+
+    @staticmethod
+    def parse_branch_name(branch: str) -> tuple[str, int]:
+        """Static method - pure function, no state needed"""
+        match = re.match(r"^([^/]+)/task-(\d+)", branch)
+        return match.groups() if match else (None, None)
+```
+
+### Testing Services
+
+**Unit Test Pattern**:
+```python
+class TestTaskManagementService:
+    """Test suite for TaskManagementService"""
+
+    def test_find_next_available_task_returns_first_unchecked(self):
+        """Should return the first unchecked task from spec content"""
+        # Arrange
+        mock_metadata_service = Mock()
+        service = TaskManagementService(
+            repo="owner/repo",
+            metadata_service=mock_metadata_service
+        )
+        spec_content = """
+        - [x] Completed task
+        - [ ] Next task
+        - [ ] Future task
+        """
+
+        # Act
+        result = service.find_next_available_task(spec_content)
+
+        # Assert
+        assert result.description == "Next task"
+        assert result.index == 2
+```
+
+**Integration Test Pattern**:
+```python
+def test_prepare_command_with_services(mock_subprocess):
+    """Should use services to orchestrate preparation workflow"""
+    with patch('claudestep.cli.commands.prepare.ProjectDetectionService') as MockProject:
+        with patch('claudestep.cli.commands.prepare.TaskManagementService') as MockTask:
+            # Mock service instances
+            mock_project_service = MockProject.return_value
+            mock_task_service = MockTask.return_value
+
+            # Set up mock behavior
+            mock_project_service.detect_project_from_pr.return_value = "test-project"
+            mock_task_service.find_next_available_task.return_value = task_metadata
+
+            # Act
+            result = cmd_prepare(args, gh)
+
+            # Assert
+            assert result == 0
+            MockProject.assert_called_once_with(repo="owner/repo")
+            mock_project_service.detect_project_from_pr.assert_called_once()
+```
+
+### Migration from Function-Based to Class-Based
+
+The ClaudeStep codebase was migrated from function-based services to class-based services in phases:
+
+1. **Phase 1-5**: Converted individual service modules to classes
+2. **Phase 6**: Updated CLI commands to use consistent service instantiation pattern
+3. **Phase 7**: Updated architecture documentation (this section)
+
+**Before (Function-Based)**:
+```python
+def find_available_reviewer(repo: str, reviewers: list, metadata_service: MetadataService):
+    # Function approach - parameters passed every time
+    pass
+```
+
+**After (Class-Based)**:
+```python
+class ReviewerManagementService:
+    def __init__(self, repo: str, metadata_service: MetadataService):
+        self.repo = repo
+        self.metadata_service = metadata_service
+
+    def find_available_reviewer(self, reviewers: list):
+        # Class approach - uses self.repo and self.metadata_service
+        pass
+```
+
+---
+
 ## Summary
 
 **ClaudeStep Architecture** follows these key principles:
@@ -718,6 +952,7 @@ src/claudestep/
 ✅ **Command Dispatcher**: Single entry point with subcommands
 ✅ **Multiple Actions**: Organized in subdirectories (`statistics/`, `discovery/`)
 ✅ **Shared Codebase**: All actions use the same Python package
+✅ **Class-Based Services**: Dependency injection, consistent patterns, better testability
 ✅ **Testable**: Unit tests for Python code, not YAML
 ✅ **Modular**: Clear separation between commands, models, and utilities
 

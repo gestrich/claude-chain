@@ -184,7 +184,34 @@ def test_find_available_reviewer_calls_check_capacity_for_each(mock_check):
 
 ### 2. Mock at System Boundaries
 
-**✅ GOOD - Mock external services:**
+**✅ GOOD - Mock external services and inject dependencies:**
+```python
+def test_reviewer_service_finds_available_reviewer():
+    """Should find reviewer with capacity using mocked dependencies"""
+    # Arrange - Mock the metadata service dependency
+    mock_metadata_service = Mock()
+    mock_metadata_service.get_project.return_value = project_with_prs
+
+    # Instantiate service with mocked dependency
+    service = ReviewerManagementService(
+        repo="owner/repo",
+        metadata_service=mock_metadata_service
+    )
+
+    reviewers = [
+        ReviewerConfig(username="alice", maxOpenPRs=2),
+        ReviewerConfig(username="bob", maxOpenPRs=2)
+    ]
+
+    # Act
+    result = service.find_available_reviewer(reviewers, "project")
+
+    # Assert
+    assert result.username == "bob"
+    mock_metadata_service.get_project.assert_called()
+```
+
+**✅ GOOD - Mock subprocess for external commands:**
 ```python
 def test_create_pull_request_success(mock_subprocess):
     """Should execute gh CLI command with correct arguments"""
@@ -421,59 +448,84 @@ Tests run automatically on:
 
 ## Example Tests
 
-### Testing a Command
+### Testing a Command with Service Classes
 
 ```python
 # tests/integration/cli/commands/test_prepare.py
 class TestCmdPrepare:
     """Tests for the prepare command"""
 
-    def test_successful_preparation(
+    def test_successful_preparation_with_services(
         self,
         mock_subprocess,
         sample_config_dict,
         sample_spec_file,
         mock_github_actions_helper
     ):
-        """Should execute complete preparation workflow successfully"""
-        # Arrange
-        with patch('claudestep.cli.commands.prepare.detect_project_from_pr') as mock_detect:
-            mock_detect.return_value = "test-project"
-            # ... more setup ...
+        """Should execute complete preparation workflow using service classes"""
+        # Arrange - Mock service classes at the boundary
+        with patch('claudestep.cli.commands.prepare.ProjectDetectionService') as MockProjectService:
+            with patch('claudestep.cli.commands.prepare.TaskManagementService') as MockTaskService:
+                with patch('claudestep.cli.commands.prepare.ReviewerManagementService') as MockReviewerService:
+                    # Set up mock service instances
+                    mock_project_service = MockProjectService.return_value
+                    mock_task_service = MockTaskService.return_value
+                    mock_reviewer_service = MockReviewerService.return_value
 
-            # Act
-            result = cmd_prepare(args)
+                    # Configure mock behavior
+                    mock_project_service.detect_project_from_pr.return_value = "test-project"
+                    mock_task_service.find_next_available_task.return_value = task_metadata
+                    mock_reviewer_service.find_available_reviewer.return_value = reviewer_config
 
-            # Assert
-            assert result == 0
-            mock_github_actions_helper.write_output.assert_any_call(
-                'task_id', '2'
-            )
+                    # Act
+                    result = cmd_prepare(args, mock_github_actions_helper)
+
+                    # Assert
+                    assert result == 0
+                    # Verify service instantiation
+                    MockProjectService.assert_called_once_with(repo="owner/repo")
+                    MockTaskService.assert_called_once()
+                    # Verify service methods were called
+                    mock_project_service.detect_project_from_pr.assert_called_once()
+                    mock_task_service.find_next_available_task.assert_called_once()
+                    mock_github_actions_helper.write_output.assert_any_call('task_id', '2')
 ```
 
-### Testing a Service
+### Testing a Service Class
 
 ```python
 # tests/unit/application/services/test_task_management.py
-class TestFindNextAvailableTask:
-    """Tests for find_next_available_task function"""
+class TestTaskManagementService:
+    """Tests for TaskManagementService class"""
 
-    def test_returns_first_unchecked_task(self, tmp_path):
-        """Should return the first unchecked task from spec file"""
+    def test_find_next_available_task_returns_first_unchecked(self):
+        """Should return the first unchecked task from spec content"""
         # Arrange
-        spec_file = tmp_path / "spec.md"
-        spec_file.write_text("""
+        mock_metadata_service = Mock()
+        service = TaskManagementService(
+            repo="owner/repo",
+            metadata_service=mock_metadata_service
+        )
+        spec_content = """
         - [x] Completed task
         - [ ] Next task to do
         - [ ] Future task
-        """)
+        """
 
         # Act
-        result = find_next_available_task(str(spec_file))
+        result = service.find_next_available_task(spec_content)
 
         # Assert
         assert result.description == "Next task to do"
         assert result.index == 2
+
+    def test_static_method_can_be_called_without_instance(self):
+        """Should call static methods directly on the class"""
+        # Act
+        task_id = TaskManagementService.generate_task_id("project", 42)
+
+        # Assert
+        assert task_id == "project-42"
 ```
 
 ### Testing Error Handling
