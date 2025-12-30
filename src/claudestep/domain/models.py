@@ -1013,7 +1013,13 @@ class PullRequest:
     reviewer: str  # Assigned reviewer username
     pr_state: str  # "open", "merged", "closed"
     created_at: datetime  # When PR was created
-    ai_operations: List[AIOperation]  # All AI work for this PR
+    title: Optional[str] = None  # PR title for display in statistics
+    ai_operations: List[AIOperation] = None  # All AI work for this PR
+
+    def __post_init__(self):
+        """Initialize default values"""
+        if self.ai_operations is None:
+            self.ai_operations = []
 
     @classmethod
     def from_dict(cls, data: dict) -> "PullRequest":
@@ -1040,6 +1046,7 @@ class PullRequest:
             reviewer=data["reviewer"],
             pr_state=data["pr_state"],
             created_at=created_at,
+            title=data.get("title"),
             ai_operations=ai_operations,
         )
 
@@ -1056,6 +1063,7 @@ class PullRequest:
             "reviewer": self.reviewer,
             "pr_state": self.pr_state,
             "created_at": self.created_at.isoformat(),
+            "title": self.title,
             "ai_operations": [op.to_dict() for op in self.ai_operations],
         }
 

@@ -88,6 +88,7 @@ Each project file (`projects/{project-name}.json`) has the following structure:
       "reviewer": "alice",
       "pr_state": "merged",
       "created_at": "2025-01-10T14:22:00Z",
+      "title": "Refactor authentication module",
       "ai_operations": [
         {
           "type": "PRCreation",
@@ -163,6 +164,7 @@ Each object in the `pull_requests` array represents a single pull request:
 | `reviewer` | string | Yes | Assigned reviewer GitHub username |
 | `pr_state` | string | Yes | PR state: "open", "merged", or "closed" |
 | `created_at` | string (ISO 8601) | Yes | When this PR was created |
+| `title` | string | No | PR title for display in statistics (fallback to task description if not provided) |
 | `ai_operations` | array | Yes | List of AI operations for this PR |
 
 **Note:** Multiple PRs can reference the same `task_index` in retry scenarios.
@@ -260,6 +262,7 @@ The `schema_version` field enables future migrations:
       "reviewer": "alice",
       "pr_state": "merged",
       "created_at": "2025-01-10T09:00:00Z",
+      "title": "Extract authentication logic to separate module",
       "ai_operations": [
         {
           "type": "PRCreation",
@@ -290,6 +293,7 @@ The `schema_version` field enables future migrations:
       "reviewer": "bob",
       "pr_state": "open",
       "created_at": "2025-01-15T14:30:00Z",
+      "title": "Add JWT token validation",
       "ai_operations": [
         {
           "type": "PRCreation",
@@ -320,6 +324,7 @@ The `schema_version` field enables future migrations:
       "reviewer": "alice",
       "pr_state": "open",
       "created_at": "2025-01-20T11:15:00Z",
+      "title": "Implement OAuth2 integration",
       "ai_operations": [
         {
           "type": "PRCreation",

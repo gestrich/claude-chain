@@ -215,13 +215,14 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
 
         print(f"✅ Created PR: {pr_url}")
 
-        # Query PR number
+        # Query PR number and title
         pr_output = run_gh_command([
             "pr", "view", branch_name,
-            "--json", "number"
+            "--json", "number,title"
         ])
         pr_data = json.loads(pr_output)
         pr_number = pr_data.get("number")
+        pr_title = pr_data.get("title")
 
         # === STEP 3: Save to Metadata Storage ===
         print("\n=== Step 3/3: Saving metadata ===")
@@ -273,6 +274,7 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
             reviewer=reviewer,
             pr_state="open",
             created_at=datetime.utcnow(),
+            title=pr_title,
             ai_operations=ai_operations
         )
 
