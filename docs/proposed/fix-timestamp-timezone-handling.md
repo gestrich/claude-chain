@@ -84,24 +84,34 @@ Test results:
 
 Expected outcome: ✅ All new metadata written with proper timezone information (`+00:00` format)
 
-- [ ] Phase 3: Update tests to use timezone-aware datetimes
+- [x] Phase 3: Update tests to use timezone-aware datetimes ✅ **COMPLETED**
 
 Fix all tests that create datetime objects for assertions:
 
-Files to modify:
-- `tests/unit/domain/test_hybrid_metadata_models.py`
-- `tests/unit/infrastructure/metadata/test_github_metadata_store.py`
-- `tests/unit/services/test_metadata_service.py`
-- `tests/unit/services/test_statistics_service.py`
-- Any other tests using datetime objects
+Files modified:
+- `tests/unit/domain/test_models.py` - Updated imports and all datetime instantiations
+- `tests/unit/services/test_statistics_service.py` - Updated imports and all datetime instantiations
+- `tests/builders/artifact_builder.py` - Updated imports and default datetime value
+- `tests/unit/domain/test_hybrid_metadata_models.py` - Already had timezone-aware datetimes ✓
+- `tests/unit/infrastructure/metadata/test_github_metadata_store.py` - Already had timezone-aware datetimes ✓
+- `tests/unit/services/test_metadata_service.py` - Already had timezone-aware datetimes ✓
+- `tests/unit/domain/test_github_models.py` - Already had timezone-aware datetimes ✓
+- `tests/unit/infrastructure/github/test_operations.py` - Already had timezone-aware datetimes ✓
 
-Technical considerations:
-- Replace `datetime(2025, 12, 30, ...)` with `datetime(2025, 12, 30, ..., tzinfo=timezone.utc)`
-- Update test fixtures with timezone-aware timestamps
-- Ensure test assertions compare timezone-aware datetimes
-- Run tests to verify no comparison errors
+Technical implementation:
+- Added `timezone` to imports: `from datetime import datetime, timezone`
+- Replaced all `datetime(2025, 1, 1, 12, 0, 0)` with `datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)`
+- Updated test assertion in `test_to_json_exports_correctly` to expect `+00:00` timezone suffix
+- All test fixtures now use timezone-aware timestamps
 
-Expected outcome: All tests pass with timezone-aware datetimes
+Test results:
+- ✅ All 32 domain model tests passed (`tests/unit/domain/test_hybrid_metadata_models.py`)
+- ✅ All 57 statistics service tests passed (`tests/unit/services/test_statistics_service.py`)
+- ✅ All 48 domain model tests passed (`tests/unit/domain/test_models.py`)
+- ✅ Total 137 tests passed with timezone-aware datetimes
+- ✅ No timezone comparison errors observed
+
+Expected outcome: ✅ All tests pass with timezone-aware datetimes
 
 - [ ] Phase 4: Delete existing metadata in claudestep-metadata branch
 

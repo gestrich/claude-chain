@@ -1,7 +1,7 @@
 """Builder for creating test artifact and metadata data"""
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 
@@ -58,7 +58,7 @@ class TaskMetadataBuilder:
         self._project: str = "sample-project"
         self._branch_name: str = "claude-step-sample-project-1"
         self._reviewer: str = "alice"
-        self._created_at: datetime = datetime(2025, 1, 15, 10, 0, 0)
+        self._created_at: datetime = datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc)
         self._workflow_run_id: int = 123456789
         self._pr_number: int = 100
         self._main_task_cost_usd: float = 0.0

@@ -1,7 +1,7 @@
 """Unit tests for domain models"""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from claudestep.domain.models import (
     MarkdownFormatter,
@@ -232,7 +232,7 @@ class TestPRReference:
     def test_initialization(self):
         """Should initialize with all required fields"""
         # Arrange
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
         # Act
         pr_ref = PRReference(
@@ -251,7 +251,7 @@ class TestPRReference:
     def test_from_metadata_pr_with_task_description(self):
         """Should create PRReference from metadata PR using task description"""
         # Arrange
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr = PullRequest(
             task_index=1,
             pr_number=456,
@@ -279,7 +279,7 @@ class TestPRReference:
     def test_from_metadata_pr_without_task_description(self):
         """Should fall back to generic task format when no description provided"""
         # Arrange
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr = PullRequest(
             task_index=5,
             pr_number=789,
@@ -305,7 +305,7 @@ class TestPRReference:
     def test_from_metadata_pr_with_pr_title_attribute(self):
         """Should use PR title from metadata when available (Phase 5 complete)"""
         # Arrange
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
         # Create a PR dict that includes a title attribute (added in Phase 5)
         pr_data = {
@@ -335,7 +335,7 @@ class TestPRReference:
 
     def test_from_metadata_pr_title_fallback_chain(self):
         """Should use fallback chain: pr.title -> task_description -> generic format"""
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
         # Test 1: pr.title is None, should use task_description
         pr_data = {
@@ -366,7 +366,7 @@ class TestPRReference:
     def test_format_display(self):
         """Should format display string correctly"""
         # Arrange
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr_ref = PRReference(
             pr_number=123,
             title="Fix authentication bug",
@@ -383,7 +383,7 @@ class TestPRReference:
     def test_format_display_with_long_title(self):
         """Should handle long titles in display format"""
         # Arrange
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr_ref = PRReference(
             pr_number=456,
             title="This is a very long pull request title that describes many changes in great detail",
@@ -416,7 +416,7 @@ class TestTeamMemberStats:
         """Should count merged PRs correctly"""
         # Arrange
         stats = TeamMemberStats("alice")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         stats.merged_prs = [
             PRReference(pr_number=1, title="PR 1", project="proj1", timestamp=timestamp),
             PRReference(pr_number=2, title="PR 2", project="proj1", timestamp=timestamp),
@@ -432,7 +432,7 @@ class TestTeamMemberStats:
         """Should count open PRs correctly"""
         # Arrange
         stats = TeamMemberStats("alice")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         stats.open_prs = [PRReference(pr_number=3, title="PR 3", project="proj1", timestamp=timestamp)]
 
         # Act
@@ -445,7 +445,7 @@ class TestTeamMemberStats:
         """Should format summary for active member"""
         # Arrange
         stats = TeamMemberStats("alice")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         stats.merged_prs = [PRReference(pr_number=1, title="PR 1", project="proj1", timestamp=timestamp)]
         stats.open_prs = [PRReference(pr_number=2, title="PR 2", project="proj1", timestamp=timestamp)]
 
@@ -476,7 +476,7 @@ class TestTeamMemberStats:
         """Should format table row with medal for top 3"""
         # Arrange
         stats = TeamMemberStats("alice")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         stats.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj1", timestamp=timestamp) for i in range(5)]
         stats.open_prs = [PRReference(pr_number=10, title="PR 10", project="proj1", timestamp=timestamp)]
 
@@ -507,7 +507,7 @@ class TestTeamMemberStats:
         """Should add merged PR reference to list"""
         # Arrange
         stats = TeamMemberStats("alice")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr_ref = PRReference(pr_number=123, title="Fix bug", project="proj1", timestamp=timestamp)
 
         # Act
@@ -522,7 +522,7 @@ class TestTeamMemberStats:
         """Should add open PR reference to list"""
         # Arrange
         stats = TeamMemberStats("bob")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr_ref = PRReference(pr_number=456, title="Add feature", project="proj2", timestamp=timestamp)
 
         # Act
@@ -537,7 +537,7 @@ class TestTeamMemberStats:
         """Should group PR references by project"""
         # Arrange
         stats = TeamMemberStats("charlie")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         pr_list = [
             PRReference(pr_number=1, title="PR 1", project="project-a", timestamp=timestamp),
             PRReference(pr_number=2, title="PR 2", project="project-b", timestamp=timestamp),
@@ -744,7 +744,7 @@ class TestStatisticsReport:
         # Arrange
         import json
         report = StatisticsReport()
-        report.generated_at = datetime(2025, 1, 1, 12, 0, 0)
+        report.generated_at = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
         stats = ProjectStats("my-project", "/path/to/spec.md")
         stats.total_tasks = 10
@@ -752,7 +752,7 @@ class TestStatisticsReport:
         report.add_project(stats)
 
         alice = TeamMemberStats("alice")
-        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         alice.merged_prs = [PRReference(pr_number=1, title="Test PR", project="my-project", timestamp=timestamp)]
         report.add_team_member(alice)
 
@@ -761,7 +761,7 @@ class TestStatisticsReport:
         data = json.loads(json_output)
 
         # Assert
-        assert data["generated_at"] == "2025-01-01T12:00:00"
+        assert data["generated_at"] == "2025-01-01T12:00:00+00:00"
         assert "my-project" in data["projects"]
         assert data["projects"]["my-project"]["total_tasks"] == 10
         assert data["projects"]["my-project"]["completed_tasks"] == 7
