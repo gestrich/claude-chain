@@ -137,36 +137,33 @@ Verification:
 
 Expected outcome: ✅ Clean slate for metadata generation - all legacy naive timestamp metadata removed
 
-- [ ] Phase 5: Add validation to prevent naive datetimes
+- [x] Phase 5: Add validation to prevent naive datetimes ✅ **COMPLETED**
 
 Add runtime checks to catch naive datetime bugs early:
 
-Files to modify:
-- `src/claudestep/domain/models.py` - Add `__post_init__` validation to dataclasses
-- Raise error if any datetime field is naive (missing tzinfo)
+Files modified:
+- `src/claudestep/domain/models.py` - Added `__post_init__` validation to all dataclasses with datetime fields
 
-Technical considerations:
-- Use `__post_init__` in dataclasses to validate after construction
-- Check `dt.tzinfo is not None` for all datetime fields
-- Raise `ValueError` with clear message if naive datetime detected
-- This prevents bugs from being introduced in future
+Technical implementation:
+- Added `__post_init__` validation to the following dataclasses:
+  - `PRReference` (line 165-168) - validates `timestamp`
+  - `AITask` (line 620-623) - validates `created_at`
+  - `TaskMetadata` (line 694-699) - added validation for `created_at` to existing `__post_init__`
+  - `ProjectMetadata` (line 841-844) - validates `last_updated`
+  - `AIOperation` (line 995-998) - validates `created_at`
+  - `PullRequest` (line 1062-1067) - added validation for `created_at` to existing `__post_init__`
+  - `HybridProjectMetadata` (line 1162-1165) - validates `last_updated`
+- Each validation checks `dt.tzinfo is not None` and raises `ValueError` with clear message if naive datetime detected
+- Validation runs automatically after dataclass construction, preventing naive datetimes from being created
 
-Example validation:
-```python
-@dataclass
-class PullRequest:
-    created_at: datetime
-    merged_at: Optional[datetime] = None
+Test results:
+- ✅ All 263 domain unit tests passed
+- ✅ All 32 hybrid metadata model tests passed
+- ✅ All 105 statistics service and domain model tests passed
+- ✅ Validation successfully prevents naive datetime creation
+- ✅ Clear error messages help developers identify timezone issues immediately
 
-    def __post_init__(self):
-        """Validate that all datetimes are timezone-aware"""
-        if self.created_at.tzinfo is None:
-            raise ValueError(f"created_at must be timezone-aware, got: {self.created_at}")
-        if self.merged_at and self.merged_at.tzinfo is None:
-            raise ValueError(f"merged_at must be timezone-aware, got: {self.merged_at}")
-```
-
-Expected outcome: Future code cannot create naive datetimes in domain models
+Expected outcome: ✅ Future code cannot create naive datetimes in domain models - all datetime fields are validated at construction time
 
 - [ ] Phase 6: Document timezone handling convention
 

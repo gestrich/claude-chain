@@ -162,6 +162,11 @@ class PRReference:
     project: str
     timestamp: datetime  # merged_at or created_at depending on context
 
+    def __post_init__(self):
+        """Validate that all datetimes are timezone-aware"""
+        if self.timestamp.tzinfo is None:
+            raise ValueError(f"timestamp must be timezone-aware, got: {self.timestamp}")
+
     @classmethod
     def from_metadata_pr(
         cls,
@@ -612,6 +617,11 @@ class AITask:
     tokens_output: int = 0  # Output tokens generated
     duration_seconds: float = 0.0  # Time taken for this operation
 
+    def __post_init__(self):
+        """Validate that all datetimes are timezone-aware"""
+        if self.created_at.tzinfo is None:
+            raise ValueError(f"created_at must be timezone-aware, got: {self.created_at}")
+
     @classmethod
     def from_dict(cls, data: dict) -> "AITask":
         """Parse from JSON dictionary
@@ -682,9 +692,11 @@ class TaskMetadata:
     total_cost_usd: float = 0.0  # Deprecated: Use ai_tasks instead
 
     def __post_init__(self):
-        """Initialize ai_tasks list if not provided"""
+        """Initialize ai_tasks list if not provided and validate timezone-aware datetimes"""
         if self.ai_tasks is None:
             self.ai_tasks = []
+        if self.created_at.tzinfo is None:
+            raise ValueError(f"created_at must be timezone-aware, got: {self.created_at}")
 
     @classmethod
     def from_dict(cls, data: dict) -> "TaskMetadata":
@@ -825,6 +837,11 @@ class ProjectMetadata:
     project: str
     last_updated: datetime
     tasks: List[TaskMetadata]
+
+    def __post_init__(self):
+        """Validate that all datetimes are timezone-aware"""
+        if self.last_updated.tzinfo is None:
+            raise ValueError(f"last_updated must be timezone-aware, got: {self.last_updated}")
 
     @classmethod
     def from_dict(cls, data: dict) -> "ProjectMetadata":
@@ -975,6 +992,11 @@ class AIOperation:
     tokens_output: int = 0  # Output tokens generated
     duration_seconds: float = 0.0  # Time taken for this operation
 
+    def __post_init__(self):
+        """Validate that all datetimes are timezone-aware"""
+        if self.created_at.tzinfo is None:
+            raise ValueError(f"created_at must be timezone-aware, got: {self.created_at}")
+
     @classmethod
     def from_dict(cls, data: dict) -> "AIOperation":
         """Parse from JSON dictionary
@@ -1038,9 +1060,11 @@ class PullRequest:
     ai_operations: List[AIOperation] = None  # All AI work for this PR
 
     def __post_init__(self):
-        """Initialize default values"""
+        """Initialize default values and validate timezone-aware datetimes"""
         if self.ai_operations is None:
             self.ai_operations = []
+        if self.created_at.tzinfo is None:
+            raise ValueError(f"created_at must be timezone-aware, got: {self.created_at}")
 
     @classmethod
     def from_dict(cls, data: dict) -> "PullRequest":
@@ -1134,6 +1158,11 @@ class HybridProjectMetadata:
     last_updated: datetime  # Last modification timestamp
     tasks: List[Task]  # All tasks from spec.md (always present)
     pull_requests: List[PullRequest]  # All PRs created (execution history)
+
+    def __post_init__(self):
+        """Validate that all datetimes are timezone-aware"""
+        if self.last_updated.tzinfo is None:
+            raise ValueError(f"last_updated must be timezone-aware, got: {self.last_updated}")
 
     @classmethod
     def from_dict(cls, data: dict) -> "HybridProjectMetadata":
