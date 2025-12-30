@@ -27,17 +27,46 @@ class StatisticsService:
     ClaudeStep's statistics and reporting workflows.
     """
 
-    def __init__(self, repo: str, metadata_service: MetadataService):
+    def __init__(self, repo: str, metadata_service: MetadataService, base_branch: str = "main"):
         """Initialize the statistics service
 
         Args:
             repo: GitHub repository (owner/name)
             metadata_service: MetadataService instance for accessing metadata
+            base_branch: Base branch to fetch specs from (default: "main")
         """
         self.repo = repo
         self.metadata_service = metadata_service
+        self.base_branch = base_branch
 
     # Public API methods
+
+    def _load_project_config(
+        self, project_name: str, base_branch: str
+    ) -> Optional[List[str]]:
+        """Load project configuration and extract reviewer usernames
+
+        Args:
+            project_name: Name of the project
+            base_branch: Base branch to fetch config from
+
+        Returns:
+            List of reviewer usernames, or None if config couldn't be loaded
+        """
+        config_file_path = f"claude-step/{project_name}/configuration.yml"
+
+        try:
+            config_content = get_file_from_branch(self.repo, base_branch, config_file_path)
+            if not config_content:
+                return None
+
+            config = load_config_from_string(config_content, config_file_path)
+            reviewers_config = config.get("reviewers", [])
+            reviewers = [r.get("username") for r in reviewers_config if "username" in r]
+
+            return reviewers
+        except Exception:
+            raise
 
     def collect_all_statistics(
         self, config_path: Optional[str] = None, days_back: int = 30, label: str = DEFAULT_PR_LABEL
@@ -59,8 +88,8 @@ class StatisticsService:
             print("Warning: GITHUB_REPOSITORY not set")
             return report
 
-        # Get base branch from environment
-        base_branch = os.environ.get("BASE_BRANCH", "main")
+        # Use base branch from instance variable
+        base_branch = self.base_branch
         all_reviewers = set()
         projects_data = []  # List of (project_name, reviewers)
 
@@ -72,17 +101,11 @@ class StatisticsService:
                 # Extract project name from path
                 # Path format: claude-step/{project}/configuration.yml
                 project_name = os.path.basename(os.path.dirname(config_path))
-                config_file_path = f"claude-step/{project_name}/configuration.yml"
 
-                # Fetch configuration from GitHub API
-                config_content = get_file_from_branch(self.repo, base_branch, config_file_path)
-                if not config_content:
+                reviewers = self._load_project_config(project_name, base_branch)
+                if reviewers is None:
                     print(f"Error: Configuration file not found in branch '{base_branch}'")
                     return report
-
-                config = load_config_from_string(config_content, config_file_path)
-                reviewers_config = config.get("reviewers", [])
-                reviewers = [r.get("username") for r in reviewers_config if "username" in r]
 
                 projects_data.append((project_name, reviewers))
                 all_reviewers.update(reviewers)
@@ -107,19 +130,10 @@ class StatisticsService:
 
             for project_name in project_names:
                 try:
-                    config_file_path = f"claude-step/{project_name}/configuration.yml"
-
-                    # Fetch configuration from GitHub API
-                    config_content = get_file_from_branch(self.repo, base_branch, config_file_path)
-                    if not config_content:
+                    reviewers = self._load_project_config(project_name, base_branch)
+                    if reviewers is None:
                         print(f"Warning: Configuration file not found for project {project_name} in branch '{base_branch}', skipping")
                         continue
-
-                    config = load_config_from_string(config_content, config_file_path)
-                    reviewers_config = config.get("reviewers", [])
-                    reviewers = [
-                        r.get("username") for r in reviewers_config if "username" in r
-                    ]
 
                     projects_data.append((project_name, reviewers))
                     all_reviewers.update(reviewers)
