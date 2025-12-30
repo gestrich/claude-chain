@@ -76,93 +76,9 @@ class ProjectArtifact:
         return parse_task_index_from_name(self.artifact_name)
 
 
-def parse_task_index_from_name(artifact_name: str) -> Optional[int]:
-    """Parse task index from artifact name.
-
-    Expected format: task-metadata-{project}-{index}.json
-
-    Args:
-        artifact_name: Artifact name
-
-    Returns:
-        Task index or None if parsing fails
-    """
-    # Pattern: task-metadata-{project}-{index}.json
-    # Example: task-metadata-myproject-1.json
-    # Note: Project names can contain dashes, so we use .+ to match the entire project name
-    # and capture the last number before .json
-    pattern = r"task-metadata-.+-(\d+)\.json"
-    match = re.match(pattern, artifact_name)
-    if match:
-        try:
-            return int(match.group(1))
-        except ValueError:
-            return None
-    return None
-
-
-def _get_workflow_runs_for_branch(
-    repo: str, branch: str, limit: int = 10
-) -> List[dict]:
-    """Get workflow runs for a branch
-
-    Args:
-        repo: GitHub repository (owner/name)
-        branch: Branch name
-        limit: Maximum number of runs to fetch
-
-    Returns:
-        List of workflow run dictionaries
-
-    Raises:
-        GitHubAPIError: If API call fails
-    """
-    try:
-        api_response = gh_api_call(
-            f"/repos/{repo}/actions/runs?branch={branch}&status=completed&per_page={limit}"
-        )
-        return api_response.get("workflow_runs", [])
-    except GitHubAPIError as e:
-        print(f"Warning: Failed to get workflow runs for branch {branch}: {e}")
-        return []
-
-
-def _get_artifacts_for_run(repo: str, run_id: int) -> List[dict]:
-    """Get artifacts from a workflow run
-
-    Args:
-        repo: GitHub repository (owner/name)
-        run_id: Workflow run ID
-
-    Returns:
-        List of artifact dictionaries
-
-    Raises:
-        GitHubAPIError: If API call fails
-    """
-    try:
-        artifacts_data = gh_api_call(f"/repos/{repo}/actions/runs/{run_id}/artifacts")
-        return artifacts_data.get("artifacts", [])
-    except GitHubAPIError as e:
-        print(f"Warning: Failed to get artifacts for run {run_id}: {e}")
-        return []
-
-
-def _filter_project_artifacts(artifacts: List[dict], project: str) -> List[dict]:
-    """Filter artifacts by project name pattern
-
-    Args:
-        artifacts: List of artifact dictionaries
-        project: Project name to filter by
-
-    Returns:
-        List of artifacts matching the project
-    """
-    return [
-        artifact
-        for artifact in artifacts
-        if artifact["name"].startswith(f"task-metadata-{project}-")
-    ]
+# ============================================================
+# Public API functions
+# ============================================================
 
 
 def find_project_artifacts(
@@ -336,3 +252,102 @@ def get_reviewer_assignments(
         for a in artifacts
         if a.metadata and a.metadata.pr_number
     }
+
+
+# ============================================================
+# Module utilities
+# ============================================================
+
+
+def parse_task_index_from_name(artifact_name: str) -> Optional[int]:
+    """Parse task index from artifact name.
+
+    Expected format: task-metadata-{project}-{index}.json
+
+    Args:
+        artifact_name: Artifact name
+
+    Returns:
+        Task index or None if parsing fails
+    """
+    # Pattern: task-metadata-{project}-{index}.json
+    # Example: task-metadata-myproject-1.json
+    # Note: Project names can contain dashes, so we use .+ to match the entire project name
+    # and capture the last number before .json
+    pattern = r"task-metadata-.+-(\d+)\.json"
+    match = re.match(pattern, artifact_name)
+    if match:
+        try:
+            return int(match.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+# ============================================================
+# Private helper functions
+# ============================================================
+
+
+def _get_workflow_runs_for_branch(
+    repo: str, branch: str, limit: int = 10
+) -> List[dict]:
+    """Get workflow runs for a branch
+
+    Args:
+        repo: GitHub repository (owner/name)
+        branch: Branch name
+        limit: Maximum number of runs to fetch
+
+    Returns:
+        List of workflow run dictionaries
+
+    Raises:
+        GitHubAPIError: If API call fails
+    """
+    try:
+        api_response = gh_api_call(
+            f"/repos/{repo}/actions/runs?branch={branch}&status=completed&per_page={limit}"
+        )
+        return api_response.get("workflow_runs", [])
+    except GitHubAPIError as e:
+        print(f"Warning: Failed to get workflow runs for branch {branch}: {e}")
+        return []
+
+
+def _get_artifacts_for_run(repo: str, run_id: int) -> List[dict]:
+    """Get artifacts from a workflow run
+
+    Args:
+        repo: GitHub repository (owner/name)
+        run_id: Workflow run ID
+
+    Returns:
+        List of artifact dictionaries
+
+    Raises:
+        GitHubAPIError: If API call fails
+    """
+    try:
+        artifacts_data = gh_api_call(f"/repos/{repo}/actions/runs/{run_id}/artifacts")
+        return artifacts_data.get("artifacts", [])
+    except GitHubAPIError as e:
+        print(f"Warning: Failed to get artifacts for run {run_id}: {e}")
+        return []
+
+
+def _filter_project_artifacts(artifacts: List[dict], project: str) -> List[dict]:
+    """Filter artifacts by project name pattern
+
+    Args:
+        artifacts: List of artifact dictionaries
+        project: Project name to filter by
+
+    Returns:
+        List of artifacts matching the project
+    """
+    return [
+        artifact
+        for artifact in artifacts
+        if artifact["name"].startswith(f"task-metadata-{project}-")
+    ]

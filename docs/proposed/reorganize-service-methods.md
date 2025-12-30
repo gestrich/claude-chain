@@ -150,9 +150,9 @@ Reorganize methods in `src/claudestep/application/services/statistics_service.py
 - No changes to public API or functionality
 - Clear progression from high-level collection to low-level parsing utilities
 
-- [ ] Phase 7: Reorganize artifact_operations.py
+- [x] Phase 7: Reorganize artifact_operations_service.py
 
-Reorganize module-level code in `src/claudestep/application/services/artifact_operations.py`:
+Reorganize module-level code in `src/claudestep/application/services/artifact_operations_service.py`:
 
 1. **Classes** (public before private):
    - `TaskMetadata` (dataclass) - Public model
@@ -169,12 +169,15 @@ Reorganize module-level code in `src/claudestep/application/services/artifact_op
    - `_get_artifacts_for_run()`
    - `_filter_project_artifacts()`
 
-Current issues:
-- Private helper functions are not prefixed with `_` but should be
-- Utility function `parse_task_index_from_name()` appears before main API
-- Not organized by abstraction level
-
-Expected result: Clear separation of public API, utilities, and private helpers, with consistent naming.
+**Completed**: Module reorganized with clear section comments:
+- Added "# Public API functions" section after dataclasses
+- Public API functions are ordered from highest-level (`find_project_artifacts()`) to mid-level convenience wrappers
+- Added "# Module utilities" section before `parse_task_index_from_name()`
+- Added "# Private helper functions" section before private helpers (already properly prefixed with `_`)
+- All 182 unit tests pass successfully
+- Module maintains 89.91% code coverage
+- No changes to public API or functionality
+- Clear separation of dataclasses, public API, utilities, and private helpers following the established organizational pattern
 
 - [ ] Phase 8: Update imports and verify functionality
 
