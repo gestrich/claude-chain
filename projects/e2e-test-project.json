@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0",
   "project": "e2e-test-project",
-  "last_updated": "2025-12-30T20:46:25.360985",
+  "last_updated": "2025-12-30T20:48:37.535846",
   "tasks": [
     {
       "index": 1,
@@ -22,6 +22,11 @@
       "index": 4,
       "description": "Task 4",
       "status": "in_progress"
+    },
+    {
+      "index": 5,
+      "description": "Task 5",
+      "status": "in_progress"
     }
   ],
   "pull_requests": [
@@ -32,6 +37,7 @@
       "reviewer": "gestrich",
       "pr_state": "open",
       "created_at": "2025-12-29T23:47:49.299060",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -41,6 +47,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T00:43:19.290953",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -50,6 +57,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T00:46:30.065580",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -59,6 +67,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T13:53:19.448819",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -68,6 +77,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T14:34:31.750811",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -77,6 +87,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T15:02:40.757446",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -86,6 +97,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T16:27:14.875832",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -95,6 +107,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T16:34:20.634001",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -104,6 +117,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T16:41:07.817939",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -113,6 +127,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T16:50:58.258168",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -122,6 +137,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T16:54:05.982868",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -131,6 +147,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T17:04:25.394203",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -140,6 +157,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T17:11:20.984524",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -149,6 +167,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T17:19:13.825625",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -158,6 +177,7 @@
       "reviewer": "gestrich",
       "pr_state": "merged",
       "created_at": "2025-12-30T17:46:48.475506",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -167,6 +187,7 @@
       "reviewer": "gestrich",
       "pr_state": "open",
       "created_at": "2025-12-30T18:54:58.308579",
+      "title": null,
       "ai_operations": []
     },
     {
@@ -176,6 +197,17 @@
       "reviewer": "gestrich",
       "pr_state": "open",
       "created_at": "2025-12-30T20:46:24.702788",
+      "title": null,
+      "ai_operations": []
+    },
+    {
+      "task_index": 5,
+      "pr_number": 104,
+      "branch_name": "claude-step-e2e-test-project-5",
+      "reviewer": "gestrich",
+      "pr_state": "open",
+      "created_at": "2025-12-30T20:48:36.709257",
+      "title": "ClaudeStep: Task 5",
       "ai_operations": []
     }
   ]
