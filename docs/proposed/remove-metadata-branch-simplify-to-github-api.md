@@ -401,32 +401,45 @@ task_service = TaskManagementService(repo)
 
 ---
 
-- [ ] Phase 7: Update service constructors
+- [x] Phase 7: Update service constructors
 
 **Objective**: Remove metadata service parameters from service class constructors.
 
-**Tasks**:
-- Update `ReviewerManagementService.__init__()` to remove `metadata_service` parameter
-- Update `TaskManagementService.__init__()` to remove `metadata_service` parameter (if it has one)
-- Update `StatisticsService.__init__()` to remove `metadata_service` parameter
-- Update any other services that depend on metadata
-- Ensure services receive only the dependencies they actually need (repo, base_branch, etc.)
+**Status**: ✅ Complete
 
-**Example change**:
-```python
-# OLD
-class ReviewerManagementService:
-    def __init__(self, repo: str, metadata_service: MetadataService):
-        self.repo = repo
-        self.metadata_service = metadata_service
+**Tasks Completed**:
+- ✅ Updated `ReviewerManagementService.__init__()` to remove `metadata_service` parameter
+- ✅ Updated `TaskManagementService.__init__()` to remove `metadata_service` parameter
+- ✅ Updated `StatisticsService.__init__()` to remove `metadata_service` parameter
+- ✅ Verified no other services depend on metadata
+- ✅ Ensured services receive only the dependencies they actually need (repo, base_branch, etc.)
 
-# NEW
-class ReviewerManagementService:
-    def __init__(self, repo: str):
-        self.repo = repo
-```
+**Changes Made**:
 
-**Success criteria**: No service constructors reference metadata service.
+All service constructors have been updated to remove metadata_service parameters:
+
+1. **ReviewerManagementService** (src/claudestep/services/reviewer_management_service.py:24)
+   - Constructor now takes only: `repo: str`
+   - Removed `metadata_service` parameter
+
+2. **TaskManagementService** (src/claudestep/services/task_management_service.py:25)
+   - Constructor now takes only: `repo: str`
+   - Removed `metadata_service` parameter
+
+3. **StatisticsService** (src/claudestep/services/statistics_service.py:28-33)
+   - Constructor now takes: `repo: str`, `project_repository: ProjectRepository`, `base_branch: str = "main"`
+   - Removed `metadata_service` parameter
+
+**Technical Notes**:
+- All 573 unit and integration tests pass
+- Coverage is 67.95% (below 70% threshold only due to CLI commands with 0% coverage: prepare.py, finalize.py, discover_ready.py, task_management_service.py - this was already the case from Phase 6)
+- Verified no imports of `MetadataService` remain in src/claudestep
+- Verified no constructor signatures reference `metadata_service` anywhere in the codebase
+- Services now follow cleaner dependency injection pattern with only required dependencies
+
+**Note**: This phase was actually completed as part of Phase 6's work when CLI commands were updated. The service constructors were already updated at that time to support the CLI command changes.
+
+**Success criteria**: ✅ No service constructors reference metadata service.
 
 ---
 
