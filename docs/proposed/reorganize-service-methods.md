@@ -74,9 +74,9 @@ Reorganize methods in `src/claudestep/application/services/pr_operations_service
 - PROperationsService maintains 94.29% code coverage
 - No changes to public API or functionality
 
-- [ ] Phase 4: Reorganize ProjectDetectionService
+- [x] Phase 4: Reorganize ProjectDetectionService
 
-Reorganize methods in `src/claudestep/application/services/project_detection.py`:
+Reorganize methods in `src/claudestep/application/services/project_detection_service.py`:
 
 1. `__init__()` - Constructor
 2. **Public API methods** (instance methods first):
@@ -84,9 +84,12 @@ Reorganize methods in `src/claudestep/application/services/project_detection.py`
 3. **Static utility methods**:
    - `detect_project_paths()` - Utility: Determine project paths
 
-Current status: Methods are reasonably ordered but could benefit from clearer grouping.
-
-Expected result: Instance methods before static utilities, with section comments.
+**Completed**: Methods reorganized with clear section comments:
+- Added "# Public API methods" section after constructor
+- Added "# Static utility methods" section before static method
+- All 182 unit tests pass successfully
+- ProjectDetectionService maintains 100% code coverage
+- No changes to public API or functionality
 
 - [ ] Phase 5: Reorganize MetadataService
 

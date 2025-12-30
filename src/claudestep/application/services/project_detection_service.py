@@ -18,6 +18,8 @@ class ProjectDetectionService:
         """
         self.repo = repo
 
+    # Public API methods
+
     def detect_project_from_pr(self, pr_number: str) -> Optional[str]:
         """Detect project from merged PR branch name
 
@@ -59,6 +61,8 @@ class ProjectDetectionService:
         except Exception as e:
             print(f"Failed to detect project from PR: {str(e)}")
             return None
+
+    # Static utility methods
 
     @staticmethod
     def detect_project_paths(project_name: str) -> Tuple[str, str, str, str]:
