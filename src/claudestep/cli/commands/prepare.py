@@ -13,7 +13,7 @@ from claudestep.infrastructure.metadata.github_metadata_store import GitHubMetad
 from claudestep.application.services.metadata_service import MetadataService
 from claudestep.application.services.pr_operations import format_branch_name
 from claudestep.application.services.project_detection import detect_project_from_pr, detect_project_paths
-from claudestep.application.services.reviewer_management import find_available_reviewer
+from claudestep.application.services.reviewer_management import ReviewerManagementService
 from claudestep.application.services.task_management import TaskManagementService
 
 
@@ -136,7 +136,15 @@ Please merge your spec files to the '{base_branch}' branch before running Claude
 
         # === STEP 3: Check Reviewer Capacity ===
         print("\n=== Step 3/6: Checking reviewer capacity ===")
-        selected_reviewer, capacity_result = find_available_reviewer(reviewers, label, detected_project)
+
+        # Initialize metadata services if not already initialized
+        if 'metadata_service' not in locals():
+            metadata_store = GitHubMetadataStore(repo)
+            metadata_service = MetadataService(metadata_store)
+
+        # Initialize reviewer management service
+        reviewer_service = ReviewerManagementService(repo, metadata_service)
+        selected_reviewer, capacity_result = reviewer_service.find_available_reviewer(reviewers, label, detected_project)
 
         summary = capacity_result.format_summary()
         gh.write_step_summary(summary)

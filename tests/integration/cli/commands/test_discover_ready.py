@@ -39,13 +39,14 @@ class TestCheckProjectReady:
                 str(base_dir)
             )
 
-            with patch("claudestep.cli.commands.discover_ready.find_available_reviewer") as mock_reviewer:
+            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
                 mock_capacity_result = Mock()
                 mock_capacity_result.format_summary.return_value = "Capacity info"
                 mock_capacity_result.reviewer_status = [
                     {"username": "alice", "openPRs": 1, "maxPRs": 2}
                 ]
-                mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+                mock_service = MockReviewerService.return_value
+                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
                 with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
                     with patch("claudestep.cli.commands.discover_ready.MetadataService"):
@@ -207,8 +208,9 @@ class TestCheckProjectReady:
                 str(base_dir)
             )
 
-            with patch("claudestep.cli.commands.discover_ready.find_available_reviewer") as mock_reviewer:
-                mock_reviewer.return_value = (None, None)  # No capacity
+            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
+                mock_service = MockReviewerService.return_value
+                mock_service.find_available_reviewer.return_value = (None, None)  # No capacity
 
                 # Act
                 result = check_project_ready(project_name, repo)
@@ -241,10 +243,11 @@ class TestCheckProjectReady:
                 str(base_dir)
             )
 
-            with patch("claudestep.cli.commands.discover_ready.find_available_reviewer") as mock_reviewer:
+            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
                 mock_capacity_result = Mock()
                 mock_capacity_result.reviewer_status = []
-                mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+                mock_service = MockReviewerService.return_value
+                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
                 with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
                     with patch("claudestep.cli.commands.discover_ready.MetadataService"):
@@ -285,11 +288,12 @@ class TestCheckProjectReady:
                 str(base_dir)
             )
 
-            with patch("claudestep.cli.commands.discover_ready.find_available_reviewer") as mock_reviewer:
+            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
                 mock_capacity_result = Mock()
                 mock_capacity_result.format_summary.return_value = "Capacity info"
                 mock_capacity_result.reviewer_status = [{"username": "alice", "openPRs": 0, "maxPRs": 2}]
-                mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+                mock_service = MockReviewerService.return_value
+                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
                 with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
                     with patch("claudestep.cli.commands.discover_ready.MetadataService"):
@@ -303,10 +307,12 @@ class TestCheckProjectReady:
                             check_project_ready(project_name, repo)
 
                             # Assert
-                            mock_reviewer.assert_called_once()
-                            _, call_kwargs = mock_reviewer.call_args
+                            # Get the reviewer service mock instance
+                            reviewer_service_instance = MockReviewerService.return_value
+                            reviewer_service_instance.find_available_reviewer.assert_called_once()
+                            _, call_kwargs = reviewer_service_instance.find_available_reviewer.call_args
                             # Label is second positional arg
-                            assert mock_reviewer.call_args[0][1] == "claudestep"
+                            assert reviewer_service_instance.find_available_reviewer.call_args[0][1] == "claudestep"
 
                             mock_service.get_in_progress_task_indices.assert_called_once()
                             assert mock_service.get_in_progress_task_indices.call_args[0][0] == "claudestep"
@@ -351,13 +357,14 @@ class TestCheckProjectReady:
                 str(base_dir)
             )
 
-            with patch("claudestep.cli.commands.discover_ready.find_available_reviewer") as mock_reviewer:
+            with patch("claudestep.cli.commands.discover_ready.ReviewerManagementService") as MockReviewerService:
                 mock_capacity_result = Mock()
                 mock_capacity_result.format_summary.return_value = "Capacity info"
                 mock_capacity_result.reviewer_status = [
                     {"username": "alice", "openPRs": 2, "maxPRs": 5}
                 ]
-                mock_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
+                mock_service = MockReviewerService.return_value
+                mock_service.find_available_reviewer.return_value = ({"username": "alice"}, mock_capacity_result)
 
                 with patch("claudestep.cli.commands.discover_ready.GitHubMetadataStore"):
                     with patch("claudestep.cli.commands.discover_ready.MetadataService"):

@@ -7,7 +7,7 @@ from claudestep.cli.commands.discover import find_all_projects
 from claudestep.domain.config import load_config, validate_spec_format
 from claudestep.infrastructure.github.actions import GitHubActionsHelper
 from claudestep.application.services.project_detection import detect_project_paths
-from claudestep.application.services.reviewer_management import find_available_reviewer
+from claudestep.application.services.reviewer_management import ReviewerManagementService
 from claudestep.infrastructure.metadata.github_metadata_store import GitHubMetadataStore
 from claudestep.application.services.metadata_service import MetadataService
 from claudestep.application.services.task_management import TaskManagementService
@@ -54,17 +54,19 @@ def check_project_ready(project_name: str, repo: str) -> bool:
         # Use single 'claudestep' label for all projects
         label = "claudestep"
 
+        # Initialize metadata services
+        metadata_store = GitHubMetadataStore(repo)
+        metadata_service = MetadataService(metadata_store)
+
         # Check reviewer capacity
-        selected_reviewer, capacity_result = find_available_reviewer(reviewers, label, project_name)
+        reviewer_service = ReviewerManagementService(repo, metadata_service)
+        selected_reviewer, capacity_result = reviewer_service.find_available_reviewer(reviewers, label, project_name)
 
         if not selected_reviewer:
             print(f"  ⏭️  No reviewer capacity")
             return False
 
         # Check for available tasks
-        # Initialize task management service
-        metadata_store = GitHubMetadataStore(repo)
-        metadata_service = MetadataService(metadata_store)
         task_service = TaskManagementService(repo, metadata_service)
 
         in_progress_indices = task_service.get_in_progress_task_indices(label, project_name)

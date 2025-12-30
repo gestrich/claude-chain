@@ -62,36 +62,33 @@ Successfully converted task management functions to a class-based service with p
 - Instance variables: `self.repo`, `self.metadata_service`
 - Methods maintain backward-compatible signatures for smooth transition
 
-- [ ] Phase 2: Convert `reviewer_management.py` to `ReviewerManagementService`
+- [x] Phase 2: Convert `reviewer_management.py` to `ReviewerManagementService` ✅
 
-Convert reviewer capacity checking and assignment to a class-based service.
+**Status: COMPLETED**
 
-**Files to modify:**
-- `src/claudestep/application/services/reviewer_management.py`
-- `src/claudestep/cli/commands/prepare.py` (usage)
-- `src/claudestep/cli/commands/discover_ready.py` (usage, if applicable)
-- `tests/unit/application/services/test_reviewer_management.py`
-- Any integration tests
+Successfully converted reviewer management functions to a class-based service with proper dependency injection.
 
-**New class structure:**
-```python
-class ReviewerManagementService:
-    """Service for reviewer capacity checking and assignment"""
+**Changes made:**
+- ✅ Converted `reviewer_management.py` to `ReviewerManagementService` class
+- ✅ Updated service to use `find_project_artifacts` from artifact_operations instead of old metadata service approach
+- ✅ Updated `prepare.py` to instantiate and use `ReviewerManagementService`
+- ✅ Updated `discover_ready.py` to instantiate and use `ReviewerManagementService`
+- ✅ Updated unit tests (`test_reviewer_management.py`) to use the class-based service
+- ✅ Updated integration tests to mock the service class
+- ✅ All 16 unit tests passing
+- ✅ All integration tests for prepare and discover_ready passing (58 total)
 
-    def __init__(self, repo: str, metadata_service: MetadataService):
-        self.repo = repo
-        self.metadata_service = metadata_service
+**Implementation notes:**
+- `find_available_reviewer()` is an instance method that uses `self.repo` and `self.metadata_service`
+- Service now uses `find_project_artifacts()` API for getting open PR artifacts instead of directly accessing metadata service
+- Service is instantiated once per command execution in CLI commands
+- Eliminated redundant `GitHubMetadataStore` and `MetadataService` creation
+- Method maintains backward-compatible signature for smooth transition
 
-    def find_available_reviewer(self, reviewers: List[Dict[str, Any]], label: str, project: str) -> tuple[Optional[str], ReviewerCapacityResult]:
-        # Use self.metadata_service and self.repo
-        # No need to get GITHUB_REPOSITORY from env each time
-```
-
-**Update CLI commands:**
-- Instantiate `ReviewerManagementService` with repo and metadata_service
-- Update function calls to method calls
-
-**Expected outcome:** Reviewer management operations use proper dependency injection and eliminate repeated metadata service creation.
+**Technical details:**
+- Constructor signature: `__init__(self, repo: str, metadata_service: MetadataService)`
+- Instance variables: `self.repo`, `self.metadata_service`
+- Method uses artifact metadata for PR tracking instead of project metadata directly
 
 - [ ] Phase 3: Convert `pr_operations.py` to `PROperationsService`
 

@@ -65,7 +65,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string") as mock_validate:
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists") as mock_label:
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command") as mock_git:
@@ -78,7 +78,8 @@ class TestCmdPrepare:
                                                         "claude-step/my-project"
                                                     )
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -116,7 +117,7 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                        with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                                 with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -127,7 +128,8 @@ class TestCmdPrepare:
                                                             "config.yml", "spec.md", "template.md", "path"
                                                         )
                                                         mock_load.return_value = sample_config
-                                                        mock_reviewer.return_value = (
+                                                        mock_service = MockReviewerService.return_value
+                                                        mock_service.find_available_reviewer.return_value = (
                                                             "alice",
                                                             Mock(format_summary=Mock(return_value="Summary"))
                                                         )
@@ -212,12 +214,13 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         # Setup mocks
                                         mock_get_file.return_value = "config content"
                                         mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                         mock_load.return_value = sample_config
-                                        mock_reviewer.return_value = (
+                                        mock_service = MockReviewerService.return_value
+                                        mock_service.find_available_reviewer.return_value = (
                                             None,
                                             Mock(format_summary=Mock(return_value="All at capacity"))
                                         )
@@ -244,14 +247,15 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 # Setup mocks
                                                 mock_get_file.return_value = "config content"
                                                 mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                 mock_load.return_value = sample_config
-                                                mock_reviewer.return_value = (
+                                                mock_service = MockReviewerService.return_value
+                                                mock_service.find_available_reviewer.return_value = (
                                                     "alice",
                                                     Mock(format_summary=Mock(return_value="Summary"))
                                                 )
@@ -280,7 +284,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -288,7 +292,8 @@ class TestCmdPrepare:
                                                     mock_get_file.return_value = sample_spec_content
                                                     mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -317,7 +322,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command") as mock_git:
@@ -325,7 +330,8 @@ class TestCmdPrepare:
                                                     mock_get_file.return_value = sample_spec_content
                                                     mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -351,7 +357,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command") as mock_git:
@@ -359,7 +365,8 @@ class TestCmdPrepare:
                                                     mock_get_file.return_value = sample_spec_content
                                                     mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -387,7 +394,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -395,7 +402,8 @@ class TestCmdPrepare:
                                                     mock_get_file.return_value = sample_spec_content
                                                     mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -432,7 +440,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -445,7 +453,8 @@ class TestCmdPrepare:
                                                         "claude-step/my-project"
                                                     )
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -580,7 +589,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists") as mock_label:
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -588,7 +597,8 @@ class TestCmdPrepare:
                                                     mock_get_file.return_value = sample_spec_content
                                                     mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -614,7 +624,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string") as mock_validate:
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -627,7 +637,8 @@ class TestCmdPrepare:
                                                         "claude-step/my-project"
                                                     )
                                                     mock_load.return_value = sample_config
-                                                    mock_reviewer.return_value = (
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = (
                                                         "alice",
                                                         Mock(format_summary=Mock(return_value="Summary"))
                                                     )
@@ -653,7 +664,7 @@ class TestCmdPrepare:
                         with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                             with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                 with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                    with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                    with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                         with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                 with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -663,7 +674,8 @@ class TestCmdPrepare:
                                                     mock_load.return_value = sample_config
                                                     capacity_result = Mock()
                                                     capacity_result.format_summary.return_value = "Capacity Summary"
-                                                    mock_reviewer.return_value = ("alice", capacity_result)
+                                                    mock_service = MockReviewerService.return_value
+                                                    mock_service.find_available_reviewer.return_value = ("alice", capacity_result)
                                                     mock_indices.return_value = set()
                                                     mock_task.return_value = (2, "Task 2")
 
@@ -721,7 +733,7 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                        with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                                 with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -732,7 +744,8 @@ class TestCmdPrepare:
                                                                 mock_detect.return_value = "test-project"
                                                                 mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                                 mock_load.return_value = sample_config
-                                                                mock_reviewer.return_value = (
+                                                                mock_service = MockReviewerService.return_value
+                                                                mock_service.find_available_reviewer.return_value = (
                                                                     "alice",
                                                                     Mock(format_summary=Mock(return_value="Summary"))
                                                                 )
@@ -773,7 +786,7 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                        with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                                 with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -784,7 +797,8 @@ class TestCmdPrepare:
                                                                 mock_detect.return_value = "test-project"
                                                                 mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                                 mock_load.return_value = sample_config
-                                                                mock_reviewer.return_value = (
+                                                                mock_service = MockReviewerService.return_value
+                                                                mock_service.find_available_reviewer.return_value = (
                                                                     "alice",
                                                                     Mock(format_summary=Mock(return_value="Summary"))
                                                                 )
@@ -823,7 +837,7 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                        with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                                 with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -834,7 +848,8 @@ class TestCmdPrepare:
                                                                 mock_detect.return_value = "my-special-project"
                                                                 mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                                 mock_load.return_value = sample_config
-                                                                mock_reviewer.return_value = (
+                                                                mock_service = MockReviewerService.return_value
+                                                                mock_service.find_available_reviewer.return_value = (
                                                                     "bob",
                                                                     Mock(format_summary=Mock(return_value="Summary"))
                                                                 )
@@ -875,7 +890,7 @@ class TestCmdPrepare:
                             with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
                                 with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
                                     with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
-                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                        with patch("claudestep.cli.commands.prepare.ReviewerManagementService") as MockReviewerService:
                                             with patch("claudestep.cli.commands.prepare.TaskManagementService.get_in_progress_task_indices") as mock_indices:
                                                 with patch("claudestep.cli.commands.prepare.TaskManagementService.find_next_available_task") as mock_task:
                                                     with patch("claudestep.cli.commands.prepare.run_git_command"):
@@ -886,7 +901,8 @@ class TestCmdPrepare:
                                                                 mock_detect.return_value = "test-project"
                                                                 mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
                                                                 mock_load.return_value = sample_config
-                                                                mock_reviewer.return_value = (
+                                                                mock_service = MockReviewerService.return_value
+                                                                mock_service.find_available_reviewer.return_value = (
                                                                     "alice",
                                                                     Mock(format_summary=Mock(return_value="Summary"))
                                                                 )

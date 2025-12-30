@@ -8,7 +8,7 @@ import os
 import pytest
 from unittest.mock import Mock, patch
 
-from claudestep.application.services.reviewer_management import find_available_reviewer
+from claudestep.application.services.reviewer_management import ReviewerManagementService
 from claudestep.application.services.artifact_operations import ProjectArtifact, TaskMetadata
 from claudestep.domain.models import ReviewerCapacityResult
 from datetime import datetime
@@ -39,6 +39,15 @@ class TestFindAvailableReviewer:
         with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo"}):
             yield
 
+    @pytest.fixture
+    def reviewer_service(self, mock_env):
+        """Fixture providing ReviewerManagementService instance"""
+        from claudestep.application.services.metadata_service import MetadataService
+        from claudestep.infrastructure.metadata.github_metadata_store import GitHubMetadataStore
+        metadata_store = GitHubMetadataStore("owner/repo")
+        metadata_service = MetadataService(metadata_store)
+        return ReviewerManagementService("owner/repo", metadata_service)
+
     def _create_artifact_with_metadata(
         self,
         artifact_id: int,
@@ -64,7 +73,7 @@ class TestFindAvailableReviewer:
                 .build())
 
     def test_find_reviewer_returns_first_with_capacity_when_all_available(
-        self, reviewers_config, mock_env
+        self, reviewers_config, reviewer_service
     ):
         """Should return first reviewer when all reviewers have capacity"""
         # Arrange
@@ -72,7 +81,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = []  # No open PRs
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers_config, "claudestep", "myproject"
             )
 
@@ -88,7 +97,7 @@ class TestFindAvailableReviewer:
                 assert reviewer_status["open_count"] == 0
 
     def test_find_reviewer_skips_at_capacity_reviewer(
-        self, reviewers_config, mock_env
+        self, reviewers_config, reviewer_service
     ):
         """Should skip reviewer at capacity and select next available"""
         # Arrange
@@ -101,7 +110,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers_config, "claudestep", "myproject"
             )
 
@@ -122,7 +131,7 @@ class TestFindAvailableReviewer:
             assert bob_status["open_count"] == 0
 
     def test_find_reviewer_returns_none_when_all_at_capacity(
-        self, reviewers_config, mock_env
+        self, reviewers_config, reviewer_service
     ):
         """Should return None when all reviewers are at capacity"""
         # Arrange
@@ -142,7 +151,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers_config, "claudestep", "myproject"
             )
 
@@ -157,7 +166,7 @@ class TestFindAvailableReviewer:
                 assert reviewer_status["open_count"] == reviewer_status["max_prs"]
 
     def test_find_reviewer_handles_over_capacity_reviewer(
-        self, single_reviewer_config, mock_env
+        self, single_reviewer_config, reviewer_service
     ):
         """Should correctly identify reviewer as over capacity"""
         # Arrange - reviewer has 3 PRs but maxOpenPRs is 2
@@ -171,7 +180,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 single_reviewer_config, "claudestep", "myproject"
             )
 
@@ -183,7 +192,7 @@ class TestFindAvailableReviewer:
             assert alice_status["open_count"] == 3  # Over capacity
             assert alice_status["max_prs"] == 2
 
-    def test_find_reviewer_with_zero_max_prs(self, mock_env):
+    def test_find_reviewer_with_zero_max_prs(self, reviewer_service):
         """Should handle reviewer with maxOpenPRs set to zero"""
         # Arrange
         reviewers = [
@@ -195,7 +204,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = []
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers, "claudestep", "myproject"
             )
 
@@ -205,7 +214,7 @@ class TestFindAvailableReviewer:
             assert alice_status["has_capacity"] is False  # 0 < 0 is False
 
     def test_find_reviewer_ignores_unknown_reviewers_in_artifacts(
-        self, reviewers_config, mock_env
+        self, reviewers_config, reviewer_service
     ):
         """Should ignore PRs assigned to reviewers not in config"""
         # Arrange
@@ -219,7 +228,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers_config, "claudestep", "myproject"
             )
 
@@ -234,7 +243,7 @@ class TestFindAvailableReviewer:
             assert bob_status["open_count"] == 0
 
     def test_find_reviewer_stores_pr_details_correctly(
-        self, single_reviewer_config, mock_env
+        self, single_reviewer_config, reviewer_service
     ):
         """Should store PR number, task index, and description in result"""
         # Arrange
@@ -246,7 +255,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 single_reviewer_config, "claudestep", "myproject"
             )
 
@@ -258,7 +267,7 @@ class TestFindAvailableReviewer:
             assert pr_info["task_index"] == 5
             assert pr_info["task_description"] == "Task 5"
 
-    def test_find_reviewer_with_empty_reviewers_list(self, mock_env):
+    def test_find_reviewer_with_empty_reviewers_list(self, reviewer_service):
         """Should handle empty reviewers list gracefully"""
         # Arrange
         reviewers = []
@@ -267,7 +276,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = []
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers, "claudestep", "myproject"
             )
 
@@ -278,7 +287,7 @@ class TestFindAvailableReviewer:
             assert len(result.reviewers_status) == 0
 
     def test_find_reviewer_calls_find_project_artifacts_with_correct_params(
-        self, reviewers_config, mock_env
+        self, reviewers_config, reviewer_service
     ):
         """Should call find_project_artifacts with correct parameters"""
         # Arrange
@@ -286,7 +295,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = []
 
             # Act
-            find_available_reviewer(reviewers_config, "my-label", "test-project")
+            reviewer_service.find_available_reviewer(reviewers_config, "my-label", "test-project")
 
             # Assert
             mock_find.assert_called_once_with(
@@ -304,8 +313,15 @@ class TestFindAvailableReviewer:
             with patch('claudestep.application.services.reviewer_management.find_project_artifacts') as mock_find:
                 mock_find.return_value = []
 
+                # Create service with test repo
+                from claudestep.application.services.metadata_service import MetadataService
+                from claudestep.infrastructure.metadata.github_metadata_store import GitHubMetadataStore
+                metadata_store = GitHubMetadataStore("test-owner/test-repo")
+                metadata_service = MetadataService(metadata_store)
+                service = ReviewerManagementService("test-owner/test-repo", metadata_service)
+
                 # Act
-                find_available_reviewer(reviewers_config, "claudestep", "myproject")
+                service.find_available_reviewer(reviewers_config, "claudestep", "myproject")
 
                 # Assert
                 mock_find.assert_called_once()
@@ -313,7 +329,7 @@ class TestFindAvailableReviewer:
                 assert call_kwargs["repo"] == "test-owner/test-repo"
 
     def test_find_reviewer_handles_artifacts_without_metadata(
-        self, single_reviewer_config, mock_env
+        self, single_reviewer_config, reviewer_service
     ):
         """Should skip artifacts that have no metadata"""
         # Arrange
@@ -328,7 +344,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = [artifact_without_metadata]
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 single_reviewer_config, "claudestep", "myproject"
             )
 
@@ -338,7 +354,7 @@ class TestFindAvailableReviewer:
             assert alice_status["open_count"] == 0
 
     def test_find_reviewer_with_boundary_condition_exactly_at_capacity(
-        self, single_reviewer_config, mock_env
+        self, single_reviewer_config, reviewer_service
     ):
         """Should correctly identify when reviewer is exactly at capacity"""
         # Arrange - exactly 2 PRs for maxOpenPRs of 2
@@ -351,7 +367,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 single_reviewer_config, "claudestep", "myproject"
             )
 
@@ -363,7 +379,7 @@ class TestFindAvailableReviewer:
             assert alice_status["has_capacity"] is False  # Exactly at capacity
 
     def test_find_reviewer_with_boundary_condition_one_under_capacity(
-        self, single_reviewer_config, mock_env
+        self, single_reviewer_config, reviewer_service
     ):
         """Should correctly identify when reviewer is just under capacity"""
         # Arrange - 1 PR for maxOpenPRs of 2
@@ -375,7 +391,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 single_reviewer_config, "claudestep", "myproject"
             )
 
@@ -387,7 +403,7 @@ class TestFindAvailableReviewer:
             assert alice_status["has_capacity"] is True  # One under capacity
 
     def test_find_reviewer_returns_first_available_not_all(
-        self, reviewers_config, mock_env
+        self, reviewers_config, reviewer_service
     ):
         """Should return first available reviewer, not all available reviewers"""
         # Arrange - alice and bob both have capacity
@@ -397,7 +413,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers_config, "claudestep", "myproject"
             )
 
@@ -412,7 +428,7 @@ class TestFindAvailableReviewer:
             assert len(reviewers_with_capacity) == 3  # All have capacity
             assert reviewers_with_capacity[0]["username"] == "alice"
 
-    def test_find_reviewer_mixed_capacity_scenarios(self, mock_env):
+    def test_find_reviewer_mixed_capacity_scenarios(self, reviewer_service):
         """Should handle complex mixed capacity scenario"""
         # Arrange - alice at capacity, bob has room, charlie over capacity
         reviewers = [
@@ -436,7 +452,7 @@ class TestFindAvailableReviewer:
             mock_find.return_value = artifacts
 
             # Act
-            selected, result = find_available_reviewer(
+            selected, result = reviewer_service.find_available_reviewer(
                 reviewers, "claudestep", "myproject"
             )
 
@@ -464,8 +480,15 @@ class TestFindAvailableReviewer:
             with patch('claudestep.application.services.reviewer_management.find_project_artifacts') as mock_find:
                 mock_find.return_value = []
 
+                # Create service with empty repo
+                from claudestep.application.services.metadata_service import MetadataService
+                from claudestep.infrastructure.metadata.github_metadata_store import GitHubMetadataStore
+                metadata_store = GitHubMetadataStore("")
+                metadata_service = MetadataService(metadata_store)
+                service = ReviewerManagementService("", metadata_service)
+
                 # Act
-                selected, result = find_available_reviewer(
+                selected, result = service.find_available_reviewer(
                     reviewers_config, "claudestep", "myproject"
                 )
 
