@@ -701,3 +701,205 @@ class TestCmdPrepare:
                     assert "claude-step/my-project/spec.md" in error_msg
                     assert "claude-step/my-project/configuration.yml" in error_msg
                     assert "Please merge your spec files" in error_msg
+
+    def test_preparation_updates_metadata_when_merged_pr_provided(
+        self, args, mock_gh, sample_config, sample_spec_content
+    ):
+        """Should update metadata to mark PR as merged and task as completed"""
+        # Arrange
+        env = {
+            "MERGED_PR_NUMBER": "123",
+            "GITHUB_REPOSITORY": "owner/repo",
+            "PR_LABEL": "claudestep"
+        }
+
+        with patch.dict("os.environ", env):
+            with patch("claudestep.cli.commands.prepare.file_exists_in_branch", return_value=True):
+                with patch("claudestep.cli.commands.prepare.get_file_from_branch") as mock_get_file:
+                    with patch("claudestep.cli.commands.prepare.detect_project_from_pr") as mock_detect:
+                        with patch("claudestep.cli.commands.prepare.detect_project_paths") as mock_paths:
+                            with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
+                                with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
+                                    with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
+                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                                    with patch("claudestep.cli.commands.prepare.run_git_command"):
+                                                        with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
+                                                            with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
+                                                                # Setup mocks
+                                                                mock_get_file.return_value = sample_spec_content
+                                                                mock_detect.return_value = "test-project"
+                                                                mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
+                                                                mock_load.return_value = sample_config
+                                                                mock_reviewer.return_value = (
+                                                                    "alice",
+                                                                    Mock(format_summary=Mock(return_value="Summary"))
+                                                                )
+                                                                mock_indices.return_value = set()
+                                                                mock_task.return_value = (2, "Task 2")
+
+                                                                # Mock metadata service
+                                                                mock_metadata_service = Mock()
+                                                                mock_service_class.return_value = mock_metadata_service
+
+                                                                # Act
+                                                                result = cmd_prepare(args, mock_gh)
+
+                                                                # Assert
+                                                                assert result == 0
+                                                                mock_store_class.assert_called_once_with("owner/repo")
+                                                                mock_service_class.assert_called_once()
+                                                                mock_metadata_service.update_pr_state.assert_called_once_with(
+                                                                    "test-project", 123, "merged"
+                                                                )
+
+    def test_preparation_continues_when_metadata_update_fails(
+        self, args, mock_gh, sample_config, sample_spec_content
+    ):
+        """Should continue to prepare next task even if metadata update fails"""
+        # Arrange
+        env = {
+            "MERGED_PR_NUMBER": "123",
+            "GITHUB_REPOSITORY": "owner/repo",
+            "PR_LABEL": "claudestep"
+        }
+
+        with patch.dict("os.environ", env):
+            with patch("claudestep.cli.commands.prepare.file_exists_in_branch", return_value=True):
+                with patch("claudestep.cli.commands.prepare.get_file_from_branch") as mock_get_file:
+                    with patch("claudestep.cli.commands.prepare.detect_project_from_pr") as mock_detect:
+                        with patch("claudestep.cli.commands.prepare.detect_project_paths") as mock_paths:
+                            with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
+                                with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
+                                    with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
+                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                                    with patch("claudestep.cli.commands.prepare.run_git_command"):
+                                                        with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
+                                                            with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
+                                                                # Setup mocks
+                                                                mock_get_file.return_value = sample_spec_content
+                                                                mock_detect.return_value = "test-project"
+                                                                mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
+                                                                mock_load.return_value = sample_config
+                                                                mock_reviewer.return_value = (
+                                                                    "alice",
+                                                                    Mock(format_summary=Mock(return_value="Summary"))
+                                                                )
+                                                                mock_indices.return_value = set()
+                                                                mock_task.return_value = (2, "Task 2")
+
+                                                                # Mock metadata service to raise exception
+                                                                mock_metadata_service = Mock()
+                                                                mock_metadata_service.update_pr_state.side_effect = Exception("Metadata update failed")
+                                                                mock_service_class.return_value = mock_metadata_service
+
+                                                                # Act
+                                                                result = cmd_prepare(args, mock_gh)
+
+                                                                # Assert - should still succeed
+                                                                assert result == 0
+                                                                mock_gh.write_output.assert_any_call("has_task", "true")
+                                                                mock_gh.write_output.assert_any_call("task_index", "2")
+
+    def test_preparation_calls_update_pr_state_with_correct_parameters(
+        self, args, mock_gh, sample_config, sample_spec_content
+    ):
+        """Should call update_pr_state with project name, PR number, and 'merged' state"""
+        # Arrange
+        env = {
+            "MERGED_PR_NUMBER": "456",
+            "GITHUB_REPOSITORY": "owner/repo",
+            "PR_LABEL": "claudestep"
+        }
+
+        with patch.dict("os.environ", env):
+            with patch("claudestep.cli.commands.prepare.file_exists_in_branch", return_value=True):
+                with patch("claudestep.cli.commands.prepare.get_file_from_branch") as mock_get_file:
+                    with patch("claudestep.cli.commands.prepare.detect_project_from_pr") as mock_detect:
+                        with patch("claudestep.cli.commands.prepare.detect_project_paths") as mock_paths:
+                            with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
+                                with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
+                                    with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
+                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                                    with patch("claudestep.cli.commands.prepare.run_git_command"):
+                                                        with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
+                                                            with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
+                                                                # Setup mocks
+                                                                mock_get_file.return_value = sample_spec_content
+                                                                mock_detect.return_value = "my-special-project"
+                                                                mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
+                                                                mock_load.return_value = sample_config
+                                                                mock_reviewer.return_value = (
+                                                                    "bob",
+                                                                    Mock(format_summary=Mock(return_value="Summary"))
+                                                                )
+                                                                mock_indices.return_value = set()
+                                                                mock_task.return_value = (1, "Task 1")
+
+                                                                # Mock metadata service
+                                                                mock_metadata_service = Mock()
+                                                                mock_service_class.return_value = mock_metadata_service
+
+                                                                # Act
+                                                                result = cmd_prepare(args, mock_gh)
+
+                                                                # Assert
+                                                                assert result == 0
+                                                                mock_metadata_service.update_pr_state.assert_called_once_with(
+                                                                    "my-special-project",
+                                                                    456,
+                                                                    "merged"
+                                                                )
+
+    def test_preparation_instantiates_metadata_store_with_repository(
+        self, args, mock_gh, sample_config, sample_spec_content
+    ):
+        """Should instantiate GitHubMetadataStore with correct repository name"""
+        # Arrange
+        env = {
+            "MERGED_PR_NUMBER": "789",
+            "GITHUB_REPOSITORY": "myorg/myrepo",
+            "PR_LABEL": "claudestep"
+        }
+
+        with patch.dict("os.environ", env):
+            with patch("claudestep.cli.commands.prepare.file_exists_in_branch", return_value=True):
+                with patch("claudestep.cli.commands.prepare.get_file_from_branch") as mock_get_file:
+                    with patch("claudestep.cli.commands.prepare.detect_project_from_pr") as mock_detect:
+                        with patch("claudestep.cli.commands.prepare.detect_project_paths") as mock_paths:
+                            with patch("claudestep.cli.commands.prepare.load_config_from_string") as mock_load:
+                                with patch("claudestep.cli.commands.prepare.validate_spec_format_from_string"):
+                                    with patch("claudestep.cli.commands.prepare.ensure_label_exists"):
+                                        with patch("claudestep.cli.commands.prepare.find_available_reviewer") as mock_reviewer:
+                                            with patch("claudestep.cli.commands.prepare.get_in_progress_task_indices") as mock_indices:
+                                                with patch("claudestep.cli.commands.prepare.find_next_available_task") as mock_task:
+                                                    with patch("claudestep.cli.commands.prepare.run_git_command"):
+                                                        with patch("claudestep.cli.commands.prepare.GitHubMetadataStore") as mock_store_class:
+                                                            with patch("claudestep.cli.commands.prepare.MetadataService") as mock_service_class:
+                                                                # Setup mocks
+                                                                mock_get_file.return_value = sample_spec_content
+                                                                mock_detect.return_value = "test-project"
+                                                                mock_paths.return_value = ("config.yml", "spec.md", "template.md", "path")
+                                                                mock_load.return_value = sample_config
+                                                                mock_reviewer.return_value = (
+                                                                    "alice",
+                                                                    Mock(format_summary=Mock(return_value="Summary"))
+                                                                )
+                                                                mock_indices.return_value = set()
+                                                                mock_task.return_value = (1, "Task 1")
+
+                                                                # Mock metadata service
+                                                                mock_metadata_service = Mock()
+                                                                mock_service_class.return_value = mock_metadata_service
+
+                                                                # Act
+                                                                result = cmd_prepare(args, mock_gh)
+
+                                                                # Assert
+                                                                assert result == 0
+                                                                mock_store_class.assert_called_once_with("myorg/myrepo")

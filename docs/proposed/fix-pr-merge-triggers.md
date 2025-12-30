@@ -203,7 +203,7 @@ Add or update tests to verify that spec.md is correctly updated during PR creati
 - Tests verify the complete workflow: fetch → write → mark complete → commit
 - All 6 new tests pass successfully
 
-- [ ] Phase 5: Add tests for merged PR metadata updates
+- [x] Phase 5: Add tests for merged PR metadata updates
 
 Create tests to verify metadata is correctly updated when a PR is merged.
 
@@ -223,6 +223,18 @@ Create tests to verify metadata is correctly updated when a PR is merged.
 - Tests verify metadata updates when merged PR number is provided
 - Tests verify next task is found after marking previous as completed
 - Tests verify metadata is saved to GitHub branch storage
+
+**✅ Completed - Technical notes:**
+- Added 4 comprehensive integration tests to `test_prepare.py` for merged PR metadata updates:
+  1. `test_preparation_updates_metadata_when_merged_pr_provided` - Verifies metadata service is instantiated and `update_pr_state()` is called with correct parameters (project name, PR number, "merged" state)
+  2. `test_preparation_continues_when_metadata_update_fails` - Verifies workflow continues to prepare next task even if metadata update raises exception (graceful degradation)
+  3. `test_preparation_calls_update_pr_state_with_correct_parameters` - Verifies correct parameters are passed to `update_pr_state()` method with different project names and PR numbers
+  4. `test_preparation_instantiates_metadata_store_with_repository` - Verifies `GitHubMetadataStore` is instantiated with correct repository name from GITHUB_REPOSITORY env var
+- All tests properly mock `GitHubMetadataStore` and `MetadataService` classes
+- Tests verify the complete workflow: detect merged PR → instantiate metadata services → update PR state → continue to prepare next task
+- All 4 new tests pass successfully
+- The `update_pr_state()` method was already tested in unit tests (existing coverage in `test_metadata_service.py`)
+- No unit tests needed to be added as the method already existed and had coverage
 
 - [ ] Phase 6: Validation
 
