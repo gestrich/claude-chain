@@ -5,7 +5,7 @@ import pytest
 from datetime import datetime
 from unittest.mock import Mock, patch
 
-from claudestep.domain.models import TeamMemberStats, ProjectStats, StatisticsReport
+from claudestep.domain.models import TeamMemberStats, ProjectStats, StatisticsReport, PRReference
 from claudestep.domain.project import Project
 from claudestep.domain.spec_content import SpecContent
 from claudestep.services.statistics_service import StatisticsService
@@ -154,25 +154,28 @@ class TestTeamMemberStats:
     def test_merged_count(self):
         """Test merged_count property"""
         stats = TeamMemberStats("bob")
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
         stats.merged_prs = [
-            {"pr_number": 1, "title": "Test 1"},
-            {"pr_number": 2, "title": "Test 2"},
+            PRReference(pr_number=1, title="Test 1", project="proj1", timestamp=timestamp),
+            PRReference(pr_number=2, title="Test 2", project="proj1", timestamp=timestamp),
         ]
         assert stats.merged_count == 2
 
     def test_open_count(self):
         """Test open_count property"""
         stats = TeamMemberStats("charlie")
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
         stats.open_prs = [
-            {"pr_number": 3, "title": "Test 3"},
+            PRReference(pr_number=3, title="Test 3", project="proj1", timestamp=timestamp),
         ]
         assert stats.open_count == 1
 
     def test_format_summary_with_activity(self):
         """Test summary formatting with activity"""
         stats = TeamMemberStats("alice")
-        stats.merged_prs = [{"pr_number": 1, "title": "Test"}]
-        stats.open_prs = [{"pr_number": 2, "title": "Test"}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        stats.merged_prs = [PRReference(pr_number=1, title="Test", project="proj1", timestamp=timestamp)]
+        stats.open_prs = [PRReference(pr_number=2, title="Test", project="proj1", timestamp=timestamp)]
 
         summary = stats.format_summary()
         assert "@alice" in summary
@@ -283,7 +286,8 @@ class TestStatisticsReport:
 
         # Add team member
         member = TeamMemberStats("alice")
-        member.merged_prs = [{"pr_number": 1, "title": "Test"}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        member.merged_prs = [PRReference(pr_number=1, title="Test", project="test", timestamp=timestamp)]
         report.add_team_member(member)
 
         slack_msg = report.format_for_slack()
@@ -343,7 +347,8 @@ class TestStatisticsReport:
 
         # Add team member
         member = TeamMemberStats("alice")
-        member.merged_prs = [{"pr_number": 1, "title": "Test", "merged_at": "2025-01-01", "project": "test"}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        member.merged_prs = [PRReference(pr_number=1, title="Test", project="test", timestamp=timestamp)]
         member.open_prs = []
         report.add_team_member(member)
 
@@ -364,18 +369,19 @@ class TestStatisticsReport:
     def test_team_stats_sorting(self):
         """Test that team stats are sorted by activity"""
         report = StatisticsReport()
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         # Add members with different activity levels
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": i} for i in range(5)]
+        alice.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(5)]
         report.add_team_member(alice)
 
         bob = TeamMemberStats("bob")
-        bob.merged_prs = [{"pr_number": i} for i in range(2)]
+        bob.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(2)]
         report.add_team_member(bob)
 
         charlie = TeamMemberStats("charlie")
-        charlie.merged_prs = [{"pr_number": i} for i in range(10)]
+        charlie.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(10)]
         report.add_team_member(charlie)
 
         slack_msg = report.format_for_slack()
@@ -413,7 +419,8 @@ class TestLeaderboard:
         """Test leaderboard with one active member"""
         report = StatisticsReport()
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": 1, "title": "Test"}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        alice.merged_prs = [PRReference(pr_number=1, title="Test", project="proj", timestamp=timestamp)]
         report.add_team_member(alice)
 
         leaderboard = report.format_leaderboard()
@@ -426,12 +433,13 @@ class TestLeaderboard:
     def test_leaderboard_top_three_medals(self):
         """Test leaderboard shows medals for top 3"""
         report = StatisticsReport()
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         # Add 5 members with different activity levels
         for i, name in enumerate(["alice", "bob", "charlie", "david", "eve"]):
             member = TeamMemberStats(name)
             # alice: 5, bob: 4, charlie: 3, david: 2, eve: 1
-            member.merged_prs = [{"pr_number": j} for j in range(5 - i)]
+            member.merged_prs = [PRReference(pr_number=j, title=f"PR {j}", project="proj", timestamp=timestamp) for j in range(5 - i)]
             report.add_team_member(member)
 
         leaderboard = report.format_leaderboard()
@@ -455,13 +463,14 @@ class TestLeaderboard:
     def test_leaderboard_shows_merged_counts(self):
         """Test leaderboard displays correct merged PR counts"""
         report = StatisticsReport()
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": i} for i in range(10)]
+        alice.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(10)]
         report.add_team_member(alice)
 
         bob = TeamMemberStats("bob")
-        bob.merged_prs = [{"pr_number": i} for i in range(3)]
+        bob.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(3)]
         report.add_team_member(bob)
 
         leaderboard = report.format_leaderboard()
@@ -472,10 +481,14 @@ class TestLeaderboard:
     def test_leaderboard_shows_open_prs(self):
         """Test leaderboard shows open PRs when present"""
         report = StatisticsReport()
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": 1}]
-        alice.open_prs = [{"pr_number": 2}, {"pr_number": 3}]
+        alice.merged_prs = [PRReference(pr_number=1, title="PR 1", project="proj", timestamp=timestamp)]
+        alice.open_prs = [
+            PRReference(pr_number=2, title="PR 2", project="proj", timestamp=timestamp),
+            PRReference(pr_number=3, title="PR 3", project="proj", timestamp=timestamp)
+        ]
         report.add_team_member(alice)
 
         leaderboard = report.format_leaderboard()
@@ -485,15 +498,16 @@ class TestLeaderboard:
     def test_leaderboard_activity_bar(self):
         """Test leaderboard activity bar scales correctly"""
         report = StatisticsReport()
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         # alice has 10 merged (should get full bar)
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": i} for i in range(10)]
+        alice.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(10)]
         report.add_team_member(alice)
 
         # bob has 5 merged (should get half bar)
         bob = TeamMemberStats("bob")
-        bob.merged_prs = [{"pr_number": i} for i in range(5)]
+        bob.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(5)]
         report.add_team_member(bob)
 
         leaderboard = report.format_leaderboard()
@@ -512,15 +526,16 @@ class TestLeaderboard:
     def test_leaderboard_filters_inactive_members(self):
         """Test leaderboard only shows members with merged PRs"""
         report = StatisticsReport()
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         # Active member
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": 1}]
+        alice.merged_prs = [PRReference(pr_number=1, title="PR 1", project="proj", timestamp=timestamp)]
         report.add_team_member(alice)
 
         # Inactive member (has open PRs but no merges)
         bob = TeamMemberStats("bob")
-        bob.open_prs = [{"pr_number": 2}]
+        bob.open_prs = [PRReference(pr_number=2, title="PR 2", project="proj", timestamp=timestamp)]
         report.add_team_member(bob)
 
         # Completely inactive member
@@ -537,9 +552,10 @@ class TestLeaderboard:
         """Test leaderboard appears in Slack formatted output"""
         report = StatisticsReport()
         report.generated_at = datetime(2025, 1, 1, 12, 0, 0)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
 
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": 1}]
+        alice.merged_prs = [PRReference(pr_number=1, title="PR 1", project="proj", timestamp=timestamp)]
         report.add_team_member(alice)
 
         slack_msg = report.format_for_slack()

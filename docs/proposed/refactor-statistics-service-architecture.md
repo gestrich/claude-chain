@@ -234,15 +234,11 @@ Refactored `collect_team_member_stats()` method in `StatisticsService` to use me
 - Date filtering uses `pr.created_at` for both merged and open PRs (could use `merged_at` when available in future)
 - The `label` parameter is kept for backward compatibility but currently unused
 
-- [ ] Phase 4: Create PRReference Domain Model
+- [x] Phase 4: Create PRReference Domain Model ✅
 
-Currently, `TeamMemberStats` stores raw dictionaries for PR information (lines 136-137):
-```python
-self.merged_prs = []  # List of {pr_number, title, merged_at, project}
-self.open_prs = []    # List of {pr_number, title, created_at, project}
-```
+**Implementation completed:**
 
-This violates the "parse once into well-formed models" principle. Create a proper domain model:
+Created a type-safe `PRReference` domain model to replace raw dictionaries in `TeamMemberStats`:
 
 **Create `PRReference` in `domain/models.py`:**
 ```python
@@ -322,11 +318,29 @@ class TeamMemberStats:
 - ✅ Reusability - can be used anywhere PR references are needed
 - ✅ Validation - constructor ensures required fields are present
 
-**Files to modify:**
-- `src/claudestep/domain/models.py` - Add PRReference, update TeamMemberStats
+**Files modified:**
+- `src/claudestep/domain/models.py` - Added PRReference dataclass, updated TeamMemberStats
+- `src/claudestep/services/statistics_service.py` - Updated to create PRReference objects
+- `tests/unit/domain/test_models.py` - Added 6 new tests for PRReference, updated TeamMemberStats tests
+- `tests/unit/services/test_statistics_service.py` - Updated all tests to use PRReference
 
-**Tests to create:**
-- `tests/unit/domain/test_models.py` - Add tests for PRReference and updated TeamMemberStats
+**Implementation notes:**
+- ✅ Created `PRReference` dataclass with fields: `pr_number`, `title`, `project`, `timestamp`
+- ✅ Added factory method `from_metadata_pr()` with fallback chain: PR title → task_description → "Task N"
+- ✅ Added `format_display()` method: `"[project] #123: Title"`
+- ✅ Updated `TeamMemberStats` to use `List[PRReference]` instead of `List[dict]`
+- ✅ Added helper methods: `add_merged_pr()`, `add_open_pr()`, `get_prs_by_project()`
+- ✅ Updated `StatisticsService.collect_team_member_stats()` to use `PRReference.from_metadata_pr()`
+- ✅ Updated `StatisticsReport.to_json()` to serialize PRReference objects correctly
+- ✅ All 104 model and statistics tests passing
+
+**Benefits achieved:**
+- ✅ Type safety - IDEs can autocomplete, typos caught early
+- ✅ Single source of truth - parsing happens once in factory method
+- ✅ Encapsulation - formatting logic in domain model
+- ✅ Reusability - can be used anywhere PR references are needed
+- ✅ Validation - constructor ensures required fields are present
+- ✅ Ready for Phase 5 (PR title field will be used when available in metadata)
 
 - [ ] Phase 5: Add PR Title to Metadata Model
 

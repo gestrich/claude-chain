@@ -128,13 +128,55 @@ class ReviewerCapacityResult:
         return "\n".join(lines)
 
 
+@dataclass
+class PRReference:
+    """Reference to a pull request for statistics
+
+    Lightweight model that stores just the information needed for
+    statistics display, not the full PR details.
+    """
+
+    pr_number: int
+    title: str
+    project: str
+    timestamp: datetime  # merged_at or created_at depending on context
+
+    @classmethod
+    def from_metadata_pr(
+        cls,
+        pr: 'PullRequest',
+        project: str,
+        task_description: Optional[str] = None
+    ) -> 'PRReference':
+        """Create from HybridProjectMetadata PullRequest
+
+        Args:
+            pr: PullRequest from metadata
+            project: Project name
+            task_description: Optional task description to use as title
+
+        Returns:
+            PRReference instance
+        """
+        return cls(
+            pr_number=pr.pr_number,
+            title=pr.title if hasattr(pr, 'title') and pr.title else task_description or f"Task {pr.task_index}",
+            project=project,
+            timestamp=pr.created_at  # Could use merged_at if available
+        )
+
+    def format_display(self) -> str:
+        """Format for display: '[project] #123: Title'"""
+        return f"[{self.project}] #{self.pr_number}: {self.title}"
+
+
 class TeamMemberStats:
     """Statistics for a single team member"""
 
     def __init__(self, username: str):
         self.username = username
-        self.merged_prs = []  # List of {pr_number, title, merged_at, project}
-        self.open_prs = []    # List of {pr_number, title, created_at, project}
+        self.merged_prs: List[PRReference] = []  # Type-safe list of PR references
+        self.open_prs: List[PRReference] = []    # Type-safe list of PR references
 
     @property
     def merged_count(self) -> int:
@@ -145,6 +187,23 @@ class TeamMemberStats:
     def open_count(self) -> int:
         """Number of open PRs"""
         return len(self.open_prs)
+
+    def add_merged_pr(self, pr_ref: PRReference):
+        """Add merged PR reference"""
+        self.merged_prs.append(pr_ref)
+
+    def add_open_pr(self, pr_ref: PRReference):
+        """Add open PR reference"""
+        self.open_prs.append(pr_ref)
+
+    def get_prs_by_project(self, pr_list: List[PRReference]) -> Dict[str, List[PRReference]]:
+        """Group PR references by project"""
+        by_project: Dict[str, List[PRReference]] = {}
+        for pr_ref in pr_list:
+            if pr_ref.project not in by_project:
+                by_project[pr_ref.project] = []
+            by_project[pr_ref.project].append(pr_ref)
+        return by_project
 
     def format_summary(self, for_slack: bool = False) -> str:
         """Format for GitHub/Slack markdown output
@@ -491,8 +550,24 @@ class StatisticsReport:
         # Serialize team member stats
         for username, stats in self.team_stats.items():
             data["team_members"][username] = {
-                "merged_prs": stats.merged_prs,
-                "open_prs": stats.open_prs,
+                "merged_prs": [
+                    {
+                        "pr_number": pr.pr_number,
+                        "title": pr.title,
+                        "project": pr.project,
+                        "timestamp": pr.timestamp.isoformat()
+                    }
+                    for pr in stats.merged_prs
+                ],
+                "open_prs": [
+                    {
+                        "pr_number": pr.pr_number,
+                        "title": pr.title,
+                        "project": pr.project,
+                        "timestamp": pr.timestamp.isoformat()
+                    }
+                    for pr in stats.open_prs
+                ],
                 "merged_count": stats.merged_count,
                 "open_count": stats.open_count
             }

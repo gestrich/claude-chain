@@ -290,23 +290,22 @@ class StatisticsService:
                         if matching_tasks:
                             task_description = matching_tasks[0].description
 
-                        # Create PR info dictionary
-                        pr_info = {
-                            "pr_number": pr.pr_number,
-                            "title": task_description or f"Task {pr.task_index}",
-                            "project": project_name,
-                        }
+                        # Create PRReference from metadata PR
+                        from claudestep.domain.models import PRReference
+                        pr_ref = PRReference.from_metadata_pr(
+                            pr=pr,
+                            project=project_name,
+                            task_description=task_description
+                        )
 
                         # Add to reviewer's stats
                         reviewer = pr.reviewer
                         if reviewer in stats_dict:
                             if pr.pr_state == "merged":
-                                pr_info["merged_at"] = pr.created_at.isoformat()
-                                stats_dict[reviewer].merged_prs.append(pr_info)
+                                stats_dict[reviewer].add_merged_pr(pr_ref)
                                 merged_count += 1
                             elif pr.pr_state == "open":
-                                pr_info["created_at"] = pr.created_at.isoformat()
-                                stats_dict[reviewer].open_prs.append(pr_info)
+                                stats_dict[reviewer].add_open_pr(pr_ref)
                                 open_count += 1
 
                 except Exception as e:

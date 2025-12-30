@@ -6,9 +6,12 @@ from datetime import datetime
 from claudestep.domain.models import (
     MarkdownFormatter,
     ReviewerCapacityResult,
+    PRReference,
     TeamMemberStats,
     ProjectStats,
     StatisticsReport,
+    PullRequest,
+    AIOperation,
 )
 
 
@@ -223,6 +226,149 @@ class TestReviewerCapacityResult:
         assert "All reviewers at capacity" in summary
 
 
+class TestPRReference:
+    """Test suite for PRReference model"""
+
+    def test_initialization(self):
+        """Should initialize with all required fields"""
+        # Arrange
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+
+        # Act
+        pr_ref = PRReference(
+            pr_number=123,
+            title="Fix authentication bug",
+            project="my-project",
+            timestamp=timestamp
+        )
+
+        # Assert
+        assert pr_ref.pr_number == 123
+        assert pr_ref.title == "Fix authentication bug"
+        assert pr_ref.project == "my-project"
+        assert pr_ref.timestamp == timestamp
+
+    def test_from_metadata_pr_with_task_description(self):
+        """Should create PRReference from metadata PR using task description"""
+        # Arrange
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr = PullRequest(
+            task_index=1,
+            pr_number=456,
+            branch_name="feature/task-1",
+            reviewer="alice",
+            pr_state="open",
+            created_at=timestamp,
+            ai_operations=[]
+        )
+        task_description = "Add user authentication"
+
+        # Act
+        pr_ref = PRReference.from_metadata_pr(
+            pr=pr,
+            project="auth-service",
+            task_description=task_description
+        )
+
+        # Assert
+        assert pr_ref.pr_number == 456
+        assert pr_ref.title == "Add user authentication"
+        assert pr_ref.project == "auth-service"
+        assert pr_ref.timestamp == timestamp
+
+    def test_from_metadata_pr_without_task_description(self):
+        """Should fall back to generic task format when no description provided"""
+        # Arrange
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr = PullRequest(
+            task_index=5,
+            pr_number=789,
+            branch_name="feature/task-5",
+            reviewer="bob",
+            pr_state="merged",
+            created_at=timestamp,
+            ai_operations=[]
+        )
+
+        # Act
+        pr_ref = PRReference.from_metadata_pr(
+            pr=pr,
+            project="api-service"
+        )
+
+        # Assert
+        assert pr_ref.pr_number == 789
+        assert pr_ref.title == "Task 5"
+        assert pr_ref.project == "api-service"
+        assert pr_ref.timestamp == timestamp
+
+    def test_from_metadata_pr_with_pr_title_attribute(self):
+        """Should use PR title if available (for future Phase 5)"""
+        # Arrange
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+
+        # Create a PR dict that simulates having a title attribute
+        pr_data = {
+            "task_index": 2,
+            "pr_number": 999,
+            "branch_name": "feature/task-2",
+            "reviewer": "charlie",
+            "pr_state": "merged",
+            "created_at": timestamp.isoformat(),
+            "ai_operations": []
+        }
+        # Manually add title to the dict before creating PR
+        pr_data["title"] = "Implement OAuth2 login"
+        pr = PullRequest.from_dict(pr_data)
+
+        # Act
+        pr_ref = PRReference.from_metadata_pr(
+            pr=pr,
+            project="auth-service",
+            task_description="Add authentication"
+        )
+
+        # Assert - should NOT use PR title yet since it's not in the model
+        # This test documents the fallback behavior
+        assert pr_ref.pr_number == 999
+        assert pr_ref.title == "Add authentication"  # Uses task_description fallback
+
+    def test_format_display(self):
+        """Should format display string correctly"""
+        # Arrange
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr_ref = PRReference(
+            pr_number=123,
+            title="Fix authentication bug",
+            project="auth-service",
+            timestamp=timestamp
+        )
+
+        # Act
+        display = pr_ref.format_display()
+
+        # Assert
+        assert display == "[auth-service] #123: Fix authentication bug"
+
+    def test_format_display_with_long_title(self):
+        """Should handle long titles in display format"""
+        # Arrange
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr_ref = PRReference(
+            pr_number=456,
+            title="This is a very long pull request title that describes many changes in great detail",
+            project="my-project",
+            timestamp=timestamp
+        )
+
+        # Act
+        display = pr_ref.format_display()
+
+        # Assert
+        assert display.startswith("[my-project] #456:")
+        assert "very long pull request title" in display
+
+
 class TestTeamMemberStats:
     """Test suite for TeamMemberStats model"""
 
@@ -240,9 +386,10 @@ class TestTeamMemberStats:
         """Should count merged PRs correctly"""
         # Arrange
         stats = TeamMemberStats("alice")
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
         stats.merged_prs = [
-            {"pr_number": 1, "title": "PR 1"},
-            {"pr_number": 2, "title": "PR 2"},
+            PRReference(pr_number=1, title="PR 1", project="proj1", timestamp=timestamp),
+            PRReference(pr_number=2, title="PR 2", project="proj1", timestamp=timestamp),
         ]
 
         # Act
@@ -255,7 +402,8 @@ class TestTeamMemberStats:
         """Should count open PRs correctly"""
         # Arrange
         stats = TeamMemberStats("alice")
-        stats.open_prs = [{"pr_number": 3, "title": "PR 3"}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        stats.open_prs = [PRReference(pr_number=3, title="PR 3", project="proj1", timestamp=timestamp)]
 
         # Act
         count = stats.open_count
@@ -267,8 +415,9 @@ class TestTeamMemberStats:
         """Should format summary for active member"""
         # Arrange
         stats = TeamMemberStats("alice")
-        stats.merged_prs = [{"pr_number": 1}]
-        stats.open_prs = [{"pr_number": 2}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        stats.merged_prs = [PRReference(pr_number=1, title="PR 1", project="proj1", timestamp=timestamp)]
+        stats.open_prs = [PRReference(pr_number=2, title="PR 2", project="proj1", timestamp=timestamp)]
 
         # Act
         summary = stats.format_summary(for_slack=False)
@@ -297,8 +446,9 @@ class TestTeamMemberStats:
         """Should format table row with medal for top 3"""
         # Arrange
         stats = TeamMemberStats("alice")
-        stats.merged_prs = [{"pr_number": i} for i in range(5)]
-        stats.open_prs = [{"pr_number": 10}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        stats.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj1", timestamp=timestamp) for i in range(5)]
+        stats.open_prs = [PRReference(pr_number=10, title="PR 10", project="proj1", timestamp=timestamp)]
 
         # Act
         row = stats.format_table_row(rank=1)
@@ -322,6 +472,59 @@ class TestTeamMemberStats:
         # Assert
         assert "very-long-usern" in row
         assert len("very-long-username-here"[:15]) == 15
+
+    def test_add_merged_pr(self):
+        """Should add merged PR reference to list"""
+        # Arrange
+        stats = TeamMemberStats("alice")
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr_ref = PRReference(pr_number=123, title="Fix bug", project="proj1", timestamp=timestamp)
+
+        # Act
+        stats.add_merged_pr(pr_ref)
+
+        # Assert
+        assert len(stats.merged_prs) == 1
+        assert stats.merged_prs[0] == pr_ref
+        assert stats.merged_count == 1
+
+    def test_add_open_pr(self):
+        """Should add open PR reference to list"""
+        # Arrange
+        stats = TeamMemberStats("bob")
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr_ref = PRReference(pr_number=456, title="Add feature", project="proj2", timestamp=timestamp)
+
+        # Act
+        stats.add_open_pr(pr_ref)
+
+        # Assert
+        assert len(stats.open_prs) == 1
+        assert stats.open_prs[0] == pr_ref
+        assert stats.open_count == 1
+
+    def test_get_prs_by_project(self):
+        """Should group PR references by project"""
+        # Arrange
+        stats = TeamMemberStats("charlie")
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        pr_list = [
+            PRReference(pr_number=1, title="PR 1", project="project-a", timestamp=timestamp),
+            PRReference(pr_number=2, title="PR 2", project="project-b", timestamp=timestamp),
+            PRReference(pr_number=3, title="PR 3", project="project-a", timestamp=timestamp),
+            PRReference(pr_number=4, title="PR 4", project="project-c", timestamp=timestamp),
+        ]
+
+        # Act
+        grouped = stats.get_prs_by_project(pr_list)
+
+        # Assert
+        assert len(grouped) == 3
+        assert len(grouped["project-a"]) == 2
+        assert len(grouped["project-b"]) == 1
+        assert len(grouped["project-c"]) == 1
+        assert grouped["project-a"][0].pr_number == 1
+        assert grouped["project-a"][1].pr_number == 3
 
 
 class TestProjectStats:
@@ -519,7 +722,8 @@ class TestStatisticsReport:
         report.add_project(stats)
 
         alice = TeamMemberStats("alice")
-        alice.merged_prs = [{"pr_number": 1}]
+        timestamp = datetime(2025, 1, 1, 12, 0, 0)
+        alice.merged_prs = [PRReference(pr_number=1, title="Test PR", project="my-project", timestamp=timestamp)]
         report.add_team_member(alice)
 
         # Act
