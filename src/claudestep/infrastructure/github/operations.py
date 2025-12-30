@@ -189,27 +189,51 @@ def list_pull_requests(
 ) -> List[GitHubPullRequest]:
     """Fetch PRs with filtering, returns domain models
 
-    This function provides GitHub PR querying capabilities for future use cases
-    such as synchronization commands. It encapsulates all GitHub CLI command
-    construction and JSON parsing, returning type-safe domain models.
+    This function provides GitHub PR querying capabilities for future use cases.
+    It encapsulates all GitHub CLI command construction and JSON parsing,
+    returning type-safe domain models.
+
+    **Current Usage**: Not used in normal operations (statistics use metadata instead)
+
+    **Future Usage**: Enables a "synchronize" command that can:
+    - Detect PRs closed/merged outside normal workflow
+    - Backfill metadata from existing ClaudeStep PRs
+    - Audit metadata accuracy against GitHub reality
+    - Correct drift between metadata and actual PR state
+    - Validate consistency across projects
+
+    **Design Principles**:
+    - Parses GitHub JSON once into GitHubPullRequest domain models
+    - Infrastructure layer owns GitHub CLI command construction
+    - Type-safe return values for service layer consumption
+    - Generic and reusable for any future GitHub PR query needs
 
     Args:
         repo: GitHub repository (owner/name)
         state: "open", "closed", "merged", or "all"
-        label: Optional label filter
-        since: Optional date filter (for created_at)
+        label: Optional label filter (e.g., "claudestep" for ClaudeStep PRs)
+        since: Optional date filter (filters by created_at >= since)
         limit: Max results (default 100)
 
     Returns:
-        List of GitHubPullRequest domain models
+        List of GitHubPullRequest domain models with type-safe properties
 
     Raises:
         GitHubAPIError: If gh command fails
 
     Example:
+        >>> # Future synchronize command usage
         >>> prs = list_pull_requests("owner/repo", state="merged", label="claudestep")
         >>> for pr in prs:
         ...     print(f"PR #{pr.number}: {pr.title}")
+        ...     if pr.is_merged():
+        ...         print(f"  Merged at: {pr.merged_at}")
+
+    See Also:
+        - list_merged_pull_requests(): Convenience wrapper for merged PRs
+        - list_open_pull_requests(): Convenience wrapper for open PRs
+        - GitHubPullRequest: Domain model with type-safe properties
+        - docs/architecture/architecture.md: "Future: Metadata Synchronization" section
     """
     # Build gh pr list command
     args = [
@@ -249,22 +273,35 @@ def list_merged_pull_requests(
 ) -> List[GitHubPullRequest]:
     """Convenience function for fetching merged PRs
 
-    Filters by merged state and date range. Useful for collecting statistics
-    or synchronizing metadata.
+    Filters by merged state and date range (merged_at >= since).
+
+    **Current Usage**: Not used in normal operations (statistics use metadata instead)
+
+    **Future Usage**: Useful for:
+    - Synchronize command: Backfill recently merged PRs into metadata
+    - Audit reports: Verify all merged PRs have corresponding metadata entries
+    - Historical analysis: Rebuild metadata from GitHub for specific time periods
+    - Drift detection: Compare GitHub merge timestamps with metadata timestamps
 
     Args:
         repo: GitHub repository (owner/name)
-        since: Only include PRs merged on or after this date
-        label: Optional label filter
+        since: Only include PRs merged on or after this date (filters by merged_at)
+        label: Optional label filter (e.g., "claudestep")
         limit: Max results (default 100)
 
     Returns:
         List of merged GitHubPullRequest domain models
 
     Example:
+        >>> # Future synchronize command: Backfill last 30 days
         >>> from datetime import datetime, timedelta, timezone
         >>> cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-        >>> recent_merged = list_merged_pull_requests("owner/repo", since=cutoff)
+        >>> recent_merged = list_merged_pull_requests("owner/repo", since=cutoff, label="claudestep")
+        >>> print(f"Found {len(recent_merged)} merged PRs to backfill")
+
+    See Also:
+        - list_pull_requests(): Base function with full filtering options
+        - docs/architecture/architecture.md: "Future: Metadata Synchronization" section
     """
     # Get merged PRs
     prs = list_pull_requests(repo, state="merged", label=label, limit=limit)
@@ -283,18 +320,33 @@ def list_open_pull_requests(
 ) -> List[GitHubPullRequest]:
     """Convenience function for fetching open PRs
 
-    Useful for checking reviewer workload or finding stale PRs.
+    **Current Usage**: Not used in normal operations (reviewer capacity uses metadata instead)
+
+    **Future Usage**: Useful for:
+    - Synchronize command: Verify open PR metadata matches GitHub state
+    - Stale PR detection: Find open PRs older than expected review time
+    - Reviewer workload audit: Cross-check metadata reviewer assignments with actual assignees
+    - Drift detection: Identify PRs closed manually without updating metadata
 
     Args:
         repo: GitHub repository (owner/name)
-        label: Optional label filter
+        label: Optional label filter (e.g., "claudestep")
         limit: Max results (default 100)
 
     Returns:
         List of open GitHubPullRequest domain models
 
     Example:
+        >>> # Future synchronize command: Check for stale PRs
         >>> open_prs = list_open_pull_requests("owner/repo", label="claudestep")
         >>> print(f"Found {len(open_prs)} open ClaudeStep PRs")
+        >>> from datetime import datetime, timedelta, timezone
+        >>> now = datetime.now(timezone.utc)
+        >>> stale = [pr for pr in open_prs if (now - pr.created_at).days > 7]
+        >>> print(f"  {len(stale)} PRs are stale (>7 days old)")
+
+    See Also:
+        - list_pull_requests(): Base function with full filtering options
+        - docs/architecture/architecture.md: "Future: Metadata Synchronization" section
     """
     return list_pull_requests(repo, state="open", label=label, limit=limit)

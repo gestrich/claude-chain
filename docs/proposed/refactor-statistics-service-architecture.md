@@ -469,40 +469,58 @@ Cleaned up the service by removing all direct GitHub API usage and unused import
 - StatisticsService is now architecturally clean: service layer uses domain models, infrastructure layer hidden behind repository/service abstractions
 - All architectural violations documented in the Background section have been resolved
 
-- [ ] Phase 8: Document GitHub PR Operations for Future Use
+- [x] Phase 8: Document GitHub PR Operations for Future Use ✅
 
-Although we're not using the GitHub PR query functions in statistics yet, document them for future "synchronize" command:
+**Implementation completed:**
 
-**Create documentation:**
-- Purpose: Future command to sync metadata with GitHub state
-- Use case: Detect PRs closed outside normal workflow
-- Use case: Backfill metadata from existing PRs
-- Use case: Audit metadata accuracy
+Documented GitHub PR operations for future synchronize command use cases.
 
-**Add to architecture docs:**
+**Changes to `docs/architecture/architecture.md`:**
+- Added comprehensive "Future: Metadata Synchronization" section
+- Explained metadata-first architecture and why it's the single source of truth
+- Documented current data flow: Merge Triggers → Metadata → Statistics
+- Documented future data flow: Synchronize Command using GitHub PR operations
+- Listed 5 reasons why GitHub infrastructure layer is kept ready but dormant
+- Included design principles and related documentation references
 
-`docs/architecture/architecture.md` - Add section on synchronization strategy:
+**Section includes:**
+- Why metadata as source of truth (5 benefits)
+- Comparison of approaches (metadata-based vs direct GitHub API)
+- GitHub PR operations available for future use
+- Future synchronize command capabilities (5 use cases)
+- Current and future data flow diagrams
+- Design principles (5 principles)
+- Related documentation links
 
-```markdown
-## Future: Metadata Synchronization
+**Enhanced docstrings in `src/claudestep/infrastructure/github/operations.py`:**
+- `list_pull_requests()`: Added comprehensive docstring with:
+  - Current usage note (not used in normal operations)
+  - Future usage section (5 synchronize command capabilities)
+  - Design principles (4 principles)
+  - Enhanced examples with future synchronize command usage
+  - See Also section with related documentation links
 
-The GitHub PR operations in `infrastructure/github/operations.py` provide
-functions for querying GitHub's actual state. This enables a future
-"synchronize" command that can:
+- `list_merged_pull_requests()`: Added:
+  - Current usage note
+  - Future usage (4 specific use cases)
+  - Enhanced example for backfilling last 30 days
 
-- Detect PRs that were merged/closed outside the normal workflow
-- Backfill metadata from existing ClaudeStep PRs
-- Audit metadata configuration against GitHub reality
-- Correct drift between metadata and actual PR state
+- `list_open_pull_requests()`: Added:
+  - Current usage note
+  - Future usage (4 specific use cases)
+  - Enhanced example for stale PR detection
 
-For now, statistics rely entirely on metadata configuration, which is kept
-up-to-date by merge triggers and workflow runs. Direct GitHub API queries
-are not used in normal operations.
-```
+**Files modified:**
+- `docs/architecture/architecture.md` - Added 165-line "Future: Metadata Synchronization" section
+- `src/claudestep/infrastructure/github/operations.py` - Enhanced docstrings for 3 PR functions
 
-**Files to create/modify:**
-- `docs/architecture/architecture.md` - Add synchronization section
-- `src/claudestep/infrastructure/github/operations.py` - Add docstrings to PR functions explaining future use
+**Implementation notes:**
+- Documentation clearly separates current usage (none) from future usage (synchronize command)
+- All future use cases are well-documented and specific
+- Infrastructure is described as "ready but dormant - tested, documented, and available when needed"
+- Links to related documentation for easy navigation
+- All 510 core tests passing (domain, services, operations)
+- Metadata store integration tests failures expected (require actual GitHub API)
 
 - [ ] Phase 9: Update Architecture Documentation
 

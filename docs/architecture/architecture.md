@@ -1218,6 +1218,172 @@ class ReviewerManagementService:
 
 ---
 
+## Future: Metadata Synchronization
+
+### Convention: Metadata as Source of Truth with Future Sync Capability
+
+ClaudeStep follows a **metadata-first architecture** where:
+
+- **Metadata configuration is the single source of truth** for statistics and reporting
+- **Metadata is kept up-to-date** by merge triggers and workflow runs
+- **GitHub API queries are available but not used** in normal operations
+- **Future synchronize command** will enable metadata validation and drift detection
+
+### Why Metadata as Source of Truth?
+
+**Benefits**:
+1. **Consistency** - All statistics come from the same source (metadata), not mixed sources
+2. **Performance** - No GitHub API rate limit concerns for statistics queries
+3. **Cross-project aggregation** - Easy to aggregate stats across multiple projects
+4. **Offline capability** - Statistics work without GitHub API access (using cached metadata)
+5. **Type safety** - Metadata uses well-defined domain models, not raw JSON
+
+**Comparison**:
+
+❌ **Direct GitHub API approach** (what we avoid for statistics):
+```python
+# BAD: Querying GitHub API for statistics
+prs = run_gh_command("pr list --json number,title,assignees")
+data = json.loads(prs)
+for pr in data:
+    reviewer = pr["assignees"][0]["login"]  # String keys, no type safety
+    # Complex JSON navigation, easy to break
+```
+
+✅ **Metadata-based approach** (what we use):
+```python
+# GOOD: Using metadata configuration
+projects = metadata_service.list_project_names()
+for project in projects:
+    metadata = metadata_service.get_project(project)
+    for pr in metadata.pull_requests:
+        reviewer = pr.reviewer  # Type-safe property access
+        pr_title = pr.title or pr.task_description  # Graceful fallback
+```
+
+### GitHub PR Operations: Built for Future Use
+
+The infrastructure layer includes GitHub PR query functions in `infrastructure/github/operations.py` that provide type-safe access to GitHub's actual PR state:
+
+```python
+def list_pull_requests(
+    repo: str,
+    state: str = "all",
+    label: Optional[str] = None,
+    since: Optional[datetime] = None,
+    limit: int = 100
+) -> List[GitHubPullRequest]:
+    """Fetch PRs with filtering, returns domain models"""
+    # GitHub CLI command construction
+    # JSON parsing via domain model factories
+    # Returns type-safe GitHubPullRequest objects
+```
+
+**These functions enable a future "synchronize" command** that can:
+
+- **Detect PRs closed outside normal workflow** - Find PRs that were merged/closed manually
+- **Backfill metadata from existing PRs** - Import historical ClaudeStep PRs into metadata
+- **Audit metadata accuracy** - Verify metadata matches GitHub reality
+- **Correct drift** - Update metadata when it diverges from actual PR state
+- **Validate consistency** - Check that all expected PRs exist and have correct status
+
+### Current Data Flow: Merge Triggers → Metadata → Statistics
+
+```
+┌────────────────────────┐
+│   Workflow Run         │
+│   (finalize command)   │
+└──────────┬─────────────┘
+           │
+           ▼
+┌────────────────────────┐
+│   Update Metadata      │
+│   - PR number          │
+│   - PR title           │
+│   - Reviewer           │
+│   - Task info          │
+│   - Timestamp          │
+└──────────┬─────────────┘
+           │
+           ▼
+┌────────────────────────┐
+│   Metadata Storage     │
+│   (Single source of    │
+│    truth)              │
+└──────────┬─────────────┘
+           │
+           ▼
+┌────────────────────────┐
+│   Statistics Service   │
+│   - Queries metadata   │
+│   - No GitHub API      │
+│   - Type-safe models   │
+└────────────────────────┘
+```
+
+### Future Data Flow: Synchronize Command
+
+```
+┌────────────────────────┐
+│   Synchronize Command  │
+│   (future feature)     │
+└──────────┬─────────────┘
+           │
+           ▼
+┌────────────────────────────────────┐
+│   Query GitHub API                 │
+│   - list_pull_requests()           │
+│   - Filter by ClaudeStep label     │
+│   - Returns GitHubPullRequest      │
+│     domain models                  │
+└──────────┬─────────────────────────┘
+           │
+           ▼
+┌────────────────────────────────────┐
+│   Compare with Metadata            │
+│   - Check for missing PRs          │
+│   - Verify PR status matches       │
+│   - Detect manual changes          │
+└──────────┬─────────────────────────┘
+           │
+           ▼
+┌────────────────────────────────────┐
+│   Update Metadata                  │
+│   - Backfill missing PRs           │
+│   - Correct incorrect status       │
+│   - Report drift                   │
+└────────────────────────────────────┘
+```
+
+### Why Keep GitHub Infrastructure Layer?
+
+Although statistics don't currently use GitHub PR queries, we maintain the infrastructure for:
+
+1. **Future synchronize command** - Validate and correct metadata against GitHub
+2. **Backfill historical data** - Import existing PRs from before ClaudeStep adoption
+3. **Audit and compliance** - Verify metadata accuracy for reporting
+4. **Disaster recovery** - Rebuild metadata from GitHub if storage corrupted
+5. **Migration tools** - Support future metadata format changes
+
+The infrastructure is **ready but dormant** - tested, documented, and available when needed.
+
+### Design Principles
+
+1. **Parse once into well-formed models** - GitHub JSON → `GitHubPullRequest` domain models
+2. **Infrastructure layer owns external integrations** - All GitHub CLI calls in `operations.py`
+3. **Single source of truth** - Metadata configuration for all current operations
+4. **Type safety** - Services work with typed domain objects, not JSON dictionaries
+5. **Future-ready** - Infrastructure exists for synchronization without blocking current features
+
+### Related Documentation
+
+- **GitHub domain models**: `src/claudestep/domain/github_models.py` - `GitHubUser`, `GitHubPullRequest`, `GitHubPullRequestList`
+- **GitHub operations**: `src/claudestep/infrastructure/github/operations.py` - `list_pull_requests()`, `list_merged_pull_requests()`, `list_open_pull_requests()`
+- **Metadata models**: `src/claudestep/domain/models.py` - `PullRequest`, `PRReference`, `HybridProjectMetadata`
+- **Statistics service**: `src/claudestep/application/services/statistics_service.py` - Uses metadata only, no GitHub API
+
+---
+
 ## Summary
 
 **ClaudeStep Architecture** follows these key principles:
