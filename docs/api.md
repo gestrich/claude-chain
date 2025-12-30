@@ -1,0 +1,145 @@
+# ClaudeStep CLI API Reference
+
+This document provides quick reference commands for running ClaudeStep CLI operations locally.
+
+## Prerequisites
+
+Before running any commands, ensure you have:
+
+1. Activated the Python virtual environment:
+   ```bash
+   source .venv/bin/activate
+   ```
+
+2. GitHub CLI (`gh`) authenticated:
+   ```bash
+   gh auth status
+   ```
+
+## Statistics Command
+
+Generate statistics and reports for ClaudeStep projects.
+
+### Quick Start
+
+For the `gestrich/claude-step` repository:
+
+```bash
+# Statistics for a specific project
+source .venv/bin/activate && python -m claudestep statistics \
+  --repo "gestrich/claude-step" \
+  --config-path claude-step/e2e-test-project/configuration.yml
+
+# Statistics for all projects (scans entire repository)
+source .venv/bin/activate && python -m claudestep statistics \
+  --repo "gestrich/claude-step"
+```
+
+### All Options
+
+```bash
+python -m claudestep statistics \
+  --repo "gestrich/claude-step" \           # GitHub repository (owner/name)
+  --base-branch main \                       # Base branch to fetch specs from (default: main)
+  --config-path <path> \                     # Optional: path to specific project config
+  --days-back 30 \                           # Days to look back for statistics (default: 30)
+  --format slack                             # Output format: slack or json (default: slack)
+```
+
+### Parameters
+
+- `--repo`: **Required** - GitHub repository in `owner/name` format
+  - For this repository, use: `gestrich/claude-step`
+  - The repository must exist on GitHub and be accessible via your `gh` CLI authentication
+
+- `--base-branch`: Branch to fetch project specs from (default: `main`)
+
+- `--config-path`: Optional path to a specific project configuration file
+  - If provided, only that project will be analyzed
+  - Example: `claude-step/e2e-test-project/configuration.yml`
+  - If omitted, all projects in the repository will be scanned
+
+- `--days-back`: Number of days to look back for PR statistics (default: 30)
+
+- `--format`: Output format (default: `slack`)
+  - `slack`: Human-readable format with tables and progress bars
+  - `json`: Machine-readable JSON format
+
+### Output
+
+The command generates:
+
+1. **Slack-formatted report** (if format is `slack`):
+   - Leaderboard showing team member activity
+   - Project progress with task counts and completion percentages
+   - Visual progress bars and tables
+
+2. **JSON statistics** (always generated):
+   - Project statistics (total tasks, completed, in-progress, pending)
+   - Team member statistics (merged PRs, open PRs)
+   - Timestamps and metadata
+
+3. **GitHub Step Summary** (Markdown):
+   - Written to `GITHUB_STEP_SUMMARY` if running in GitHub Actions
+   - Contains detailed breakdown of all statistics
+
+### Example Output
+
+```
+=== ClaudeStep Statistics Collection ===
+Days back: 30
+Config path: claude-step/e2e-test-project/configuration.yml
+
+Single project mode: claude-step/e2e-test-project/configuration.yml
+
+Processing 1 project(s)...
+Tracking 1 unique reviewer(s)
+Collecting statistics for project: e2e-test-project
+  Tasks: 1/310 completed
+  In-progress: 2
+  Pending: 307
+
+=== Collection Complete ===
+Projects found: 1
+Team members tracked: 1
+
+*🏆 Leaderboard*
+┌──────┬──────────┬──────┬────────┐
+│ Rank │ Username │ Open │ Merged │
+├──────┼──────────┼──────┼────────┤
+│ 🥇   │ gestrich │    1 │      2 │
+└──────┴──────────┴──────┴────────┘
+
+*📊 Project Progress*
+┌──────────────────┬──────┬────────┬───────┬─────────────────┬──────┐
+│ Project          │ Open │ Merged │ Total │ Progress        │ Cost │
+├──────────────────┼──────┼────────┼───────┼─────────────────┼──────┤
+│ e2e-test-project │    2 │      1 │   310 │ ░░░░░░░░░░   0% │    - │
+└──────────────────┴──────┴────────┴───────┴─────────────────┴──────┘
+```
+
+## Other Commands
+
+See `python -m claudestep --help` for a full list of available commands:
+
+```bash
+python -m claudestep --help
+```
+
+Available commands:
+- `discover` - Discover all refactor projects in the repository
+- `discover-ready` - Discover projects with capacity and available tasks
+- `prepare` - Prepare everything for Claude Code execution
+- `finalize` - Finalize after Claude Code execution (commit, PR, summary)
+- `prepare-summary` - Prepare prompt for PR summary generation
+- `extract-cost` - Extract cost from workflow logs
+- `add-cost-comment` - Post cost breakdown comment to PR
+- `notify-pr` - Generate Slack notification for created PR
+- `statistics` - Generate statistics and reports
+
+## Notes
+
+- All commands that interact with GitHub require the `gh` CLI to be authenticated
+- The `--repo` parameter should always use `gestrich/claude-step` for this repository
+- Statistics are fetched from the GitHub API, not from local files
+- Files must be committed and pushed to the specified branch (default: `main`) to be included in statistics
