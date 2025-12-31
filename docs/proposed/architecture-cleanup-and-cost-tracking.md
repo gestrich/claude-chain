@@ -100,7 +100,7 @@ This plan addresses several improvements to the ClaudeStep project:
 
 **Expected outcome**: Clean domain models without legacy compatibility fields
 
-- [ ] Phase 5: Fix application/ layer references in documentation
+- [x] Phase 5: Fix application/ layer references in documentation
 
 **Details**:
 - Verify that `src/claudestep/application/` directory does not exist (confirmed in initial analysis)
@@ -112,6 +112,19 @@ This plan addresses several improvements to the ClaudeStep project:
   - Infrastructure Layer (`infrastructure/`)
 - Update module organization diagram to remove application/ references
 - Check for formatter utilities - move or document where they actually live
+
+**Completed**: All application/ layer references successfully removed from architecture.md. Key changes:
+- Line 323: Changed "Service Layer (`application/services/`)" to "Service Layer (`services/`)"
+- Lines 935-950: Updated module organization diagram to show actual structure with `services/formatters/` instead of `application/formatters/`
+- Line 1609: Corrected statistics service path from `src/claudestep/application/services/statistics_service.py` to `src/claudestep/services/composite/statistics_service.py`
+- Verified that formatters are actually in `services/formatters/table_formatter.py`, not in a non-existent application/ directory
+- 628 tests pass (3 pre-existing failures: 2 e2e GitHub API issues, 1 statistics service test)
+- Build succeeds
+
+**Technical Notes**:
+- The application/ layer never existed in the codebase; references were documentation inaccuracies from an earlier draft
+- Actual structure correctly uses four layers: CLI (`cli/`), Service (`services/` with `core/`, `composite/`, `formatters/` subdirectories), Domain (`domain/`), and Infrastructure (`infrastructure/`)
+- All paths in documentation now match actual codebase structure
 
 **Expected outcome**: Documentation accurately reflects actual codebase structure
 

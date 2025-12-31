@@ -320,7 +320,7 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
     return 0
 ```
 
-#### 2. Service Layer (`application/services/`)
+#### 2. Service Layer (`services/`)
 - **Purpose**: Business logic and use case orchestration
 - **Responsibilities**:
   - Encapsulate business operations (task management, reviewer assignment, etc.)
@@ -940,13 +940,11 @@ src/claudestep/
 │   │   ├── project_service.py
 │   │   ├── reviewer_service.py
 │   │   └── task_service.py
-│   └── composite/           # Higher-level orchestration
-│       ├── __init__.py
-│       ├── artifact_service.py
-│       └── statistics_service.py
-│
-├── application/             # Application layer utilities
-│   └── formatters/
+│   ├── composite/           # Higher-level orchestration
+│   │   ├── __init__.py
+│   │   ├── artifact_service.py
+│   │   └── statistics_service.py
+│   └── formatters/          # Service layer utilities
 │       └── table_formatter.py
 │
 └── cli/                     # Layer 4: Presentation layer
@@ -1608,7 +1606,7 @@ For the complete refactoring process, see `docs/proposed/refactor-statistics-ser
 - **GitHub domain models**: `src/claudestep/domain/github_models.py` - `GitHubUser`, `GitHubPullRequest`, `GitHubPullRequestList`
 - **GitHub operations**: `src/claudestep/infrastructure/github/operations.py` - `list_pull_requests()`, `list_merged_pull_requests()`, `list_open_pull_requests()`
 - **Metadata models**: `src/claudestep/domain/models.py` - `PullRequest`, `PRReference`, `HybridProjectMetadata`
-- **Statistics service**: `src/claudestep/application/services/statistics_service.py` - Uses metadata only, no GitHub API
+- **Statistics service**: `src/claudestep/services/composite/statistics_service.py` - Uses metadata only, no GitHub API
 - **Refactoring documentation**: `docs/proposed/refactor-statistics-service-architecture.md` - Complete refactoring process (Phases 1-9)
 
 ---
