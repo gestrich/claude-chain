@@ -14,33 +14,52 @@ Investigation reveals that while the prompt is being prepared, the actual Claude
 
 ## Phases
 
-- [ ] Phase 1: Investigate why summary posting stopped working
+- [x] Phase 1: Investigate why summary posting stopped working
 
-Examine recent workflow runs to understand exactly where the summary generation process is failing:
-- Check if the "Generate and post PR summary" step is being skipped or failing
-- **CRITICAL**: Investigate the conditional logic in action.yml lines 167-168 and 184-186:
-  - `inputs.add_pr_summary == 'true'` - Verify if this input is actually being passed as `'true'` (string) vs `true` (boolean)
-  - `steps.finalize.outputs.pr_number != ''` - Confirm PR number is being output correctly
-  - `steps.prepare_summary.outputs.summary_prompt != ''` - Verify the prompt is being generated and output
-  - Check if GitHub Actions is interpreting boolean inputs correctly (may need to use `inputs.add_pr_summary != 'false'` instead)
-- Look for any error messages in workflow logs related to the Claude Code action for summary generation
-- Check if the step is being skipped due to condition evaluation
-- Examine the "Prepare summary prompt" step (lines 164-180) to see if it's running and setting outputs
-- Check if there are any issues with the anthropics/claude-code-action@v1 integration
+**Investigation completed on 2025-12-31**
 
-**Specific investigation tasks**:
-1. Check workflow run 20625002452 logs for "Prepare summary prompt" step status
-2. Check if "Generate and post PR summary" step appears in the logs at all
-3. Look for GitHub Actions step condition evaluation messages
-4. Verify the value of `add_pr_summary` input in workflow dispatch (may be defaulting incorrectly)
+### Root Cause Analysis
 
-Files to review:
-- `.github/workflows/claudestep.yml` (or wherever ClaudeStep is invoked)
-- Recent workflow run logs (especially 20625002452)
-- `action.yml` lines 164-194
-- Check how the action is being called to see if `add_pr_summary` input is explicitly set
+The summary infrastructure is working correctly, but Claude Code execution is **non-deterministic** in posting comments. The issue is not with the GitHub Actions configuration or conditional logic, but with Claude Code's behavior.
 
-Expected outcome: Clear understanding of the root cause why summaries stopped being posted, particularly whether it's a conditional logic issue with the `add_pr_summary` input
+**What's working:**
+- ✅ Conditional logic in action.yml (lines 167-168, 184-186) is correct
+- ✅ `inputs.add_pr_summary` defaults to `'true'` and is being passed correctly
+- ✅ `steps.finalize.outputs.pr_number` is being set correctly (verified in logs)
+- ✅ `steps.prepare_summary.outputs.summary_prompt` is being generated and output correctly
+- ✅ The "Prepare summary prompt" step runs successfully (logs show: `✅ Summary prompt prepared for PR #114`)
+- ✅ The "Generate and post PR summary" step executes (Claude Code receives the prompt)
+- ✅ Claude Code analyzes the PR diff correctly (executes `gh pr diff`)
+
+**The actual problem:**
+Claude Code behaves **inconsistently** when posting comments:
+
+**Failed case (PR #114, run 20625002452):**
+- Claude executed: `gh pr diff 114 --patch` ✅
+- Claude generated the summary text ✅
+- Claude did NOT execute: `gh pr comment 114 --body-file <file>` ❌
+- Result: Summary was generated but never posted
+
+**Successful case (PR #120, run 20625399076):**
+- Claude executed: `gh pr diff 120 --patch` ✅
+- Claude generated the summary text ✅
+- Claude executed: `gh pr comment 120 --body-file /tmp/pr-comment.md` ✅
+- Result: Summary was posted successfully
+
+### Why This Was Hidden
+
+The `continue-on-error: true` flag in action.yml:194 masks these failures. Even when Claude doesn't post the comment, the workflow succeeds without any visible error.
+
+### Technical Notes
+
+Files examined:
+- action.yml:164-194 - Summary generation steps configuration
+- .github/workflows/claudestep.yml - ClaudeStep invocation (does not explicitly set add_pr_summary, uses default)
+- src/claudestep/cli/commands/prepare_summary.py - Prompt generation (working correctly)
+- src/claudestep/infrastructure/github/actions.py - Output handling (working correctly)
+- Workflow runs: 20625002452 (failed), 20625399076 (succeeded), 20625399076 logs show both commands executed
+
+The issue requires improving the prompt or Claude Code configuration to ensure consistent behavior.
 
 - [ ] Phase 2: Fix the summary generation step
 
