@@ -209,7 +209,7 @@ Expected outcome: Clean codebase with no obsolete commands or dead code
 - Build succeeds: `python3 -m claudestep --help` shows only active commands
 - All tests pass: 21 tests for post_pr_comment, 9 tests for prepare_summary
 
-- [ ] Phase 6: Update tests
+- [x] Phase 6: Update tests
 
 **Architecture Principle: Testability**
 Following [Testing Guide](../architecture/testing-guide.md) best practices:
@@ -263,6 +263,18 @@ def test_post_pr_comment_combines_summary_and_cost(mock_subprocess):
 ```
 
 Expected outcome: Tests validate the new combined comment approach
+
+**Technical notes:**
+- Updated E2E tests in `tests/e2e/test_workflow_e2e.py:111-131`:
+  - Modified validation logic to expect single combined comment instead of two separate comments
+  - Combined assertions now check for both "## AI-Generated Summary" AND "## 💰 Cost Breakdown" headers in the same comment body
+  - Updated assertion messages to reflect combined comment validation approach
+  - Removed separate cost info validation (now part of combined comment check)
+- Verified unit tests already exist and are comprehensive:
+  - `tests/integration/cli/commands/test_post_pr_comment.py`: 21 test cases covering all scenarios (from Phase 3)
+  - `tests/integration/cli/commands/test_prepare_summary.py`: 9 test cases covering all scenarios (from Phase 2)
+- Build succeeds: `python3 -m claudestep --help` shows all commands
+- Test suite: 658 tests pass, 4 pre-existing failures unrelated to this change (same as Phase 4), coverage at 68.94%
 
 - [ ] Phase 7: Validation
 
