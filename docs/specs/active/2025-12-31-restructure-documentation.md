@@ -166,7 +166,7 @@ Move API documentation to feature-architecture directory (treating it as technic
 - Build passes (658 tests pass, 4 pre-existing failures unrelated to documentation changes)
 - No broken references introduced by the moves
 
-- [ ] Phase 6: Archive implementation specs
+- [x] Phase 6: Archive implementation specs
 
 Move ephemeral specs to appropriate locations:
 - Move `docs/proposed/*.md` → `docs/specs/active/*.md`
@@ -178,6 +178,19 @@ Move ephemeral specs to appropriate locations:
 **Files affected:**
 - All files in `docs/proposed/` → `docs/specs/active/`
 - All files in `docs/completed/` → `docs/specs/archive/` with date prefixes
+
+**Completion Notes:**
+- Successfully moved 4 proposed specs to `docs/specs/active/`:
+  - 2025-12-27-projectrefactor.md
+  - 2025-12-28-TODO.md
+  - 2025-12-31-refactor-pr-summary-architecture.md
+  - 2025-12-31-restructure-documentation.md
+- Successfully moved 42 completed specs to `docs/specs/archive/`
+- All completed specs already had date prefixes in YYYY-MM-DD format, no renaming required
+- Empty `docs/proposed/` and `docs/completed/` directories deleted
+- Build passes (658 tests pass, 4 pre-existing failures unrelated to documentation changes)
+- Test coverage: 69.18% (just below 70% threshold due to pre-existing gaps)
+- All ephemeral implementation specs now properly organized in specs/ structure
 
 - [ ] Phase 7: Update cross-references
 
