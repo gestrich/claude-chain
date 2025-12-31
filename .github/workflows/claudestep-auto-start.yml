@@ -81,3 +81,29 @@ jobs:
               -f base_branch="main" \
               -f checkout_ref="main"
           done
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "# ClaudeStep Auto-Start Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -z "${{ steps.detect.outputs.projects }}" ]; then
+            echo "No spec.md files were changed in this push." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          echo "## Projects with spec.md changes:" >> $GITHUB_STEP_SUMMARY
+          for project in ${{ steps.detect.outputs.projects }}; do
+            echo "- $project" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -n "${{ steps.check_new.outputs.new_projects }}" ]; then
+            echo "## Auto-triggered for new projects:" >> $GITHUB_STEP_SUMMARY
+            for project in ${{ steps.check_new.outputs.new_projects }}; do
+              echo "- ✅ $project (first task will be started)" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "No new projects detected. Existing projects rely on PR merge triggers." >> $GITHUB_STEP_SUMMARY
+          fi

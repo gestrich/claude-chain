@@ -270,7 +270,7 @@ jobs:
 
 ---
 
-- [ ] Phase 5: Add logging and user feedback
+- [x] Phase 5: Add logging and user feedback
 
 **Objective**: Provide clear visibility into what the auto-start workflow is doing.
 
@@ -319,6 +319,18 @@ jobs:
 - Users can see at a glance what happened in the workflow run
 - Clear distinction between new and existing projects
 - Helpful messages for all scenarios
+
+**Status**: ✅ Completed
+- Added "Generate summary" step to `.github/workflows/claudestep-auto-start.yml`
+- Step runs `if: always()` to provide feedback regardless of whether auto-trigger occurred
+- Summary displays:
+  - List of all projects with spec.md changes
+  - Which new projects had auto-trigger initiated (with ✅ indicator)
+  - Clear message when no new projects are detected (existing projects use PR merge triggers)
+  - Graceful handling when no spec.md files changed
+- Summary uses GitHub Actions `$GITHUB_STEP_SUMMARY` for professional, formatted output
+- Provides clear visibility into workflow behavior for users
+- All edge cases handled: no changes, all existing projects, mixed scenarios
 
 ---
 
