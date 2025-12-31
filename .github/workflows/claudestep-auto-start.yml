@@ -68,3 +68,16 @@ jobs:
 
           echo "new_projects=$NEW_PROJECTS" >> $GITHUB_OUTPUT
           echo "New projects to auto-trigger: $NEW_PROJECTS"
+
+      - name: Trigger ClaudeStep for new projects
+        if: steps.check_new.outputs.new_projects != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for project in ${{ steps.check_new.outputs.new_projects }}; do
+            echo "Triggering ClaudeStep for project: $project"
+            gh workflow run claudestep.yml \
+              -f project_name="$project" \
+              -f base_branch="main" \
+              -f checkout_ref="main"
+          done

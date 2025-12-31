@@ -205,7 +205,7 @@ jobs:
 
 ---
 
-- [ ] Phase 4: Auto-trigger ClaudeStep for new projects
+- [x] Phase 4: Auto-trigger ClaudeStep for new projects
 
 **Objective**: For each new project, invoke the main ClaudeStep workflow to start the first task.
 
@@ -254,6 +254,19 @@ jobs:
 - ClaudeStep workflow starts for each new project
 - First task is prepared and PR is created
 - No duplicate runs or conflicts with other triggers
+
+**Status**: ✅ Completed
+- Added auto-trigger step to `.github/workflows/claudestep-auto-start.yml`
+- Implemented using `workflow_dispatch` approach with `gh workflow run` command
+- Iterates over all new projects detected in `steps.check_new.outputs.new_projects`
+- Triggers `claudestep.yml` workflow for each new project with required inputs:
+  - `project_name`: The detected project name
+  - `base_branch`: Set to "main"
+  - `checkout_ref`: Set to "main" for consistency
+- Uses `github.token` for authentication via `GH_TOKEN` environment variable
+- Conditional execution ensures step only runs when new projects are detected
+- YAML syntax validated successfully
+- Ready for Phase 5 to add logging and user feedback
 
 ---
 
