@@ -56,7 +56,16 @@ def main():
             summary_execution_file=os.environ.get("SUMMARY_EXECUTION_FILE", "")
         )
     elif args.command == "post-pr-comment":
-        return cmd_post_pr_comment(args, gh)
+        return cmd_post_pr_comment(
+            gh=gh,
+            pr_number=os.environ.get("PR_NUMBER", "").strip(),
+            summary_file_path=os.environ.get("SUMMARY_FILE", "").strip(),
+            main_cost=float(os.environ.get("MAIN_COST", "0")),
+            summary_cost=float(os.environ.get("SUMMARY_COST", "0")),
+            total_cost=float(os.environ.get("TOTAL_COST", "0")),
+            repo=os.environ.get("GITHUB_REPOSITORY", ""),
+            run_id=os.environ.get("GITHUB_RUN_ID", "")
+        )
     elif args.command == "notify-pr":
         return cmd_notify_pr(args, gh)
     elif args.command == "statistics":

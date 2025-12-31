@@ -9,31 +9,24 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from claudestep.cli.commands.post_pr_comment import cmd_post_pr_comment, format_unified_comment
+from claudestep.cli.commands.post_pr_comment import cmd_post_pr_comment
+from claudestep.domain.cost_breakdown import CostBreakdown
+from claudestep.domain.summary_file import SummaryFile
 
 
 class TestFormatUnifiedComment:
-    """Test suite for unified comment formatting functionality"""
+    """Test suite for unified comment formatting functionality (using domain models)"""
 
     def test_format_unified_comment_with_summary_and_cost(self):
         """Should combine summary and cost breakdown into single comment"""
         # Arrange
-        summary_content = "## AI-Generated Summary\n\nThis PR implements feature X."
-        main_cost = 0.123456
-        summary_cost = 0.045678
-        total_cost = 0.169134
+        summary = SummaryFile(content="## AI-Generated Summary\n\nThis PR implements feature X.")
+        cost_breakdown = CostBreakdown(main_cost=0.123456, summary_cost=0.045678)
         repo = "owner/repo"
         run_id = "12345"
 
         # Act
-        result = format_unified_comment(
-            summary_content=summary_content,
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            repo=repo,
-            run_id=run_id
-        )
+        result = summary.format_with_cost(cost_breakdown, repo, run_id)
 
         # Assert
         assert "## AI-Generated Summary" in result
@@ -47,21 +40,13 @@ class TestFormatUnifiedComment:
     def test_format_unified_comment_without_summary(self):
         """Should format cost-only comment when summary is not available"""
         # Arrange
-        main_cost = 0.123456
-        summary_cost = 0.045678
-        total_cost = 0.169134
+        summary = SummaryFile(content=None)
+        cost_breakdown = CostBreakdown(main_cost=0.123456, summary_cost=0.045678)
         repo = "owner/repo"
         run_id = "12345"
 
         # Act
-        result = format_unified_comment(
-            summary_content=None,
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            repo=repo,
-            run_id=run_id
-        )
+        result = summary.format_with_cost(cost_breakdown, repo, run_id)
 
         # Assert
         assert "## AI-Generated Summary" not in result
@@ -71,18 +56,13 @@ class TestFormatUnifiedComment:
     def test_format_unified_comment_includes_workflow_url(self):
         """Should include clickable workflow run URL in cost section"""
         # Arrange
+        summary = SummaryFile(content=None)
+        cost_breakdown = CostBreakdown(main_cost=0.0, summary_cost=0.0)
         repo = "owner/repo"
         run_id = "67890"
 
         # Act
-        result = format_unified_comment(
-            summary_content=None,
-            main_cost=0.0,
-            summary_cost=0.0,
-            total_cost=0.0,
-            repo=repo,
-            run_id=run_id
-        )
+        result = summary.format_with_cost(cost_breakdown, repo, run_id)
 
         # Assert
         expected_url = f"https://github.com/{repo}/actions/runs/{run_id}"
@@ -91,17 +71,11 @@ class TestFormatUnifiedComment:
     def test_format_unified_comment_separates_summary_and_cost(self):
         """Should use divider between summary and cost sections"""
         # Arrange
-        summary_content = "## AI-Generated Summary\n\nTest summary"
+        summary = SummaryFile(content="## AI-Generated Summary\n\nTest summary")
+        cost_breakdown = CostBreakdown(main_cost=0.1, summary_cost=0.05)
 
         # Act
-        result = format_unified_comment(
-            summary_content=summary_content,
-            main_cost=0.1,
-            summary_cost=0.05,
-            total_cost=0.15,
-            repo="owner/repo",
-            run_id="123"
-        )
+        result = summary.format_with_cost(cost_breakdown, "owner/repo", "123")
 
         # Assert
         assert "\n---\n" in result
@@ -113,19 +87,11 @@ class TestFormatUnifiedComment:
     def test_format_unified_comment_handles_zero_costs(self):
         """Should format zero costs correctly"""
         # Arrange
-        main_cost = 0.0
-        summary_cost = 0.0
-        total_cost = 0.0
+        summary = SummaryFile(content=None)
+        cost_breakdown = CostBreakdown(main_cost=0.0, summary_cost=0.0)
 
         # Act
-        result = format_unified_comment(
-            summary_content=None,
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            repo="owner/repo",
-            run_id="123"
-        )
+        result = summary.format_with_cost(cost_breakdown, "owner/repo", "123")
 
         # Assert
         assert "$0.000000" in result
@@ -162,25 +128,31 @@ class TestCmdPostPrComment:
             f.write("## AI-Generated Summary\n\nTest summary content")
             summary_file = f.name
 
-        env_vars = {**base_env_vars, "SUMMARY_FILE": summary_file}
-
         try:
-            with patch.dict(os.environ, env_vars, clear=True):
-                with patch('subprocess.run') as mock_run:
-                    with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                        with patch('os.unlink') as mock_unlink:
-                            # Set up temp file mock
-                            mock_file = Mock()
-                            mock_file.name = "/tmp/test_comment.md"
-                            mock_file.__enter__ = Mock(return_value=mock_file)
-                            mock_file.__exit__ = Mock(return_value=False)
-                            mock_tempfile.return_value = mock_file
+            with patch('subprocess.run') as mock_run:
+                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                    with patch('os.unlink') as mock_unlink:
+                        # Set up temp file mock
+                        mock_file = Mock()
+                        mock_file.name = "/tmp/test_comment.md"
+                        mock_file.__enter__ = Mock(return_value=mock_file)
+                        mock_file.__exit__ = Mock(return_value=False)
+                        mock_tempfile.return_value = mock_file
 
-                            # Set up subprocess mock
-                            mock_run.return_value = Mock(returncode=0)
+                        # Set up subprocess mock
+                        mock_run.return_value = Mock(returncode=0)
 
-                            # Act
-                            result = cmd_post_pr_comment(None, mock_gh_actions)
+                        # Act
+                        result = cmd_post_pr_comment(
+                            gh=mock_gh_actions,
+                            pr_number="42",
+                            summary_file_path=summary_file,
+                            main_cost=0.123456,
+                            summary_cost=0.045678,
+                            total_cost=0.169134,
+                            repo="owner/repo",
+                            run_id="12345"
+                        )
 
             # Assert
             assert result == 0
@@ -197,28 +169,35 @@ class TestCmdPostPrComment:
             f.write("## AI-Generated Summary\n\nTest summary")
             summary_file = f.name
 
-        env_vars = {**base_env_vars, "SUMMARY_FILE": summary_file}
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
         try:
-            with patch.dict(os.environ, env_vars, clear=True):
-                with patch('subprocess.run') as mock_run:
-                    with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                        with patch('os.unlink'):
-                            # Set up temp file mock to capture writes
-                            mock_file = Mock()
-                            mock_file.name = "/tmp/test.md"
-                            mock_file.write = Mock(side_effect=capture_write)
-                            mock_file.__enter__ = Mock(return_value=mock_file)
-                            mock_file.__exit__ = Mock(return_value=False)
-                            mock_tempfile.return_value = mock_file
-                            mock_run.return_value = Mock(returncode=0)
+            with patch('subprocess.run') as mock_run:
+                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                    with patch('os.unlink'):
+                        # Set up temp file mock to capture writes
+                        mock_file = Mock()
+                        mock_file.name = "/tmp/test.md"
+                        mock_file.write = Mock(side_effect=capture_write)
+                        mock_file.__enter__ = Mock(return_value=mock_file)
+                        mock_file.__exit__ = Mock(return_value=False)
+                        mock_tempfile.return_value = mock_file
+                        mock_run.return_value = Mock(returncode=0)
 
-                            # Act
-                            cmd_post_pr_comment(None, mock_gh_actions)
+                        # Act
+                        cmd_post_pr_comment(
+                            gh=mock_gh_actions,
+                            pr_number="42",
+                            summary_file_path=summary_file,
+                            main_cost=0.123456,
+                            summary_cost=0.045678,
+                            total_cost=0.169134,
+                            repo="owner/repo",
+                            run_id="12345"
+                        )
 
             # Assert
             assert len(written_content) == 1
@@ -235,26 +214,33 @@ class TestCmdPostPrComment:
     def test_cmd_post_pr_comment_posts_cost_only_when_summary_missing(self, mock_gh_actions, base_env_vars):
         """Should post cost-only comment when summary file doesn't exist"""
         # Arrange
-        env_vars = {**base_env_vars, "SUMMARY_FILE": "/nonexistent/file.md"}
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
-        with patch.dict(os.environ, env_vars, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink'):
-                        mock_file = Mock()
-                        mock_file.name = "/tmp/test.md"
-                        mock_file.write = Mock(side_effect=capture_write)
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.return_value = Mock(returncode=0)
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink'):
+                    mock_file = Mock()
+                    mock_file.name = "/tmp/test.md"
+                    mock_file.write = Mock(side_effect=capture_write)
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.return_value = Mock(returncode=0)
 
-                        # Act
-                        result = cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    result = cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="/nonexistent/file.md",
+                        main_cost=0.123456,
+                        summary_cost=0.045678,
+                        total_cost=0.169134,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         assert result == 0
