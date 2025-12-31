@@ -1012,110 +1012,13 @@ src/claudestep/
 
 ### Convention: Two-Level Service Architecture
 
-ClaudeStep organizes services into **two architectural levels** that reflect their role and dependencies:
+ClaudeStep organizes services into **two architectural levels**:
 
-#### Core Services (`services/core/`)
+**Core Services** (`services/core/`) provide foundational operations for specific domain areas (PRs, tasks, reviewers, projects). These are building blocks with minimal dependencies that can be used independently or composed together. Examples include `PRService`, `TaskService`, `ReviewerService`, and `ProjectService`.
 
-**Purpose**: Foundational services providing basic operations
+**Composite Services** (`services/composite/`) orchestrate complex multi-step operations by coordinating multiple core services. They aggregate data from various sources and implement higher-level business logic. Examples include `StatisticsService` and `ArtifactService`.
 
-Core services are the building blocks of the system. They provide focused, single-responsibility operations that can be used independently or composed together.
-
-**Characteristics**:
-- Focus on a single domain area (PRs, tasks, reviewers, projects)
-- Minimal dependencies on other services
-- Can be used independently
-- Provide the foundation for composite services
-
-**Available Core Services**:
-
-1. **PRService** (`pr_service.py`)
-   - PR and branch naming utilities
-   - PR querying and filtering
-   - Branch name parsing and formatting
-
-2. **TaskService** (`task_service.py`)
-   - Task finding and tracking
-   - Task marking and completion
-   - Task ID generation
-
-3. **ReviewerService** (`reviewer_service.py`)
-   - Reviewer capacity management
-   - Reviewer assignment logic
-   - Availability checking
-
-4. **ProjectService** (`project_service.py`)
-   - Project detection from PRs
-   - Project path parsing
-   - Project validation
-
-**Example Usage**:
-```python
-# Core services can be used independently
-pr_service = PRService(repo)
-branch_name = pr_service.format_branch_name(project, task_index)
-
-task_service = TaskService(repo, metadata_service)
-next_task = task_service.find_next_available_task(spec_content)
-```
-
-#### Composite Services (`services/composite/`)
-
-**Purpose**: Higher-level orchestration services that coordinate multiple operations
-
-Composite services build on core services to provide complex, multi-step operations. They orchestrate workflows across multiple domains and aggregate data from various sources.
-
-**Characteristics**:
-- Depend on multiple core services
-- Coordinate complex multi-service operations
-- Aggregate data from multiple sources
-- Implement higher-level business logic
-
-**Available Composite Services**:
-
-1. **StatisticsService** (`statistics_service.py`)
-   - Aggregates data from multiple projects
-   - Collects team member statistics
-   - Generates comprehensive reports
-   - Coordinates across metadata, tasks, and PRs
-
-2. **ArtifactService** (`artifact_service.py`)
-   - Finds project artifacts
-   - Extracts artifact metadata
-   - Identifies in-progress tasks
-   - Aggregates reviewer assignments
-
-**Example Usage**:
-```python
-# Composite services use multiple core services
-stats_service = StatisticsService(repo, metadata_service, base_branch)
-all_stats = stats_service.collect_all_statistics(config_path=config_path)
-# Internally uses: ProjectService, TaskService, PRService, MetadataService
-
-artifact_metadata = get_artifact_metadata(repo, artifact_name)
-# Internally uses: metadata operations, file operations, task parsing
-```
-
-### Benefits of Two-Level Organization
-
-1. **Clear Dependency Direction**: Composite → Core → Infrastructure (no circular dependencies)
-2. **Easy Navigation**: Service level immediately visible in folder structure
-3. **Scalability**: Easy to add new services in the appropriate layer
-4. **Maintainability**: Clear separation between foundational and orchestration logic
-5. **Testability**: Core services can be tested independently, composites with mocked cores
-6. **Understandability**: Architecture visible at a glance in the filesystem
-
-### Service Naming Conventions
-
-Services follow simplified naming without redundant words:
-
-- ✅ `PRService` (not `PROperationsService`)
-- ✅ `TaskService` (not `TaskManagementService`)
-- ✅ `ReviewerService` (not `ReviewerManagementService`)
-- ✅ `ProjectService` (not `ProjectDetectionService`)
-- ✅ `StatisticsService` (already clean)
-- ✅ `ArtifactService` (not `ArtifactOperationsService`)
-
-This makes service names concise while maintaining clarity.
+This organization provides clear dependency direction (Composite → Core → Infrastructure), makes the architecture visible in the filesystem, and enables independent testing of each layer. For implementation details, see the service source code in [`src/claudestep/services/`](../../src/claudestep/services/).
 
 ---
 

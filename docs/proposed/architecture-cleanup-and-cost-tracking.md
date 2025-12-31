@@ -128,7 +128,7 @@ This plan addresses several improvements to the ClaudeStep project:
 
 **Expected outcome**: Documentation accurately reflects actual codebase structure
 
-- [ ] Phase 6: Simplify Service Layer Organization section
+- [x] Phase 6: Simplify Service Layer Organization section
 
 **Details**:
 - In `docs/architecture/architecture.md`, tighten up "Service Layer Organization" section
@@ -137,6 +137,24 @@ This plan addresses several improvements to the ClaudeStep project:
 - Remove: lengthy code examples showing service structure
 - Keep structure to 1-2 paragraphs explaining the two-level concept
 - Link to actual code for details instead of documenting in architecture
+
+**Completed**: Service Layer Organization section successfully simplified to focus on high-level concepts. Key changes:
+- Reduced section from ~110 lines to ~12 lines (89% reduction)
+- Removed detailed lists of 4 core services with their methods
+- Removed detailed lists of 2 composite services with their methods
+- Removed two lengthy code examples showing service usage
+- Removed "Benefits of Two-Level Organization" list (6 items)
+- Removed "Service Naming Conventions" section with examples
+- Kept concise two-paragraph explanation of core vs composite services
+- Added link to source code at `src/claudestep/services/` for implementation details
+- 628 tests pass (3 pre-existing failures: 2 e2e GitHub API issues, 1 statistics service test)
+- Build succeeds
+
+**Technical Notes**:
+- The simplified section now focuses on architectural concepts rather than implementation details
+- Documentation follows the principle of "explain the what and why, link to code for the how"
+- The two-level architecture concept is clearly explained in plain language without excessive bullet points
+- Developers can explore actual service implementations in the codebase rather than reading stale documentation
 
 **Expected outcome**: Concise service layer organization section focused on concepts
 
