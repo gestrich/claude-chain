@@ -45,7 +45,7 @@ def cmd_post_pr_comment(
         0 on success, 1 on error
     """
     # If no PR number, skip gracefully
-    if not pr_number:
+    if not pr_number or not pr_number.strip():
         print("::notice::No PR number provided, skipping PR comment")
         gh.write_output("comment_posted", "false")
         return 0

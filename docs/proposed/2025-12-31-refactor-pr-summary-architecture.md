@@ -246,7 +246,7 @@ elif args.command == "prepare-summary":
 - All tests pass successfully (658 passed, 4 pre-existing failures unrelated to this change)
 - No new test failures introduced by this refactoring
 
-- [ ] Phase 4: Refactor post_pr_comment.py to use domain models
+- [x] Phase 4: Refactor post_pr_comment.py to use domain models ✅
 
 **Update `src/claudestep/cli/commands/post_pr_comment.py`:**
 
@@ -323,6 +323,20 @@ elif args.command == "post-pr-comment":
 - No manual file reading in CLI layer
 - No manual string formatting in CLI layer
 - Domain models encapsulate all parsing and formatting logic
+
+**Technical Notes (Phase 4 Completion):**
+- Refactored `cmd_post_pr_comment()` to accept 8 explicit parameters: `gh`, `pr_number`, `summary_file_path`, `main_cost`, `summary_cost`, `total_cost`, `repo`, `run_id`
+- Removed the `args` parameter (no longer needed)
+- Integrated `SummaryFile.from_file()` for reading summary files
+- Integrated `CostBreakdown` domain model for cost tracking
+- Used `SummaryFile.format_with_cost()` for PR comment formatting (replaced `format_unified_comment()` function)
+- Deleted `format_unified_comment()` helper function (logic moved to domain model)
+- Updated `__main__.py` to read environment variables and pass them as explicit parameters
+- Updated all 21 integration tests to use the new signature
+- Tests migrated to use domain models (SummaryFile and CostBreakdown) directly in assertions
+- All tests pass successfully (30 total: 9 prepare_summary + 21 post_pr_comment)
+- No new test failures introduced by this refactoring
+- Added validation for whitespace-only PR numbers (skip gracefully)
 
 - [ ] Phase 5: Update summary_prompt.md to reference constant
 

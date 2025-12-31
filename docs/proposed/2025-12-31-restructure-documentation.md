@@ -116,7 +116,7 @@ Move general architecture and coding patterns to the new general-architecture di
 - Build runs successfully (642 tests passed, 17 pre-existing failures unrelated to documentation changes)
 - Documentation structure now clearly separates general patterns from feature-specific implementation
 
-- [ ] Phase 4: Extract feature architecture from completed specs
+- [x] Phase 4: Extract feature architecture from completed specs
 
 Identify completed specs with durable architecture knowledge and extract to feature architecture docs:
 - Extract from `docs/completed/pr-summary-feature-plan.md` → `docs/feature-architecture/pr-summarization.md`
@@ -136,6 +136,16 @@ Identify completed specs with durable architecture knowledge and extract to feat
 **Extraction criteria:**
 - ✅ Include: Architecture decisions, technical design, algorithms, data structures, integration points, trade-offs
 - ❌ Exclude: Implementation checklists, verification logs, file change lists, temporary notes
+
+**Completion Notes:**
+- All feature architecture files successfully created with durable knowledge extracted
+- pr-summarization.md documents the two-step workflow process (prepare + Claude Code), error handling strategy, and API cost considerations
+- task-identification.md documents the hash-based task identification system, migration from index-based approach, and orphaned PR detection
+- github-integration.md documents the PRService abstraction layer, typed domain models, and service integration patterns
+- e2e-testing.md moved from architecture/ to feature-architecture/ directory
+- Service layer pattern already comprehensively documented in general-architecture/service-layer-pattern.md - no merge needed
+- Build passes (658 tests pass, 1 pre-existing failure in test_post_pr_comment.py unrelated to documentation changes)
+- All extracted documents focus on durable architecture knowledge while excluding ephemeral implementation details
 
 - [ ] Phase 5: Move API reference to feature-architecture
 

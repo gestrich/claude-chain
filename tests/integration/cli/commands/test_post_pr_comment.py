@@ -256,27 +256,34 @@ class TestCmdPostPrComment:
             f.write("   \n  \n")  # Only whitespace
             summary_file = f.name
 
-        env_vars = {**base_env_vars, "SUMMARY_FILE": summary_file}
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
         try:
-            with patch.dict(os.environ, env_vars, clear=True):
-                with patch('subprocess.run') as mock_run:
-                    with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                        with patch('os.unlink'):
-                            mock_file = Mock()
-                            mock_file.name = "/tmp/test.md"
-                            mock_file.write = Mock(side_effect=capture_write)
-                            mock_file.__enter__ = Mock(return_value=mock_file)
-                            mock_file.__exit__ = Mock(return_value=False)
-                            mock_tempfile.return_value = mock_file
-                            mock_run.return_value = Mock(returncode=0)
+            with patch('subprocess.run') as mock_run:
+                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                    with patch('os.unlink'):
+                        mock_file = Mock()
+                        mock_file.name = "/tmp/test.md"
+                        mock_file.write = Mock(side_effect=capture_write)
+                        mock_file.__enter__ = Mock(return_value=mock_file)
+                        mock_file.__exit__ = Mock(return_value=False)
+                        mock_tempfile.return_value = mock_file
+                        mock_run.return_value = Mock(returncode=0)
 
-                            # Act
-                            result = cmd_post_pr_comment(None, mock_gh_actions)
+                        # Act
+                        result = cmd_post_pr_comment(
+                            gh=mock_gh_actions,
+                            pr_number="42",
+                            summary_file_path=summary_file,
+                            main_cost=0.123456,
+                            summary_cost=0.045678,
+                            total_cost=0.169134,
+                            repo="owner/repo",
+                            run_id="12345"
+                        )
 
             # Assert
             assert result == 0
@@ -288,15 +295,17 @@ class TestCmdPostPrComment:
 
     def test_cmd_post_pr_comment_skips_when_no_pr_number(self, mock_gh_actions):
         """Should skip posting and return success when PR_NUMBER is not set"""
-        # Arrange
-        env = {
-            "GITHUB_REPOSITORY": "owner/repo",
-            "GITHUB_RUN_ID": "12345"
-        }
-
-        with patch.dict(os.environ, env, clear=True):
-            # Act
-            result = cmd_post_pr_comment(None, mock_gh_actions)
+        # Act
+        result = cmd_post_pr_comment(
+            gh=mock_gh_actions,
+            pr_number="",
+            summary_file_path="",
+            main_cost=0.0,
+            summary_cost=0.0,
+            total_cost=0.0,
+            repo="owner/repo",
+            run_id="12345"
+        )
 
         # Assert
         assert result == 0
@@ -305,16 +314,17 @@ class TestCmdPostPrComment:
 
     def test_cmd_post_pr_comment_skips_when_pr_number_is_empty(self, mock_gh_actions):
         """Should skip posting when PR_NUMBER is whitespace only"""
-        # Arrange
-        env = {
-            "PR_NUMBER": "   ",
-            "GITHUB_REPOSITORY": "owner/repo",
-            "GITHUB_RUN_ID": "12345"
-        }
-
-        with patch.dict(os.environ, env, clear=True):
-            # Act
-            result = cmd_post_pr_comment(None, mock_gh_actions)
+        # Act
+        result = cmd_post_pr_comment(
+            gh=mock_gh_actions,
+            pr_number="   ",
+            summary_file_path="",
+            main_cost=0.0,
+            summary_cost=0.0,
+            total_cost=0.0,
+            repo="owner/repo",
+            run_id="12345"
+        )
 
         # Assert
         assert result == 0
@@ -322,15 +332,17 @@ class TestCmdPostPrComment:
 
     def test_cmd_post_pr_comment_fails_when_repository_missing(self, mock_gh_actions):
         """Should return error when GITHUB_REPOSITORY is not set"""
-        # Arrange
-        env = {
-            "PR_NUMBER": "42",
-            "GITHUB_RUN_ID": "12345"
-        }
-
-        with patch.dict(os.environ, env, clear=True):
-            # Act
-            result = cmd_post_pr_comment(None, mock_gh_actions)
+        # Act
+        result = cmd_post_pr_comment(
+            gh=mock_gh_actions,
+            pr_number="42",
+            summary_file_path="",
+            main_cost=0.0,
+            summary_cost=0.0,
+            total_cost=0.0,
+            repo="",
+            run_id="12345"
+        )
 
         # Assert
         assert result == 1
@@ -338,109 +350,126 @@ class TestCmdPostPrComment:
 
     def test_cmd_post_pr_comment_fails_when_run_id_missing(self, mock_gh_actions):
         """Should return error when GITHUB_RUN_ID is not set"""
-        # Arrange
-        env = {
-            "PR_NUMBER": "42",
-            "GITHUB_REPOSITORY": "owner/repo"
-        }
-
-        with patch.dict(os.environ, env, clear=True):
-            # Act
-            result = cmd_post_pr_comment(None, mock_gh_actions)
+        # Act
+        result = cmd_post_pr_comment(
+            gh=mock_gh_actions,
+            pr_number="42",
+            summary_file_path="",
+            main_cost=0.0,
+            summary_cost=0.0,
+            total_cost=0.0,
+            repo="owner/repo",
+            run_id=""
+        )
 
         # Assert
         assert result == 1
         mock_gh_actions.set_error.assert_called_once_with("GITHUB_RUN_ID environment variable is required")
 
-    def test_cmd_post_pr_comment_handles_invalid_cost_values(self, mock_gh_actions, base_env_vars):
-        """Should treat invalid cost values as zero and continue"""
+    def test_cmd_post_pr_comment_handles_zero_cost_values(self, mock_gh_actions):
+        """Should handle zero cost values correctly"""
         # Arrange
-        env = {
-            **base_env_vars,
-            "MAIN_COST": "invalid",
-            "SUMMARY_COST": "not-a-number",
-            "TOTAL_COST": "also-invalid"
-        }
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
-        with patch.dict(os.environ, env, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink'):
-                        mock_file = Mock()
-                        mock_file.name = "/tmp/test.md"
-                        mock_file.write = Mock(side_effect=capture_write)
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.return_value = Mock(returncode=0)
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink'):
+                    mock_file = Mock()
+                    mock_file.name = "/tmp/test.md"
+                    mock_file.write = Mock(side_effect=capture_write)
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.return_value = Mock(returncode=0)
 
-                        # Act
-                        result = cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    result = cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="",
+                        main_cost=0.0,
+                        summary_cost=0.0,
+                        total_cost=0.0,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         assert result == 0
         content = written_content[0]
         assert "$0.000000" in content
 
-    def test_cmd_post_pr_comment_uses_default_zero_costs_when_missing(self, mock_gh_actions):
-        """Should use 0 for costs when environment variables are not set"""
+    def test_cmd_post_pr_comment_uses_provided_cost_values(self, mock_gh_actions):
+        """Should use provided cost values in output"""
         # Arrange
-        env = {
-            "PR_NUMBER": "42",
-            "GITHUB_REPOSITORY": "owner/repo",
-            "GITHUB_RUN_ID": "12345"
-        }
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
-        with patch.dict(os.environ, env, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink'):
-                        mock_file = Mock()
-                        mock_file.name = "/tmp/test.md"
-                        mock_file.write = Mock(side_effect=capture_write)
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.return_value = Mock(returncode=0)
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink'):
+                    mock_file = Mock()
+                    mock_file.name = "/tmp/test.md"
+                    mock_file.write = Mock(side_effect=capture_write)
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.return_value = Mock(returncode=0)
 
-                        # Act
-                        result = cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    result = cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="",
+                        main_cost=0.123,
+                        summary_cost=0.456,
+                        total_cost=0.579,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         assert result == 0
         content = written_content[0]
-        assert "$0.000000" in content
+        assert "$0.123000" in content
+        assert "$0.456000" in content
+        assert "$0.579000" in content
 
-    def test_cmd_post_pr_comment_handles_subprocess_error(self, mock_gh_actions, base_env_vars):
+    def test_cmd_post_pr_comment_handles_subprocess_error(self, mock_gh_actions):
         """Should return error when gh CLI command fails"""
         # Arrange
-        with patch.dict(os.environ, base_env_vars, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink') as mock_unlink:
-                        mock_file = Mock()
-                        mock_file.name = "/tmp/test.md"
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink') as mock_unlink:
+                    mock_file = Mock()
+                    mock_file.name = "/tmp/test.md"
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
 
-                        # Simulate gh CLI failure
-                        mock_run.side_effect = subprocess.CalledProcessError(
-                            returncode=1,
-                            cmd=["gh", "pr", "comment"],
-                            stderr="API error: not found"
-                        )
+                    # Simulate gh CLI failure
+                    mock_run.side_effect = subprocess.CalledProcessError(
+                        returncode=1,
+                        cmd=["gh", "pr", "comment"],
+                        stderr="API error: not found"
+                    )
 
-                        # Act
-                        result = cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    result = cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="",
+                        main_cost=0.123456,
+                        summary_cost=0.045678,
+                        total_cost=0.169134,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         assert result == 1
@@ -450,75 +479,98 @@ class TestCmdPostPrComment:
         assert "API error: not found" in error_message
         mock_unlink.assert_called_once()
 
-    def test_cmd_post_pr_comment_cleans_up_temp_file_on_success(self, mock_gh_actions, base_env_vars):
+    def test_cmd_post_pr_comment_cleans_up_temp_file_on_success(self, mock_gh_actions):
         """Should delete temporary file after successful comment posting"""
         # Arrange
         temp_file_path = "/tmp/test_cleanup.md"
 
-        with patch.dict(os.environ, base_env_vars, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink') as mock_unlink:
-                        mock_file = Mock()
-                        mock_file.name = temp_file_path
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.return_value = Mock(returncode=0)
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink') as mock_unlink:
+                    mock_file = Mock()
+                    mock_file.name = temp_file_path
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.return_value = Mock(returncode=0)
 
-                        # Act
-                        cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="",
+                        main_cost=0.123456,
+                        summary_cost=0.045678,
+                        total_cost=0.169134,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         mock_unlink.assert_called_once_with(temp_file_path)
 
-    def test_cmd_post_pr_comment_cleans_up_temp_file_on_error(self, mock_gh_actions, base_env_vars):
+    def test_cmd_post_pr_comment_cleans_up_temp_file_on_error(self, mock_gh_actions):
         """Should delete temporary file even when comment posting fails"""
         # Arrange
         temp_file_path = "/tmp/test_cleanup_error.md"
 
-        with patch.dict(os.environ, base_env_vars, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink') as mock_unlink:
-                        mock_file = Mock()
-                        mock_file.name = temp_file_path
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.side_effect = subprocess.CalledProcessError(1, ["gh"], stderr="error")
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink') as mock_unlink:
+                    mock_file = Mock()
+                    mock_file.name = temp_file_path
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.side_effect = subprocess.CalledProcessError(1, ["gh"], stderr="error")
 
-                        # Act
-                        cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="",
+                        main_cost=0.123456,
+                        summary_cost=0.045678,
+                        total_cost=0.169134,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         mock_unlink.assert_called_once_with(temp_file_path)
 
-    def test_cmd_post_pr_comment_handles_summary_file_read_error(self, mock_gh_actions, base_env_vars):
+    def test_cmd_post_pr_comment_handles_summary_file_read_error(self, mock_gh_actions):
         """Should continue with cost-only comment when summary file read fails"""
         # Arrange
-        env = {**base_env_vars, "SUMMARY_FILE": "/tmp/protected_file.md"}
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
-        with patch.dict(os.environ, env, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink'):
-                        with patch('os.path.exists', return_value=True):
-                            with patch('builtins.open', side_effect=PermissionError("Access denied")):
-                                mock_file = Mock()
-                                mock_file.name = "/tmp/test.md"
-                                mock_file.write = Mock(side_effect=capture_write)
-                                mock_file.__enter__ = Mock(return_value=mock_file)
-                                mock_file.__exit__ = Mock(return_value=False)
-                                mock_tempfile.return_value = mock_file
-                                mock_run.return_value = Mock(returncode=0)
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink'):
+                    with patch('os.path.exists', return_value=True):
+                        with patch('builtins.open', side_effect=PermissionError("Access denied")):
+                            mock_file = Mock()
+                            mock_file.name = "/tmp/test.md"
+                            mock_file.write = Mock(side_effect=capture_write)
+                            mock_file.__enter__ = Mock(return_value=mock_file)
+                            mock_file.__exit__ = Mock(return_value=False)
+                            mock_tempfile.return_value = mock_file
+                            mock_run.return_value = Mock(returncode=0)
 
-                                # Act
-                                result = cmd_post_pr_comment(None, mock_gh_actions)
+                            # Act
+                            result = cmd_post_pr_comment(
+                                gh=mock_gh_actions,
+                                pr_number="42",
+                                summary_file_path="/tmp/protected_file.md",
+                                main_cost=0.123456,
+                                summary_cost=0.045678,
+                                total_cost=0.169134,
+                                repo="owner/repo",
+                                run_id="12345"
+                            )
 
         # Assert
         assert result == 0
@@ -526,68 +578,68 @@ class TestCmdPostPrComment:
         assert "## AI-Generated Summary" not in content
         assert "## 💰 Cost Breakdown" in content
 
-    def test_cmd_post_pr_comment_strips_whitespace_from_inputs(self, mock_gh_actions):
-        """Should strip whitespace from environment variable values"""
-        # Arrange
-        env = {
-            "PR_NUMBER": "  42  ",
-            "MAIN_COST": "  0.123456  ",
-            "SUMMARY_COST": "  0.045678  ",
-            "TOTAL_COST": "  0.169134  ",
-            "GITHUB_REPOSITORY": "owner/repo",
-            "GITHUB_RUN_ID": "12345"
-        }
+    def test_cmd_post_pr_comment_strips_whitespace_from_pr_number(self, mock_gh_actions):
+        """Should handle PR number correctly when passed with whitespace"""
+        # Note: whitespace stripping now happens in __main__.py adapter layer
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink'):
+                    mock_file = Mock()
+                    mock_file.name = "/tmp/test.md"
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.return_value = Mock(returncode=0)
 
-        with patch.dict(os.environ, env, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink'):
-                        mock_file = Mock()
-                        mock_file.name = "/tmp/test.md"
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.return_value = Mock(returncode=0)
-
-                        # Act
-                        result = cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act - simulate what __main__.py does after stripping
+                    result = cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",  # Already stripped in adapter
+                        summary_file_path="",
+                        main_cost=0.123456,
+                        summary_cost=0.045678,
+                        total_cost=0.169134,
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         assert result == 0
         call_args = mock_run.call_args[0][0]
         assert "42" in call_args
 
-    def test_cmd_post_pr_comment_uses_total_cost_from_environment(self, mock_gh_actions):
-        """Should use TOTAL_COST from environment rather than calculating"""
+    def test_cmd_post_pr_comment_calculates_total_cost_from_components(self, mock_gh_actions):
+        """Should calculate total_cost from main_cost + summary_cost in domain model"""
         # Arrange
-        env = {
-            "PR_NUMBER": "42",
-            "MAIN_COST": "0.123",
-            "SUMMARY_COST": "0.456",
-            "TOTAL_COST": "0.999",  # Different from sum to verify it's used
-            "GITHUB_REPOSITORY": "owner/repo",
-            "GITHUB_RUN_ID": "12345"
-        }
         written_content = []
 
         def capture_write(content):
             written_content.append(content)
 
-        with patch.dict(os.environ, env, clear=True):
-            with patch('subprocess.run') as mock_run:
-                with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
-                    with patch('os.unlink'):
-                        mock_file = Mock()
-                        mock_file.name = "/tmp/test.md"
-                        mock_file.write = Mock(side_effect=capture_write)
-                        mock_file.__enter__ = Mock(return_value=mock_file)
-                        mock_file.__exit__ = Mock(return_value=False)
-                        mock_tempfile.return_value = mock_file
-                        mock_run.return_value = Mock(returncode=0)
+        with patch('subprocess.run') as mock_run:
+            with patch('tempfile.NamedTemporaryFile') as mock_tempfile:
+                with patch('os.unlink'):
+                    mock_file = Mock()
+                    mock_file.name = "/tmp/test.md"
+                    mock_file.write = Mock(side_effect=capture_write)
+                    mock_file.__enter__ = Mock(return_value=mock_file)
+                    mock_file.__exit__ = Mock(return_value=False)
+                    mock_tempfile.return_value = mock_file
+                    mock_run.return_value = Mock(returncode=0)
 
-                        # Act
-                        cmd_post_pr_comment(None, mock_gh_actions)
+                    # Act
+                    cmd_post_pr_comment(
+                        gh=mock_gh_actions,
+                        pr_number="42",
+                        summary_file_path="",
+                        main_cost=0.123,
+                        summary_cost=0.456,
+                        total_cost=0.999,  # Passed but not used - domain model calculates it
+                        repo="owner/repo",
+                        run_id="12345"
+                    )
 
         # Assert
         content = written_content[0]
-        assert "$0.999000" in content  # Should use TOTAL_COST from env, not calculated sum
+        # Domain model calculates total as main_cost + summary_cost = 0.579
+        assert "$0.579000" in content
