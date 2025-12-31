@@ -179,7 +179,7 @@ runs:
         export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
         python3 -m claudestep prepare-summary
 
-    - name: Generate and post PR summary
+    - name: Generate PR summary
       id: pr_summary
       if: |
         inputs.add_pr_summary == 'true' &&

@@ -14,12 +14,7 @@ You are analyzing a pull request that was just created by ClaudeStep.
    - Why these changes were made (purpose, benefits)
    - Any notable implementation details
 
-4. Post the summary as a comment on the PR using:
-   ```bash
-   gh pr comment {PR_NUMBER} --body-file <temp_file>
-   ```
-
-Format the comment as:
+4. Write the summary to `/tmp/pr-summary.md` in this exact format:
 ```markdown
 ## AI-Generated Summary
 
@@ -30,3 +25,5 @@ Format the comment as:
 ```
 
 Use clear, technical language. Be specific about files and functions modified.
+
+**Important:** Do NOT post the summary to the PR. Only write it to the file `/tmp/pr-summary.md`.
