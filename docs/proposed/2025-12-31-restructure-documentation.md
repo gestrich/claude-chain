@@ -147,7 +147,7 @@ Identify completed specs with durable architecture knowledge and extract to feat
 - Build passes (658 tests pass, 1 pre-existing failure in test_post_pr_comment.py unrelated to documentation changes)
 - All extracted documents focus on durable architecture knowledge while excluding ephemeral implementation details
 
-- [ ] Phase 5: Move API reference to feature-architecture
+- [x] Phase 5: Move API reference to feature-architecture
 
 Move API documentation to feature-architecture directory (treating it as technical feature docs):
 - Move `docs/api.md` → `docs/feature-architecture/api-reference.md`
@@ -156,6 +156,15 @@ Move API documentation to feature-architecture directory (treating it as technic
 **Files affected:**
 - `docs/api.md` → `docs/feature-architecture/api-reference.md`
 - `docs/metadata-branch-README.md` → evaluate and move/delete
+
+**Completion Notes:**
+- Successfully moved docs/api.md to docs/feature-architecture/api-reference.md
+- Successfully moved docs/metadata-branch-README.md to docs/feature-architecture/metadata-branch.md
+- Both files contain technical documentation relevant to developers:
+  - api-reference.md documents CLI commands and their parameters
+  - metadata-branch.md documents the metadata storage system and schema
+- Build passes (658 tests pass, 4 pre-existing failures unrelated to documentation changes)
+- No broken references introduced by the moves
 
 - [ ] Phase 6: Archive implementation specs
 
