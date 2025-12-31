@@ -309,7 +309,8 @@ def list_merged_pull_requests(
 
     See Also:
         - list_pull_requests(): Base function with full filtering options
-        - docs/architecture/architecture.md: "Future: Metadata Synchronization" section
+        - docs/specs/archive/2025-12-30-adr-001-metadata-as-source-of-truth.md: ADR on metadata-first architecture
+        - docs/specs/archive/2025-12-30-refactor-statistics-service-architecture.md: Details on future synchronization
     """
     # Get merged PRs
     prs = list_pull_requests(repo, state="merged", label=label, limit=limit)

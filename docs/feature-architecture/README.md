@@ -18,13 +18,6 @@ Documentation about specific features:
 - General patterns used across features (see [general-architecture](../general-architecture/))
 - Implementation checklists and ephemeral specs (see [specs](../specs/))
 
-## Available Documentation
-
-Currently being organized. Documentation will be moved here from:
-- `docs/architecture/` (feature-specific docs like e2e-testing.md)
-- `docs/completed/` (extracted durable knowledge from implementation specs)
-- `docs/api.md` (API reference)
-
 ## Writing Feature Architecture Documentation
 
 When documenting feature architecture:

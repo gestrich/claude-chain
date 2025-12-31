@@ -20,13 +20,6 @@ Documentation about general patterns and conventions:
 - User-facing guides (see [feature-guides](../feature-guides/))
 - Temporary implementation plans (see [specs](../specs/))
 
-## Available Documentation
-
-Currently being organized. Documentation will be moved here from:
-- `docs/architecture/` (general patterns like python-code-style.md, testing guides)
-- Extracted general patterns from architecture.md
-- Merged testing documentation
-
 ## Writing General Architecture Documentation
 
 When documenting general architecture:

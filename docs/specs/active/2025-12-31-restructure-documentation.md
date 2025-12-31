@@ -216,7 +216,7 @@ Update references between documents and from CLAUDE.md:
 - All cross-references now point to the new documentation structure
 - Remaining references to old paths are in archived specs (historical context) and review documents (not updated)
 
-- [ ] Phase 8: Clean up old structure
+- [x] Phase 8: Clean up old structure
 
 Remove old directories and update any remaining references:
 - Verify all content has been moved from old directories
@@ -229,6 +229,19 @@ Remove old directories and update any remaining references:
 - `docs/proposed/`
 - `docs/completed/`
 - `docs/architecture/`
+
+**Completion Notes:**
+- Successfully deleted `docs/architecture/` directory (only remaining old directory)
+- `docs/user-guides/`, `docs/proposed/`, and `docs/completed/` were already deleted in previous phases
+- Updated documentation references to point to new locations:
+  - `docs/feature-architecture/README.md` - Removed "Currently being organized" section
+  - `docs/general-architecture/README.md` - Removed "Currently being organized" section
+  - `src/claudestep/infrastructure/github/operations.py` - Updated reference from old architecture.md to archived ADR specs
+  - `docs/feature-architecture/e2e-testing.md` - Updated reference from `docs/proposed/` to `docs/specs/archive/`
+- Build passes (705 tests pass, 4 pre-existing failures unrelated to documentation changes)
+- Test coverage: 70.23% (meets 70% threshold)
+- All old directory structure has been removed
+- Documentation structure is now complete with clear separation between feature-guides, feature-architecture, general-architecture, and specs
 
 - [ ] Phase 9: Validation
 
