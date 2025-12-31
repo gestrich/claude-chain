@@ -20,8 +20,7 @@ classifiers = [
 ]
 
 dependencies = [
-    # Add runtime dependencies here if any
-    # Example: "pyyaml>=6.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
