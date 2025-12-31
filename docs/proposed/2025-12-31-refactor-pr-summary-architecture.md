@@ -157,7 +157,7 @@ PR_SUMMARY_FILE_PATH = "/tmp/pr-summary.md"
 - File compiles successfully with Python 3
 - Constant is now available for use in future phases (Phase 3, 4, and 5 will consume this constant)
 
-- [ ] Phase 3: Refactor prepare_summary.py to use domain models and explicit parameters
+- [x] Phase 3: Refactor prepare_summary.py to use domain models and explicit parameters ✅
 
 **Update `src/claudestep/cli/commands/prepare_summary.py`:**
 
@@ -233,6 +233,18 @@ elif args.command == "prepare-summary":
 - Commands receive explicit parameters (architecture principle)
 - Only `__main__.py` reads environment variables (adapter layer)
 - Domain models handle parsing (separation of concerns)
+
+**Technical Notes (Phase 3 Completion):**
+- Refactored `cmd_prepare_summary()` to accept explicit parameters instead of reading environment variables
+- Updated function signature to accept 8 explicit parameters: `gh`, `pr_number`, `task`, `repo`, `run_id`, `action_path`, `main_execution_file`, `summary_execution_file`
+- Removed the `args: argparse.Namespace` parameter (no longer needed)
+- Integrated `CostBreakdown.from_execution_files()` domain model for cost extraction
+- Added `summary_file` output using `PR_SUMMARY_FILE_PATH` constant
+- Removed `_extract_cost_from_file()` helper function (logic moved to domain model)
+- Updated `__main__.py` to read environment variables and pass them as explicit parameters to the command
+- Updated all 9 integration tests to use the new signature
+- All tests pass successfully (658 passed, 4 pre-existing failures unrelated to this change)
+- No new test failures introduced by this refactoring
 
 - [ ] Phase 4: Refactor post_pr_comment.py to use domain models
 

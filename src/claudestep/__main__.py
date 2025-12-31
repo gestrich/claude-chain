@@ -45,7 +45,16 @@ def main():
     elif args.command == "finalize":
         return cmd_finalize(args, gh)
     elif args.command == "prepare-summary":
-        return cmd_prepare_summary(args, gh)
+        return cmd_prepare_summary(
+            gh=gh,
+            pr_number=os.environ.get("PR_NUMBER", ""),
+            task=os.environ.get("TASK", ""),
+            repo=os.environ.get("GITHUB_REPOSITORY", ""),
+            run_id=os.environ.get("GITHUB_RUN_ID", ""),
+            action_path=os.environ.get("ACTION_PATH", ""),
+            main_execution_file=os.environ.get("MAIN_EXECUTION_FILE", ""),
+            summary_execution_file=os.environ.get("SUMMARY_EXECUTION_FILE", "")
+        )
     elif args.command == "post-pr-comment":
         return cmd_post_pr_comment(args, gh)
     elif args.command == "notify-pr":
