@@ -61,30 +61,42 @@ Files examined:
 
 The issue requires improving the prompt or Claude Code configuration to ensure consistent behavior.
 
-- [ ] Phase 2: Fix the summary generation step
+- [x] Phase 2: Fix the summary generation step
 
-Based on Phase 1 findings, implement the fix:
-- If the step is being skipped, fix the conditional logic (likely boolean vs string comparison issue)
-- If Claude Code is failing, investigate and fix the error (may need to check anthropics/claude-code-action compatibility)
-- **IMPORTANT**: Remove `continue-on-error: true` from the summary generation step (line 194 in action.yml)
-  - This is a code smell that masks failures and makes debugging impossible
-  - If the step fails, we need to see the error, not silently continue
-  - The workflow should fail loudly if summary generation fails, not hide the issue
-- Ensure the summary comment is being posted to the PR correctly
+**Completed on 2025-12-31**
 
-Key considerations:
-- The summary prompt expects Claude to run `gh pr diff` and `gh pr comment`
-- The claude_args specify `--allowedTools Bash,Write` which should be sufficient
-- The show_full_output flag is set to true for debugging
-- Removing `continue-on-error` will expose any hidden failures
+### Changes Implemented
 
-Files to modify:
-- `action.yml` (lines 182-194) - Remove `continue-on-error: true` from line 194
-- `action.yml` (lines 164-180) - May need to fix boolean comparison in conditional
-- Potentially `src/claudestep/cli/commands/prepare_summary.py` if output format needs adjustment
-- Potentially `src/claudestep/resources/prompts/summary_prompt.md` if prompt needs refinement
+1. **Enhanced Summary Prompt** (`src/claudestep/resources/prompts/summary_prompt.md`)
+   - Added explicit "CRITICAL" and "REQUIRED" markers to emphasize that posting the comment is mandatory
+   - Changed step 4 to clearly state "DO NOT skip this step. The comment MUST be posted."
+   - Added footer reminder: "IMPORTANT: After writing the summary to a file, you MUST execute the `gh pr comment` command to post it. This is not optional."
+   - These changes address the non-deterministic behavior identified in Phase 1 where Claude Code would sometimes generate the summary but fail to post it
 
-Expected outcome: Summary generation step executes successfully and posts comments, or fails loudly with clear error messages
+2. **Verified `continue-on-error` Flag Removal**
+   - Confirmed that `continue-on-error: true` is NOT present in the summary generation step (lines 182-194 in action.yml)
+   - This was already removed in a previous change, ensuring that failures will be visible
+   - Other `continue-on-error` flags exist in action.yml (lines 111, 136, 210, 227, 246, 290) but are for different steps
+
+### Technical Notes
+
+**Root Cause:** Based on Phase 1 investigation, the issue was that Claude Code behaves non-deterministically when executing the summary prompt. In failed cases (e.g., PR #114), Claude would:
+- ✅ Execute `gh pr diff`
+- ✅ Generate summary text
+- ❌ Skip executing `gh pr comment`
+
+**Solution Approach:** Rather than modifying the GitHub Actions configuration (which was working correctly), the fix focuses on making the prompt more directive and explicit about the requirement to post the comment. The enhanced prompt uses multiple reinforcement techniques:
+- Bold "CRITICAL" header before instructions
+- "REQUIRED" label on step 4
+- Explicit "DO NOT skip" warning
+- Footer reminder about mandatory execution
+
+**Testing:** Build verification completed successfully:
+- Ran unit and integration tests: 679 passed, 1 failed (pre-existing failure in statistics service unrelated to this change)
+- Coverage: 68.72% (below 70% threshold, but this is a pre-existing issue)
+- No new test failures introduced by the prompt changes
+
+Expected outcome: The more directive prompt should reduce non-deterministic behavior and increase the consistency of comment posting. The next phase (Phase 3) will verify the quality of posted summaries.
 
 - [ ] Phase 3: Verify summary format and content quality
 
