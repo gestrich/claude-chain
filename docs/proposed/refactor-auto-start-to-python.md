@@ -111,7 +111,7 @@ class AutoStartService:
 - Module imports successfully and instantiates correctly
 - Build passes with new service included in coverage report
 
-- [ ] Phase 4: Create CLI command for auto-start detection
+- [x] Phase 4: Create CLI command for auto-start detection ✅
 
 Create CLI command in `src/claudestep/cli/commands/auto_start.py`:
 - `cmd_auto_start(gh, repo, base_branch, ref_before, ref_after)` function
@@ -127,6 +127,24 @@ Environment variables to read in `__main__.py` adapter layer:
 - `BASE_BRANCH`
 - `GITHUB_SHA` (after commit)
 - `GITHUB_SHA_BEFORE` (before commit, from `github.event.before`)
+
+**Technical Notes:**
+- Created `src/claudestep/cli/commands/auto_start.py` with `cmd_auto_start()` function
+- Follows Service Layer pattern from `prepare.py` - CLI acts as thin orchestration layer
+- Function signature: `cmd_auto_start(gh, repo, base_branch, ref_before, ref_after) -> int`
+- Three-step workflow:
+  1. Detect changed projects using `AutoStartService.detect_changed_projects()`
+  2. Determine new projects using `AutoStartService.determine_new_projects()`
+  3. Make auto-trigger decisions using `AutoStartService.should_auto_trigger()`
+- Writes GitHub Actions outputs:
+  - `projects_to_trigger`: Space-separated list of project names for matrix strategy
+  - `project_count`: Number of projects to trigger
+- Instantiates `PRService` and `AutoStartService` with dependency injection
+- Comprehensive error handling with traceback on exceptions
+- Returns exit code 0 for success (even when no projects to trigger), non-zero for errors
+- Updated `src/claudestep/cli/commands/__init__.py` to export `cmd_auto_start`
+- Module imports successfully and syntax check passes
+- Ready for Phase 5 integration with `__main__.py` dispatcher
 
 - [ ] Phase 5: Wire up command in __main__.py dispatcher
 
