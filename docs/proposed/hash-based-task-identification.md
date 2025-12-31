@@ -159,29 +159,66 @@ Replace positional indices with stable task identifiers derived from the task de
 
 ---
 
-- [ ] Phase 3: Update branch name generation and parsing
+- [x] Phase 3: Update branch name generation and parsing
 
 **Objective**: Change branch name creation to use task hashes, and update parsing to handle both old and new formats.
 
-**Tasks**:
-- Update `PROperationsService.format_branch_name()` to accept task hash instead of index
+**Status**: ✅ Completed
+
+**Implementation Notes**:
+- Updated `PRService.format_branch_name()` to accept task hash instead of index
   - New signature: `format_branch_name(project: str, task_hash: str) -> str`
-  - Generate: `claude-step-{project}-{task_hash}`
-- Update `PROperationsService.parse_branch_name()` to extract hash and detect format
-  - Return: `(project: str, task_identifier: str, format_version: str)`
-  - Support both formats during transition:
-    - Old: `claude-step-project-3` → `("project", "3", "index")`
+  - Now delegates to `format_branch_name_with_hash()` for consistency
+  - Generates: `claude-step-{project}-{task_hash}`
+- Updated `PRService.parse_branch_name()` to extract hash and detect format
+  - New signature returns: `(project: str, task_identifier: Union[int, str], format_version: Literal["index", "hash"])`
+  - Now delegates to `parse_branch_name_extended()` for unified parsing
+  - Supports both formats during transition:
+    - Old: `claude-step-project-3` → `("project", 3, "index")`
     - New: `claude-step-project-a3f2b891` → `("project", "a3f2b891", "hash")`
-  - Use regex to distinguish: if identifier is all digits → old format, otherwise → new format
+  - Format detection: all digits → index, 8 hex chars → hash
+- Updated all call sites to handle new return format:
+  - `PRService.get_unique_projects()` - Updated to unpack 3-tuple
+  - `ProjectService.detect_project_from_pr()` - Updated to unpack 3-tuple
+  - `GitHubPullRequest.project_name` property - Already handles new format (uses first element)
+  - `GitHubPullRequest.task_index` property - Updated to only return index for "index" format branches
+- Added new property `GitHubPullRequest.task_hash` - Returns hash for "hash" format branches
+- Updated `prepare.py` to use task_hash when creating branches (line 177)
+  - Changed from: `pr_service.format_branch_name(detected_project, task_index)`
+  - Changed to: `pr_service.format_branch_name(detected_project, task_hash)`
+- Updated all tests to match new signatures:
+  - `test_format_branch_name` tests now use hash values instead of indices
+  - `test_parse_branch_name` tests now expect 3-tuple returns with format detection
+  - Added tests for both index and hash formats
+  - Updated roundtrip test to use hash format
 
-**Files to modify**:
-- `src/claudestep/services/pr_operations_service.py` - Update both methods
-- Update all call sites to pass task hash instead of index
+**Technical Details**:
+- Backward compatibility maintained through format detection in parse_branch_name
+- All existing index-based branches will continue to parse correctly
+- New branches will use hash-based format automatically
+- Format version detection allows code to handle both formats appropriately
+- Domain model properties (task_index, task_hash) provide type-safe access to identifiers
 
-**Expected outcomes**:
-- New branches use hash-based naming
-- Parsing handles both old and new branch formats
-- System can identify format version for each branch
+**Files Modified**:
+- `src/claudestep/services/core/pr_service.py` - Updated format_branch_name() and parse_branch_name()
+- `src/claudestep/cli/commands/prepare.py` - Updated to use task_hash for branch creation
+- `src/claudestep/services/core/project_service.py` - Updated to handle 3-tuple return
+- `src/claudestep/domain/github_models.py` - Updated task_index property and added task_hash property
+- `tests/unit/services/core/test_pr_service.py` - Updated all branch naming tests
+
+**Test Results**:
+- All 519 unit tests pass
+- All PR service tests pass (58/58)
+- Build succeeds
+- Backward compatibility verified: old index-based branches parse correctly
+- Forward compatibility verified: new hash-based branches parse correctly
+
+**Expected outcomes**: ✅ All achieved
+- New branches use hash-based naming via updated format_branch_name()
+- Parsing handles both old and new branch formats via format detection
+- System can identify format version for each branch (returns "index" or "hash")
+- All call sites updated to handle new signatures
+- All tests updated and passing
 
 ---
 

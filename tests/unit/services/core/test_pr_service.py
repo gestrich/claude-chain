@@ -14,60 +14,82 @@ class TestFormatBranchName:
     """Tests for format_branch_name static method"""
 
     def test_format_basic_branch_name(self):
-        """Should format branch name with project and index"""
-        result = PRService.format_branch_name("my-refactor", 1)
-        assert result == "claude-step-my-refactor-1"
+        """Should format branch name with project and hash"""
+        result = PRService.format_branch_name("my-refactor", "a3f2b891")
+        assert result == "claude-step-my-refactor-a3f2b891"
 
     def test_format_with_multi_word_project(self):
         """Should handle project names with multiple words"""
-        result = PRService.format_branch_name("swift-migration", 5)
-        assert result == "claude-step-swift-migration-5"
+        result = PRService.format_branch_name("swift-migration", "f7c4d3e2")
+        assert result == "claude-step-swift-migration-f7c4d3e2"
 
-    def test_format_with_large_index(self):
-        """Should handle large task indices"""
-        result = PRService.format_branch_name("api-refactor", 42)
-        assert result == "claude-step-api-refactor-42"
+    def test_format_with_different_hash(self):
+        """Should handle different task hashes"""
+        result = PRService.format_branch_name("api-refactor", "12345678")
+        assert result == "claude-step-api-refactor-12345678"
 
     def test_format_with_complex_project_name(self):
         """Should handle complex project names with hyphens"""
-        result = PRService.format_branch_name("my-complex-project-name", 3)
-        assert result == "claude-step-my-complex-project-name-3"
+        result = PRService.format_branch_name("my-complex-project-name", "9abcdef0")
+        assert result == "claude-step-my-complex-project-name-9abcdef0"
 
 
 class TestParseBranchName:
     """Tests for parse_branch_name static method"""
 
-    def test_parse_basic_branch_name(self):
-        """Should parse basic branch name"""
+    def test_parse_basic_index_branch_name(self):
+        """Should parse index-based branch name (legacy format)"""
         result = PRService.parse_branch_name("claude-step-my-refactor-1")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "my-refactor"
-        assert index == 1
+        assert identifier == 1
+        assert format_version == "index"
 
-    def test_parse_multi_word_project(self):
-        """Should parse project names with multiple words"""
+    def test_parse_basic_hash_branch_name(self):
+        """Should parse hash-based branch name (new format)"""
+        result = PRService.parse_branch_name("claude-step-my-refactor-a3f2b891")
+        assert result is not None
+        project, identifier, format_version = result
+        assert project == "my-refactor"
+        assert identifier == "a3f2b891"
+        assert format_version == "hash"
+
+    def test_parse_multi_word_project_index(self):
+        """Should parse project names with multiple words (index format)"""
         result = PRService.parse_branch_name("claude-step-swift-migration-5")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "swift-migration"
-        assert index == 5
+        assert identifier == 5
+        assert format_version == "index"
+
+    def test_parse_multi_word_project_hash(self):
+        """Should parse project names with multiple words (hash format)"""
+        result = PRService.parse_branch_name("claude-step-swift-migration-f7c4d3e2")
+        assert result is not None
+        project, identifier, format_version = result
+        assert project == "swift-migration"
+        assert identifier == "f7c4d3e2"
+        assert format_version == "hash"
 
     def test_parse_large_index(self):
         """Should handle large task indices"""
         result = PRService.parse_branch_name("claude-step-api-refactor-42")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "api-refactor"
-        assert index == 42
+        assert identifier == 42
+        assert format_version == "index"
 
     def test_parse_complex_project_name(self):
         """Should handle complex project names with multiple hyphens"""
         result = PRService.parse_branch_name("claude-step-my-complex-project-name-3")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "my-complex-project-name"
-        assert index == 3
+        assert identifier == 3
+        assert format_version == "index"
 
     def test_parse_invalid_branch_no_prefix(self):
         """Should return None for branch without claude-step prefix"""
@@ -92,28 +114,30 @@ class TestParseBranchName:
     def test_parse_roundtrip(self):
         """Should correctly roundtrip through format and parse"""
         original_project = "my-test-project"
-        original_index = 7
+        original_hash = "a1b2c3d4"
 
         # Format then parse
-        branch = PRService.format_branch_name(original_project, original_index)
+        branch = PRService.format_branch_name(original_project, original_hash)
         result = PRService.parse_branch_name(branch)
 
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == original_project
-        assert index == original_index
+        assert identifier == original_hash
+        assert format_version == "hash"
 
     def test_parse_index_zero(self):
         """Should handle index 0"""
         result = PRService.parse_branch_name("claude-step-my-refactor-0")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "my-refactor"
-        assert index == 0
+        assert identifier == 0
+        assert format_version == "index"
 
-    def test_parse_invalid_branch_non_numeric_index(self):
-        """Should return None for branch with non-numeric index"""
-        result = PRService.parse_branch_name("claude-step-my-refactor-abc")
+    def test_parse_invalid_branch_non_hex_hash(self):
+        """Should return None for branch with invalid hash (contains non-hex chars)"""
+        result = PRService.parse_branch_name("claude-step-my-refactor-abcdefgh")
         assert result is None
 
     def test_parse_invalid_branch_negative_index(self):
@@ -124,9 +148,10 @@ class TestParseBranchName:
         # This should parse, but the project name will be "my-refactor-"
         # Actually testing the current behavior
         if result:
-            project, index = result
+            project, identifier, format_version = result
             assert project == "my-refactor-"
-            assert index == 1
+            assert identifier == 1
+            assert format_version == "index"
         # If implementation changes to reject this, that's also acceptable
         # The key is to document the behavior
 
@@ -134,17 +159,19 @@ class TestParseBranchName:
         """Should handle single character project names"""
         result = PRService.parse_branch_name("claude-step-x-1")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "x"
-        assert index == 1
+        assert identifier == 1
+        assert format_version == "index"
 
     def test_parse_numeric_project_name(self):
         """Should handle project names that contain numbers"""
         result = PRService.parse_branch_name("claude-step-project-123-refactor-5")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "project-123-refactor"
-        assert index == 5
+        assert identifier == 5
+        assert format_version == "index"
 
     def test_parse_whitespace_in_branch(self):
         """Should handle branch with whitespace (though not recommended)"""
@@ -152,9 +179,10 @@ class TestParseBranchName:
         # While not recommended, this tests the actual behavior
         result = PRService.parse_branch_name("claude-step-my refactor-1")
         assert result is not None
-        project, index = result
+        project, identifier, format_version = result
         assert project == "my refactor"
-        assert index == 1
+        assert identifier == 1
+        assert format_version == "index"
 
     def test_parse_case_sensitivity(self):
         """Should handle case sensitivity in prefix (expects lowercase)"""

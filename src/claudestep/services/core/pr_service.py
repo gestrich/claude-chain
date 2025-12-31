@@ -191,7 +191,7 @@ class PRService:
             if pr.head_ref_name:
                 parsed = self.parse_branch_name(pr.head_ref_name)
                 if parsed:
-                    project_name, _ = parsed
+                    project_name, _, _ = parsed
                     projects.add(project_name)
 
         return projects
@@ -261,27 +261,26 @@ class PRService:
     # Static utility methods
 
     @staticmethod
-    def format_branch_name(project_name: str, index: int) -> str:
-        """Format branch name using the standard ClaudeStep format (index-based).
+    def format_branch_name(project_name: str, task_hash: str) -> str:
+        """Format branch name using the standard ClaudeStep format (hash-based).
 
-        This is the legacy format maintained for backward compatibility.
-        New code should use format_branch_name_with_hash() instead.
+        This method now uses hash-based identification for stable task tracking.
+        The signature has been updated from index-based to hash-based.
 
         Args:
             project_name: Project name (e.g., "my-refactor")
-            index: Task index (1-based)
+            task_hash: 8-character task hash from generate_task_hash()
 
         Returns:
-            Formatted branch name (e.g., "claude-step-my-refactor-1")
+            Formatted branch name (e.g., "claude-step-my-refactor-a3f2b891")
 
         Examples:
-            >>> PRService.format_branch_name("my-refactor", 1)
-            'claude-step-my-refactor-1'
-            >>> PRService.format_branch_name("swift-migration", 5)
-            'claude-step-swift-migration-5'
+            >>> PRService.format_branch_name("my-refactor", "a3f2b891")
+            'claude-step-my-refactor-a3f2b891'
+            >>> PRService.format_branch_name("swift-migration", "f7c4d3e2")
+            'claude-step-swift-migration-f7c4d3e2'
         """
-        project = Project(project_name)
-        return project.get_branch_name(index)
+        return PRService.format_branch_name_with_hash(project_name, task_hash)
 
     @staticmethod
     def format_branch_name_with_hash(project_name: str, task_hash: str) -> str:
@@ -306,43 +305,35 @@ class PRService:
         return f"claude-step-{project_name}-{task_hash}"
 
     @staticmethod
-    def parse_branch_name(branch: str) -> Optional[Tuple[str, int]]:
-        """Parse branch name to extract project name and task index (legacy format only).
+    def parse_branch_name(branch: str) -> Optional[Tuple[str, Union[int, str], Literal["index", "hash"]]]:
+        """Parse branch name and detect format (index-based or hash-based).
 
-        This method maintains backward compatibility by only parsing index-based branches.
-        Use parse_branch_name_extended() to parse both index and hash-based formats.
+        This method now delegates to parse_branch_name_extended() to support
+        both old index-based and new hash-based branch formats.
 
-        Expected format: claude-step-{project_name}-{index}
+        Expected formats:
+        - Old: claude-step-{project_name}-{index}
+        - New: claude-step-{project_name}-{hash}
 
         Args:
             branch: Branch name to parse
 
         Returns:
-            Tuple of (project_name, index) or None if parsing fails
+            Tuple of (project_name, task_identifier, format_version) where:
+            - project_name: str - The project name
+            - task_identifier: int (for index format) or str (for hash format)
+            - format_version: "index" or "hash"
+            Returns None if branch doesn't match ClaudeStep pattern
 
         Examples:
             >>> PRService.parse_branch_name("claude-step-my-refactor-1")
-            ('my-refactor', 1)
-            >>> PRService.parse_branch_name("claude-step-swift-migration-5")
-            ('swift-migration', 5)
+            ('my-refactor', 1, 'index')
+            >>> PRService.parse_branch_name("claude-step-my-refactor-a3f2b891")
+            ('my-refactor', 'a3f2b891', 'hash')
             >>> PRService.parse_branch_name("invalid-branch")
             None
         """
-        # Delegate to Project domain model for parsing
-        # Pattern: claude-step-{project}-{index}
-        # Project name can contain hyphens, so we need to match the last number
-        pattern = r"^claude-step-(.+)-(\d+)$"
-        match = re.match(pattern, branch)
-
-        if match:
-            project_name = match.group(1)
-            try:
-                index = int(match.group(2))
-                return (project_name, index)
-            except ValueError:
-                return None
-
-        return None
+        return PRService.parse_branch_name_extended(branch)
 
     @staticmethod
     def parse_branch_name_extended(branch: str) -> Optional[Tuple[str, Union[int, str], Literal["index", "hash"]]]:

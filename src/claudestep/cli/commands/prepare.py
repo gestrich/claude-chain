@@ -173,8 +173,8 @@ Please merge your spec files to the '{base_branch}' branch before running Claude
 
         # === STEP 5: Create Branch ===
         print("\n=== Step 5/6: Creating branch ===")
-        # Use standard ClaudeStep branch format: claude-step-{project}-{index}
-        branch_name = pr_service.format_branch_name(detected_project, task_index)
+        # Use standard ClaudeStep branch format: claude-step-{project}-{task_hash}
+        branch_name = pr_service.format_branch_name(detected_project, task_hash)
 
         try:
             run_git_command(["checkout", "-b", branch_name])
