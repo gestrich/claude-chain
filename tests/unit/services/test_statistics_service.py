@@ -656,7 +656,8 @@ class TestCollectProjectCosts:
         """Test that cost collection returns 0.0 (Phase 4)"""
         # Create service and test
         mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        mock_pr_service = Mock()
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         cost = service.collect_project_costs("test-project", "claudestep")
 
         # Cost tracking temporarily dropped in Phase 4
@@ -666,8 +667,7 @@ class TestCollectProjectCosts:
 class TestCollectTeamMemberStats:
     """Test team member statistics collection from GitHub API"""
 
-    @patch('claudestep.services.statistics_service.list_pull_requests')
-    def test_collect_stats_basic(self, mock_list_prs):
+    def test_collect_stats_basic(self):
         """Test basic team member stats collection from GitHub"""
         from datetime import datetime, timezone, timedelta
         from claudestep.domain.github_models import GitHubPullRequest
@@ -706,11 +706,13 @@ class TestCollectTeamMemberStats:
             head_ref_name="claude-step-test-project-3"
         )
 
-        mock_list_prs.return_value = [pr1, pr2, pr3]
+        # Mock PROperationsService
+        mock_repo = Mock()
+        mock_pr_service = Mock()
+        mock_pr_service.get_all_prs.return_value = [pr1, pr2, pr3]
 
         # Create service and test
-        mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         stats = service.collect_team_member_stats(["alice", "bob"], days_back=30)
 
         assert "alice" in stats
@@ -720,28 +722,30 @@ class TestCollectTeamMemberStats:
         assert stats["bob"].merged_count == 1
         assert stats["bob"].open_count == 0
 
-    @patch('claudestep.services.statistics_service.list_pull_requests')
-    def test_collect_stats_empty_prs(self, mock_list_prs):
+    def test_collect_stats_empty_prs(self):
         """Test stats collection with no PRs from GitHub"""
-        mock_list_prs.return_value = []
+        # Mock PROperationsService
+        mock_repo = Mock()
+        mock_pr_service = Mock()
+        mock_pr_service.get_all_prs.return_value = []
 
         # Create service and test
-        mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         stats = service.collect_team_member_stats(["alice"])
 
         assert "alice" in stats
         assert stats["alice"].merged_count == 0
         assert stats["alice"].open_count == 0
 
-    @patch('claudestep.services.statistics_service.list_pull_requests')
-    def test_collect_stats_exception_handling(self, mock_list_prs):
+    def test_collect_stats_exception_handling(self):
         """Test that exceptions during collection are handled"""
-        mock_list_prs.side_effect = Exception("GitHub API error")
+        # Mock PROperationsService to raise exception
+        mock_repo = Mock()
+        mock_pr_service = Mock()
+        mock_pr_service.get_all_prs.side_effect = Exception("GitHub API error")
 
         # Create service and test
-        mock_repo = Mock()
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         stats = service.collect_team_member_stats(["alice"])
 
         # Should return empty stats but not crash
@@ -752,8 +756,7 @@ class TestCollectTeamMemberStats:
 class TestCollectProjectStats:
     """Test project statistics collection"""
 
-    @patch('claudestep.services.statistics_service.list_open_pull_requests')
-    def test_collect_stats_success(self, mock_list_open_prs):
+    def test_collect_stats_success(self):
         """Test successful project stats collection"""
         from datetime import datetime, timezone
         from claudestep.domain.github_models import GitHubPullRequest
@@ -776,7 +779,10 @@ class TestCollectProjectStats:
             labels=["claudestep"],
             head_ref_name="claude-step-test-project-3"
         )
-        mock_list_open_prs.return_value = [pr1]
+
+        # Mock PROperationsService
+        mock_pr_service = Mock()
+        mock_pr_service.get_open_prs_for_project.return_value = [pr1]
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -787,7 +793,7 @@ class TestCollectProjectStats:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         stats = service.collect_project_stats("test-project", "main", "claudestep")
 
         assert stats.project_name == "test-project"
@@ -804,18 +810,21 @@ class TestCollectProjectStats:
         mock_repo = Mock()
         mock_repo.load_spec.return_value = None
 
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        # Mock PROperationsService
+        mock_pr_service = Mock()
+
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         stats = service.collect_project_stats("test-project", "main", "claudestep")
 
         assert stats is None
 
-    @patch('claudestep.services.statistics_service.list_open_pull_requests')
-    def test_collect_stats_in_progress_error(self, mock_list_open_prs):
+    def test_collect_stats_in_progress_error(self):
         """Test stats collection when in-progress task detection fails"""
         spec_content = "- [ ] Task 1\n- [x] Task 2"
 
-        # Make GitHub API call fail
-        mock_list_open_prs.side_effect = Exception("API error")
+        # Mock PROperationsService to raise exception
+        mock_pr_service = Mock()
+        mock_pr_service.get_open_prs_for_project.side_effect = Exception("API error")
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -826,19 +835,19 @@ class TestCollectProjectStats:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         stats = service.collect_project_stats("test-project", "main", "claudestep")
 
         assert stats.in_progress_tasks == 0
         assert stats.pending_tasks == 1
 
-    @patch('claudestep.services.statistics_service.list_open_pull_requests')
-    def test_collect_stats_custom_base_branch(self, mock_list_open_prs):
+    def test_collect_stats_custom_base_branch(self):
         """Test that custom base_branch value is used correctly"""
         spec_content = "- [x] Task 1\n- [ ] Task 2"
 
-        # No open PRs
-        mock_list_open_prs.return_value = []
+        # Mock PROperationsService with no open PRs
+        mock_pr_service = Mock()
+        mock_pr_service.get_open_prs_for_project.return_value = []
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -849,7 +858,7 @@ class TestCollectProjectStats:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service with custom base_branch
-        service = StatisticsService("owner/repo", mock_repo, base_branch="develop")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="develop")
         stats = service.collect_project_stats("test-project", "develop", "claudestep")
 
         # Verify the service uses the custom base_branch
@@ -864,9 +873,7 @@ class TestCollectProjectStats:
 class TestCollectAllStatistics:
     """Test full statistics collection"""
 
-    @patch('claudestep.services.statistics_service.list_open_pull_requests')
-    @patch('claudestep.services.statistics_service.list_pull_requests')
-    def test_collect_all_single_project(self, mock_list_prs, mock_list_open_prs):
+    def test_collect_all_single_project(self):
         """Test collecting stats for a single project"""
         config_content = """
 reviewers:
@@ -877,10 +884,10 @@ reviewers:
         """
         spec_content = "- [x] Task 1\n- [ ] Task 2"
 
-        # No open PRs
-        mock_list_open_prs.return_value = []
-        # No PRs for team stats
-        mock_list_prs.return_value = []
+        # Mock PROperationsService
+        mock_pr_service = Mock()
+        mock_pr_service.get_open_prs_for_project.return_value = []
+        mock_pr_service.get_all_prs.return_value = []
 
         # Mock ProjectRepository
         mock_repo = Mock()
@@ -893,7 +900,7 @@ reviewers:
         mock_repo.load_spec.return_value = SpecContent(project, spec_content)
 
         # Create service and test
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         report = service.collect_all_statistics("claude-step/project1/configuration.yml")
 
         assert len(report.project_stats) == 1
@@ -906,7 +913,8 @@ reviewers:
         """Test that missing GITHUB_REPOSITORY returns empty report"""
         # Create service with empty repo
         mock_repo = Mock()
-        service = StatisticsService("", mock_repo, base_branch="main")
+        mock_pr_service = Mock()
+        service = StatisticsService("", mock_repo, mock_pr_service, base_branch="main")
         report = service.collect_all_statistics()
 
         assert len(report.project_stats) == 0
@@ -918,8 +926,11 @@ reviewers:
         mock_repo = Mock()
         mock_repo.load_configuration.return_value = None
 
+        # Mock PROperationsService
+        mock_pr_service = Mock()
+
         # Create service and test
-        service = StatisticsService("owner/repo", mock_repo, base_branch="main")
+        service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
         report = service.collect_all_statistics("/nonexistent/config.yml")
 
         assert len(report.project_stats) == 0

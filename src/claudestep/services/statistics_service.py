@@ -12,7 +12,6 @@ from claudestep.domain.constants import DEFAULT_PR_LABEL
 from claudestep.domain.project import Project
 from claudestep.domain.project_configuration import ProjectConfiguration
 from claudestep.infrastructure.repositories.project_repository import ProjectRepository
-from claudestep.infrastructure.github.operations import list_pull_requests, list_open_pull_requests
 from claudestep.services.pr_operations_service import PROperationsService
 from claudestep.domain.models import ProjectStats, StatisticsReport, TeamMemberStats, PRReference
 
@@ -29,6 +28,7 @@ class StatisticsService:
         self,
         repo: str,
         project_repository: ProjectRepository,
+        pr_operations_service: PROperationsService,
         base_branch: str = "main"
     ):
         """Initialize the statistics service
@@ -36,11 +36,13 @@ class StatisticsService:
         Args:
             repo: GitHub repository (owner/name)
             project_repository: ProjectRepository instance for loading project data
+            pr_operations_service: PROperationsService instance for PR operations
             base_branch: Base branch to fetch specs from (default: "main")
         """
         self.repo = repo
         self.base_branch = base_branch
         self.project_repository = project_repository
+        self.pr_operations_service = pr_operations_service
 
     # Public API methods
 
@@ -95,19 +97,10 @@ class StatisticsService:
             print("Multi-project mode: discovering projects from GitHub PRs...")
 
             try:
-                # Query all PRs with claudestep label
-                all_prs = list_pull_requests(self.repo, state="all", label=label, limit=500)
+                # Get unique project names using PROperationsService
+                project_names = self.pr_operations_service.get_unique_projects(label=label)
 
-                # Extract unique project names from branch names
-                project_names = set()
-                for pr in all_prs:
-                    if pr.head_ref_name:
-                        parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
-                        if parsed:
-                            project_name, _ = parsed
-                            project_names.add(project_name)
-
-                print(f"Found {len(project_names)} unique project(s) from {len(all_prs)} PR(s)")
+                print(f"Found {len(project_names)} unique project(s)")
             except Exception as e:
                 print(f"Error querying GitHub PRs: {e}")
                 return report
@@ -195,19 +188,8 @@ class StatisticsService:
 
         # Get in-progress tasks from GitHub (open PRs for this project)
         try:
-            open_prs = list_open_pull_requests(self.repo, label=label, limit=500)
-
-            # Filter by project name using branch name parsing
-            in_progress_count = 0
-            for pr in open_prs:
-                if pr.head_ref_name:
-                    parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
-                    if parsed:
-                        pr_project, _ = parsed
-                        if pr_project == project_name:
-                            in_progress_count += 1
-
-            stats.in_progress_tasks = in_progress_count
+            open_prs = self.pr_operations_service.get_open_prs_for_project(project_name, label=label)
+            stats.in_progress_tasks = len(open_prs)
             print(f"  In-progress: {stats.in_progress_tasks}")
         except Exception as e:
             print(f"  Error: Failed to get in-progress tasks: {e}")
@@ -256,24 +238,24 @@ class StatisticsService:
         open_count = 0
 
         try:
-            # Query all PRs with claudestep label from GitHub
-            all_prs = list_pull_requests(self.repo, state="all", label=label, since=cutoff_date, limit=500)
+            # Query all PRs with claudestep label from GitHub using PROperationsService
+            all_prs = self.pr_operations_service.get_all_prs(label=label, state="all", limit=500)
 
             for pr in all_prs:
-                # Skip if no assignee or no branch name
-                if not pr.assignees or not pr.head_ref_name:
+                # Skip if no assignee or not a ClaudeStep PR
+                if not pr.assignees or not pr.is_claudestep_pr:
                     continue
 
-                # Extract project name from branch
-                parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
-                if not parsed:
-                    continue
+                # Use domain model properties instead of manual parsing
+                project_name = pr.project_name
+                task_index = pr.task_index
 
-                project_name, task_index = parsed
+                if not project_name or task_index is None:
+                    continue
 
                 # Create PRReference from GitHub PR
-                # Use task index in title since we don't have task description
-                title = f"Task {task_index}: {pr.title}"
+                # Use task index and cleaned task description
+                title = f"Task {task_index}: {pr.task_description}"
 
                 # Determine timestamp based on state
                 timestamp = pr.merged_at if pr.state == "merged" and pr.merged_at else pr.created_at

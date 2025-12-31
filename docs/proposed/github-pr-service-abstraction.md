@@ -186,7 +186,7 @@ Refactor `TaskManagementService` to use `PROperationsService` instead of calling
 
 **Expected outcome:** ✅ COMPLETED - `TaskManagementService` uses service abstraction, no direct GitHub API calls.
 
-- [ ] Phase 6: Update StatisticsService to use PROperationsService
+- [x] Phase 6: Update StatisticsService to use PROperationsService
 
 Refactor `StatisticsService` to use `PROperationsService` instead of calling GitHub API operations directly.
 
@@ -197,11 +197,23 @@ Refactor `StatisticsService` to use `PROperationsService` instead of calling Git
 - Remove manual branch parsing and title prefix stripping
 - Update all call sites in CLI commands to instantiate and pass `PROperationsService`
 
-**Files to modify:**
-- `src/claudestep/services/statistics_service.py`
-- `src/claudestep/cli/commands/statistics.py`
+**Files modified:**
+- `src/claudestep/services/statistics_service.py` - Updated to accept and use PROperationsService dependency
+- `src/claudestep/cli/commands/statistics.py` - Updated to instantiate PROperationsService and pass to StatisticsService
+- `tests/unit/services/test_statistics_service.py` - Updated all 13 tests to mock PROperationsService instead of infrastructure layer
 
-**Expected outcome:** `StatisticsService` uses service abstraction, no direct GitHub API calls.
+**Technical notes:**
+- Successfully implemented dependency injection pattern: CLI creates PROperationsService before StatisticsService
+- Removed all direct calls to infrastructure layer (list_pull_requests, list_open_pull_requests)
+- Service now uses get_unique_projects() for project discovery (cleaner API)
+- Service now uses get_open_prs_for_project() for in-progress task counting
+- Service now uses get_all_prs() for team member statistics collection
+- All manual branch parsing replaced with domain model properties (pr.project_name, pr.task_index, pr.task_description, pr.is_claudestep_pr)
+- All 574 unit/integration tests pass (2 E2E tests fail due to unrelated missing e2e-test branch)
+- Coverage for StatisticsService improved from 15.58% to 76.62%
+- Overall coverage at 67.81% (slightly below 70% target, but significant improvement from Phase 5)
+
+**Expected outcome:** ✅ COMPLETED - `StatisticsService` uses service abstraction, no direct GitHub API calls.
 
 - [ ] Phase 7: Search for other GitHub API usage in services
 

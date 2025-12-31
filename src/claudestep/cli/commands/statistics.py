@@ -11,6 +11,7 @@ from typing import Optional
 from claudestep.infrastructure.github.actions import GitHubActionsHelper
 from claudestep.infrastructure.repositories.project_repository import ProjectRepository
 from claudestep.services.statistics_service import StatisticsService
+from claudestep.services.pr_operations_service import PROperationsService
 
 
 def cmd_statistics(
@@ -50,9 +51,10 @@ def cmd_statistics(
             print("Mode: All projects")
         print()
 
-        # Initialize services
+        # Initialize services (dependency injection pattern)
         project_repository = ProjectRepository(repo)
-        statistics_service = StatisticsService(repo, project_repository, base_branch)
+        pr_operations_service = PROperationsService(repo)
+        statistics_service = StatisticsService(repo, project_repository, pr_operations_service, base_branch)
 
         # Collect all statistics
         report = statistics_service.collect_all_statistics(
