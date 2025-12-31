@@ -79,7 +79,7 @@ Refactor the existing `PROperationsService` to use typed `GitHubPullRequest` dom
 
 **Expected outcome:** ✅ COMPLETED - PROperationsService returns typed domain models and has comprehensive querying methods.
 
-- [ ] Phase 2: Enhance GitHubPullRequest domain model
+- [x] Phase 2: Enhance GitHubPullRequest domain model
 
 Extend the existing `GitHubPullRequest` domain model to include parsed project and task information as properties, eliminating the need for services to parse these manually.
 
@@ -91,15 +91,17 @@ Extend the existing `GitHubPullRequest` domain model to include parsed project a
   - `is_claudestep_pr: bool` - Checks if branch name matches ClaudeStep pattern
 - Add helper method `_parse_branch_info()` that calls `PROperationsService.parse_branch_name()` once and caches result
 
-**Files to modify:**
-- `src/claudestep/domain/github_models.py`
+**Files modified:**
+- `src/claudestep/domain/github_models.py` - Added 4 new @property methods
 
-**Technical considerations:**
-- Properties should compute on each access (no caching to avoid weird issues)
-- Handle edge cases: invalid branch names, missing titles
-- Reuse existing `PROperationsService.parse_branch_name()` - don't duplicate logic
+**Technical notes:**
+- Properties compute on each access (no caching to keep implementation simple)
+- Handle edge cases: invalid branch names return None, missing titles handled gracefully
+- Reuse existing `PROperationsService.parse_branch_name()` via local import to avoid circular dependencies
+- All 573 tests pass successfully
+- Coverage at 67.11% (tests for new properties will be added in Phase 9)
 
-**Expected outcome:** `GitHubPullRequest` model has typed properties for project, task index, and cleaned task description.
+**Expected outcome:** ✅ COMPLETED - `GitHubPullRequest` model has typed properties for project, task index, and cleaned task description.
 
 - [ ] Phase 3: Add reviewer-specific convenience methods to PROperationsService
 

@@ -170,6 +170,109 @@ class GitHubPullRequest:
         """
         return [assignee.login for assignee in self.assignees]
 
+    @property
+    def project_name(self) -> Optional[str]:
+        """Extract project name from branch name.
+
+        Parses the branch name using ClaudeStep branch naming convention
+        (claude-step-{project_name}-{index}) and returns the project name.
+
+        Returns:
+            Project name if branch follows ClaudeStep pattern, None otherwise
+
+        Examples:
+            >>> pr = GitHubPullRequest(head_ref_name="claude-step-my-refactor-1", ...)
+            >>> pr.project_name
+            'my-refactor'
+            >>> pr = GitHubPullRequest(head_ref_name="main", ...)
+            >>> pr.project_name
+            None
+        """
+        if not self.head_ref_name:
+            return None
+
+        # Import here to avoid circular dependency
+        from claudestep.services.pr_operations_service import PROperationsService
+
+        parsed = PROperationsService.parse_branch_name(self.head_ref_name)
+        if parsed:
+            return parsed[0]
+        return None
+
+    @property
+    def task_index(self) -> Optional[int]:
+        """Extract task index from branch name.
+
+        Parses the branch name using ClaudeStep branch naming convention
+        (claude-step-{project_name}-{index}) and returns the task index.
+
+        Returns:
+            Task index (1-based) if branch follows ClaudeStep pattern, None otherwise
+
+        Examples:
+            >>> pr = GitHubPullRequest(head_ref_name="claude-step-my-refactor-5", ...)
+            >>> pr.task_index
+            5
+            >>> pr = GitHubPullRequest(head_ref_name="main", ...)
+            >>> pr.task_index
+            None
+        """
+        if not self.head_ref_name:
+            return None
+
+        # Import here to avoid circular dependency
+        from claudestep.services.pr_operations_service import PROperationsService
+
+        parsed = PROperationsService.parse_branch_name(self.head_ref_name)
+        if parsed:
+            return parsed[1]
+        return None
+
+    @property
+    def task_description(self) -> str:
+        """Get task description with 'ClaudeStep: ' prefix stripped.
+
+        Returns the PR title with the ClaudeStep prefix removed if present.
+        This is the user-facing task description without automation metadata.
+
+        Returns:
+            Task description (title with prefix stripped)
+
+        Examples:
+            >>> pr = GitHubPullRequest(title="ClaudeStep: Add user authentication", ...)
+            >>> pr.task_description
+            'Add user authentication'
+            >>> pr = GitHubPullRequest(title="Fix bug in login", ...)
+            >>> pr.task_description
+            'Fix bug in login'
+        """
+        if self.title.startswith("ClaudeStep: "):
+            return self.title[len("ClaudeStep: "):]
+        return self.title
+
+    @property
+    def is_claudestep_pr(self) -> bool:
+        """Check if PR follows ClaudeStep branch naming convention.
+
+        Returns:
+            True if branch name matches claude-step-{project}-{index} pattern
+
+        Examples:
+            >>> pr = GitHubPullRequest(head_ref_name="claude-step-my-refactor-1", ...)
+            >>> pr.is_claudestep_pr
+            True
+            >>> pr = GitHubPullRequest(head_ref_name="feature/new-feature", ...)
+            >>> pr.is_claudestep_pr
+            False
+        """
+        if not self.head_ref_name:
+            return False
+
+        # Import here to avoid circular dependency
+        from claudestep.services.pr_operations_service import PROperationsService
+
+        return PROperationsService.parse_branch_name(self.head_ref_name) is not None
+
 
 @dataclass
 class GitHubPullRequestList:
