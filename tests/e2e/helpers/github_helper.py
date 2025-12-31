@@ -10,6 +10,8 @@ import json
 import logging
 from typing import Optional, Dict, Any, List, Callable
 
+from claudestep.infrastructure.github.operations import list_pull_requests_for_project as _list_prs_for_project
+
 # Configure logger for E2E test diagnostics
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -301,7 +303,7 @@ class GitHubHelper:
         return pr
 
     def get_pull_requests_for_project(self, project_name: str, label: str = "claudestep") -> List[Dict[str, Any]]:
-        """Get all PRs for a given project.
+        """Get all PRs for a given project using infrastructure layer.
 
         Args:
             project_name: Project name to filter PRs by
@@ -311,25 +313,27 @@ class GitHubHelper:
             List of PR dictionaries matching the project
         """
         logger.info(f"Looking for PRs for project '{project_name}' with label '{label}'")
-        cmd = [
-            "gh", "pr", "list",
-            "--repo", self.repo,
-            "--label", label,
-            "--json", "number,title,body,state,url,headRefName",
-            "--limit", "100"
-        ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.warning(f"Failed to get PRs: {result.stderr}")
-            return []
+        # Use infrastructure layer function
+        pr_models = _list_prs_for_project(
+            repo=self.repo,
+            project_name=project_name,
+            label=label,
+            state="all",
+            limit=100
+        )
 
-        all_prs = json.loads(result.stdout)
-
-        # Filter PRs that belong to this project based on branch naming
+        # Convert domain models to dicts for backward compatibility with tests
         project_prs = [
-            pr for pr in all_prs
-            if pr.get("headRefName", "").startswith(f"claude-step-{project_name}-")
+            {
+                "number": pr.number,
+                "title": pr.title,
+                "body": "",  # Not needed for current tests
+                "state": pr.state.upper(),  # Match GitHub API format (OPEN, CLOSED, MERGED)
+                "url": f"https://github.com/{self.repo}/pull/{pr.number}",
+                "headRefName": pr.head_ref_name
+            }
+            for pr in pr_models
         ]
 
         logger.info(f"Found {len(project_prs)} PR(s) for project '{project_name}'")

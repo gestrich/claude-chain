@@ -354,3 +354,50 @@ def list_open_pull_requests(
         - list_pull_requests(): Base function with full filtering options
     """
     return list_pull_requests(repo, state="open", label=label, assignee=assignee, limit=limit)
+
+
+def list_pull_requests_for_project(
+    repo: str,
+    project_name: str,
+    label: str = "claudestep",
+    state: str = "all",
+    limit: int = 100
+) -> List[GitHubPullRequest]:
+    """Convenience function for fetching PRs for a specific project
+
+    Filters PRs by label and project name based on branch naming convention
+    (claude-step-{project_name}-{hash}).
+
+    **Current Usage**: E2E testing to verify PR creation for specific projects
+
+    **Usage Examples**:
+    - E2E tests: Verify workflow created PRs for a test project
+    - Project status: Check all PRs for a specific refactoring project
+    - Cleanup: Find and close all PRs for a project
+
+    Args:
+        repo: GitHub repository (owner/name)
+        project_name: Project name to filter by (matches branch pattern)
+        label: Label filter (default: "claudestep")
+        state: "open", "closed", "merged", or "all" (default: "all")
+        limit: Max results (default 100)
+
+    Returns:
+        List of GitHubPullRequest domain models for the project
+
+    Example:
+        >>> # E2E test: Verify PRs created for test project
+        >>> project_prs = list_pull_requests_for_project("owner/repo", "e2e-test-project")
+        >>> print(f"Found {len(project_prs)} PRs for project")
+
+    See Also:
+        - list_pull_requests(): Base function with full filtering options
+    """
+    # Get all PRs with the label
+    all_prs = list_pull_requests(repo, state=state, label=label, limit=limit)
+
+    # Filter by branch naming convention: claude-step-{project_name}-{hash}
+    branch_prefix = f"claude-step-{project_name}-"
+    project_prs = [pr for pr in all_prs if pr.head_ref_name.startswith(branch_prefix)]
+
+    return project_prs
