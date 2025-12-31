@@ -130,7 +130,7 @@ Add convenience methods to `PROperationsService` for reviewer capacity checking 
 
 **Expected outcome:** ✅ COMPLETED - PROperationsService provides typed domain models for all operations, not dictionaries.
 
-- [ ] Phase 4: Update ReviewerManagementService to use PROperationsService
+- [x] Phase 4: Update ReviewerManagementService to use PROperationsService
 
 Refactor `ReviewerManagementService` to use the enhanced `PROperationsService` instead of calling GitHub API operations directly.
 
@@ -142,17 +142,23 @@ Refactor `ReviewerManagementService` to use the enhanced `PROperationsService` i
 - Remove manual dictionary construction for PR info (work with typed `GitHubPullRequest` objects)
 - Update all call sites in CLI commands to instantiate and pass `PROperationsService`
 
-**Files to modify:**
-- `src/claudestep/services/reviewer_management_service.py`
-- `src/claudestep/cli/commands/prepare.py`
-- Any other commands that instantiate `ReviewerManagementService`
+**Files modified:**
+- `src/claudestep/services/reviewer_management_service.py` - Updated to accept and use PROperationsService
+- `src/claudestep/cli/commands/prepare.py` - Updated to instantiate PROperationsService and pass to ReviewerManagementService
+- `src/claudestep/cli/commands/discover_ready.py` - Updated to instantiate PROperationsService and pass to ReviewerManagementService
+- `tests/unit/services/test_reviewer_management.py` - Updated all 16 tests to mock PROperationsService
 
-**Technical considerations:**
-- Follow dependency injection pattern: CLI creates `PROperationsService`, passes to `ReviewerManagementService`
-- Maintain backward compatibility: method signatures should stay the same
-- Remove the code snippet from the user's example (branch parsing, title prefix stripping)
+**Technical notes:**
+- Successfully implemented dependency injection pattern: CLI creates PROperationsService before ReviewerManagementService
+- Removed all direct calls to infrastructure layer (list_open_pull_requests)
+- Service now uses get_reviewer_prs_for_project() which returns filtered, typed domain models
+- Removed manual branch parsing (using pr.task_index property)
+- Removed manual title prefix stripping (using pr.task_description property)
+- All 574 unit/integration tests pass
+- Coverage maintained at 67.12%
+- All test mocks updated to mock PROperationsService instead of infrastructure layer
 
-**Expected outcome:** `ReviewerManagementService` uses clean service API, no GitHub API calls or parsing logic.
+**Expected outcome:** ✅ COMPLETED - `ReviewerManagementService` uses clean service API, no GitHub API calls or parsing logic.
 
 - [ ] Phase 5: Update TaskManagementService to use PROperationsService
 

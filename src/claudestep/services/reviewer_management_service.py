@@ -7,7 +7,6 @@ for reviewer capacity checking and assignment.
 from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
-from claudestep.infrastructure.github.operations import list_open_pull_requests
 from claudestep.services.pr_operations_service import PROperationsService
 from claudestep.domain.models import ReviewerCapacityResult
 from claudestep.domain.project_configuration import ProjectConfiguration
@@ -21,8 +20,9 @@ class ReviewerManagementService:
     reviewer assignment workflow.
     """
 
-    def __init__(self, repo: str):
+    def __init__(self, repo: str, pr_operations_service: PROperationsService):
         self.repo = repo
+        self.pr_operations_service = pr_operations_service
 
     # Public API methods
 
@@ -46,38 +46,26 @@ class ReviewerManagementService:
         for reviewer in config.reviewers:
             reviewer_prs[reviewer.username] = []
 
-        # Query open PRs for each reviewer from GitHub API
+        # Query open PRs for each reviewer from GitHub API using PROperationsService
         for reviewer in config.reviewers:
             username = reviewer.username
 
-            # Query GitHub for open PRs assigned to this reviewer with the label
-            open_prs = list_open_pull_requests(
-                repo=self.repo,
-                label=label,
-                assignee=username
+            # Get open PRs for this reviewer on this project using service layer
+            prs = self.pr_operations_service.get_reviewer_prs_for_project(
+                username=username,
+                project=project,
+                label=label
             )
 
-            # Filter by project name (extract from branch name)
-            for pr in open_prs:
-                if pr.head_ref_name:
-                    # Parse branch name to get project
-                    parsed = PROperationsService.parse_branch_name(pr.head_ref_name)
-                    if parsed:
-                        pr_project, task_index = parsed
-                        if pr_project == project:
-                            # Extract task description from PR title
-                            # PR titles are in format "ClaudeStep: <task description>"
-                            task_description = pr.title
-                            if task_description.startswith("ClaudeStep: "):
-                                task_description = task_description[len("ClaudeStep: "):]
-
-                            pr_info = {
-                                "pr_number": pr.number,
-                                "task_index": task_index,
-                                "task_description": task_description
-                            }
-                            reviewer_prs[username].append(pr_info)
-                            print(f"PR #{pr.number}: reviewer={username}")
+            # Build PR info list using domain model properties
+            for pr in prs:
+                pr_info = {
+                    "pr_number": pr.number,
+                    "task_index": pr.task_index,
+                    "task_description": pr.task_description
+                }
+                reviewer_prs[username].append(pr_info)
+                print(f"PR #{pr.number}: reviewer={username}")
 
         # Build result and find first available reviewer
         selected_reviewer = None

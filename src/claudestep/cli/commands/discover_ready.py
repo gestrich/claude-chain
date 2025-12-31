@@ -73,7 +73,9 @@ def check_project_ready(project_name: str, repo: str) -> bool:
         project_config = ProjectConfiguration.from_yaml_string(project, config_content)
 
         # Initialize services
-        reviewer_service = ReviewerManagementService(repo)
+        from claudestep.services.pr_operations_service import PROperationsService
+        pr_service = PROperationsService(repo)
+        reviewer_service = ReviewerManagementService(repo, pr_service)
         task_service = TaskManagementService(repo)
 
         # Check reviewer capacity

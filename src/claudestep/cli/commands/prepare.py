@@ -46,10 +46,10 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         project_repository = ProjectRepository(repo)
 
         # Initialize services
+        pr_service = PROperationsService(repo)
         project_service = ProjectDetectionService(repo)
         task_service = TaskManagementService(repo)
-        reviewer_service = ReviewerManagementService(repo)
-        pr_service = PROperationsService(repo)
+        reviewer_service = ReviewerManagementService(repo, pr_service)
 
         # === STEP 1: Detect Project ===
         print("=== Step 1/6: Detecting project ===")

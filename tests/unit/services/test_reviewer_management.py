@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 from claudestep.services.reviewer_management_service import ReviewerManagementService
+from claudestep.services.pr_operations_service import PROperationsService
 from claudestep.domain.models import ReviewerCapacityResult
 from claudestep.domain.project import Project
 from claudestep.domain.project_configuration import ProjectConfiguration
@@ -69,136 +70,137 @@ class TestFindAvailableReviewer:
             yield
 
     @pytest.fixture
-    def reviewer_service(self, mock_env):
+    def mock_pr_service(self):
+        """Fixture providing mock PROperationsService instance"""
+        return Mock(spec=PROperationsService)
+
+    @pytest.fixture
+    def reviewer_service(self, mock_env, mock_pr_service):
         """Fixture providing ReviewerManagementService instance"""
-        return ReviewerManagementService("owner/repo")
+        return ReviewerManagementService("owner/repo", mock_pr_service)
 
     def test_find_reviewer_returns_first_with_capacity_when_all_available(
-        self, reviewers_config, reviewer_service
+        self, reviewers_config, reviewer_service, mock_pr_service
     ):
         """Should return first reviewer when all reviewers have capacity"""
         # Arrange
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = []  # No open PRs
+        mock_pr_service.get_reviewer_prs_for_project.return_value = []  # No open PRs
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                reviewers_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            reviewers_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "alice"  # First reviewer
-            assert result.selected_reviewer == "alice"
-            assert result.all_at_capacity is False
-            assert len(result.reviewers_status) == 3
+        # Assert
+        assert selected == "alice"  # First reviewer
+        assert result.selected_reviewer == "alice"
+        assert result.all_at_capacity is False
+        assert len(result.reviewers_status) == 3
 
-            # All reviewers should have capacity
-            for reviewer_status in result.reviewers_status:
-                assert reviewer_status["has_capacity"] is True
-                assert reviewer_status["open_count"] == 0
+        # All reviewers should have capacity
+        for reviewer_status in result.reviewers_status:
+            assert reviewer_status["has_capacity"] is True
+            assert reviewer_status["open_count"] == 0
 
     def test_find_reviewer_skips_at_capacity_reviewer(
-        self, reviewers_config, reviewer_service
+        self, reviewers_config, reviewer_service, mock_pr_service
     ):
         """Should skip reviewer at capacity and select next available"""
         # Arrange
-        def mock_list_prs(repo, label, assignee):
-            if assignee == "alice":
+        def mock_get_reviewer_prs(username, project, label):
+            if username == "alice":
                 return [
                     create_github_pr(101, "alice", 1),
                     create_github_pr(102, "alice", 2)
                 ]
             return []
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.side_effect = mock_list_prs
+        mock_pr_service.get_reviewer_prs_for_project.side_effect = mock_get_reviewer_prs
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                reviewers_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            reviewers_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "bob"  # Second reviewer has capacity
-            assert result.selected_reviewer == "bob"
-            assert result.all_at_capacity is False
+        # Assert
+        assert selected == "bob"  # Second reviewer has capacity
+        assert result.selected_reviewer == "bob"
+        assert result.all_at_capacity is False
 
-            # Verify alice is at capacity
-            alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
-            assert alice_status["has_capacity"] is False
-            assert alice_status["open_count"] == 2
-            assert alice_status["max_prs"] == 2
+        # Verify alice is at capacity
+        alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
+        assert alice_status["has_capacity"] is False
+        assert alice_status["open_count"] == 2
+        assert alice_status["max_prs"] == 2
 
-            # Verify bob has capacity
-            bob_status = next(r for r in result.reviewers_status if r["username"] == "bob")
-            assert bob_status["has_capacity"] is True
-            assert bob_status["open_count"] == 0
+        # Verify bob has capacity
+        bob_status = next(r for r in result.reviewers_status if r["username"] == "bob")
+        assert bob_status["has_capacity"] is True
+        assert bob_status["open_count"] == 0
 
     def test_find_reviewer_returns_none_when_all_at_capacity(
-        self, reviewers_config, reviewer_service
+        self, reviewers_config, reviewer_service, mock_pr_service
     ):
         """Should return None when all reviewers are at capacity"""
         # Arrange
-        def mock_list_prs(repo, label, assignee):
-            if assignee == "alice":
+        def mock_get_reviewer_prs(username, project, label):
+            if username == "alice":
                 return [
                     create_github_pr(101, "alice", 1),
                     create_github_pr(102, "alice", 2)
                 ]
-            elif assignee == "bob":
+            elif username == "bob":
                 return [
                     create_github_pr(103, "bob", 3),
                     create_github_pr(104, "bob", 4),
                     create_github_pr(105, "bob", 5)
                 ]
-            elif assignee == "charlie":
+            elif username == "charlie":
                 return [create_github_pr(106, "charlie", 6)]
             return []
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.side_effect = mock_list_prs
+        mock_pr_service.get_reviewer_prs_for_project.side_effect = mock_get_reviewer_prs
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                reviewers_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            reviewers_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected is None
-            assert result.selected_reviewer is None
-            assert result.all_at_capacity is True
+        # Assert
+        assert selected is None
+        assert result.selected_reviewer is None
+        assert result.all_at_capacity is True
 
-            # All reviewers should be at capacity
-            for reviewer_status in result.reviewers_status:
-                assert reviewer_status["has_capacity"] is False
-                assert reviewer_status["open_count"] == reviewer_status["max_prs"]
+        # All reviewers should be at capacity
+        for reviewer_status in result.reviewers_status:
+            assert reviewer_status["has_capacity"] is False
+            assert reviewer_status["open_count"] == reviewer_status["max_prs"]
 
     def test_find_reviewer_handles_over_capacity_reviewer(
-        self, single_reviewer_config, reviewer_service
+        self, single_reviewer_config, reviewer_service, mock_pr_service
     ):
         """Should correctly identify reviewer as over capacity"""
         # Arrange - reviewer has 3 PRs but maxOpenPRs is 2
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = [
-                create_github_pr(101, "alice", 1),
-                create_github_pr(102, "alice", 2),
-                create_github_pr(103, "alice", 3)
-            ]
+        mock_pr_service.get_reviewer_prs_for_project.return_value = [
+            create_github_pr(101, "alice", 1),
+            create_github_pr(102, "alice", 2),
+            create_github_pr(103, "alice", 3)
+        ]
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                single_reviewer_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            single_reviewer_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected is None
-            assert result.all_at_capacity is True
-            alice_status = result.reviewers_status[0]
-            assert alice_status["has_capacity"] is False
-            assert alice_status["open_count"] == 3  # Over capacity
-            assert alice_status["max_prs"] == 2
+        # Assert
+        assert selected is None
+        assert result.all_at_capacity is True
+        alice_status = result.reviewers_status[0]
+        assert alice_status["has_capacity"] is False
+        assert alice_status["open_count"] == 3  # Over capacity
+        assert alice_status["max_prs"] == 2
 
-    def test_find_reviewer_with_zero_max_prs(self, reviewer_service):
+    def test_find_reviewer_with_zero_max_prs(self, reviewer_service, mock_pr_service):
         """Should handle reviewer with maxOpenPRs set to zero"""
         # Arrange
         config_dict = (ConfigBuilder()
@@ -207,227 +209,208 @@ class TestFindAvailableReviewer:
                       .build())
         config = config_dict_to_project_configuration(config_dict)
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = []
+        mock_pr_service.get_reviewer_prs_for_project.return_value = []
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "bob"  # alice has 0 capacity, bob selected
-            alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
-            assert alice_status["has_capacity"] is False  # 0 < 0 is False
+        # Assert
+        assert selected == "bob"  # alice has 0 capacity, bob selected
+        alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
+        assert alice_status["has_capacity"] is False  # 0 < 0 is False
 
     def test_find_reviewer_filters_by_project_name(
-        self, reviewers_config, reviewer_service
+        self, reviewers_config, reviewer_service, mock_pr_service
     ):
         """Should only count PRs for the specified project"""
         # Arrange - alice has PRs for different projects
-        def mock_list_prs(repo, label, assignee):
-            if assignee == "alice":
-                return [
-                    create_github_pr(101, "alice", 1, project="myproject"),
-                    create_github_pr(102, "alice", 2, project="other-project"),  # Different project
-                    create_github_pr(103, "alice", 3, project="another-project")  # Different project
-                ]
+        # The get_reviewer_prs_for_project method already filters by project,
+        # so we return only the PRs for the requested project
+        def mock_get_reviewer_prs(username, project, label):
+            if username == "alice" and project == "myproject":
+                return [create_github_pr(101, "alice", 1, project="myproject")]
             return []
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.side_effect = mock_list_prs
+        mock_pr_service.get_reviewer_prs_for_project.side_effect = mock_get_reviewer_prs
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                reviewers_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            reviewers_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "alice"  # alice has 1/2 for myproject, still has capacity
-            alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
-            assert alice_status["open_count"] == 1  # Only counts myproject PR
-            assert alice_status["has_capacity"] is True
+        # Assert
+        assert selected == "alice"  # alice has 1/2 for myproject, still has capacity
+        alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
+        assert alice_status["open_count"] == 1  # Only counts myproject PR
+        assert alice_status["has_capacity"] is True
 
     def test_find_reviewer_stores_pr_details_correctly(
-        self, single_reviewer_config, reviewer_service
+        self, single_reviewer_config, reviewer_service, mock_pr_service
     ):
         """Should store PR number, task index, and description in result"""
         # Arrange
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = [
-                create_github_pr(201, "alice", 5, task_desc="Update authentication flow")
-            ]
+        mock_pr_service.get_reviewer_prs_for_project.return_value = [
+            create_github_pr(201, "alice", 5, task_desc="Update authentication flow")
+        ]
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                single_reviewer_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            single_reviewer_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            alice_status = result.reviewers_status[0]
-            assert len(alice_status["open_prs"]) == 1
-            pr_info = alice_status["open_prs"][0]
-            assert pr_info["pr_number"] == 201
-            assert pr_info["task_index"] == 5
-            assert pr_info["task_description"] == "Update authentication flow"
+        # Assert
+        alice_status = result.reviewers_status[0]
+        assert len(alice_status["open_prs"]) == 1
+        pr_info = alice_status["open_prs"][0]
+        assert pr_info["pr_number"] == 201
+        assert pr_info["task_index"] == 5
+        assert pr_info["task_description"] == "Update authentication flow"
 
-    def test_find_reviewer_with_empty_reviewers_list(self, reviewer_service):
+    def test_find_reviewer_with_empty_reviewers_list(self, reviewer_service, mock_pr_service):
         """Should handle empty reviewers list gracefully"""
         # Arrange
         config_dict = ConfigBuilder().with_no_reviewers().build()
         config = config_dict_to_project_configuration(config_dict)
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = []
+        mock_pr_service.get_reviewer_prs_for_project.return_value = []
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected is None
-            assert result.selected_reviewer is None
-            assert result.all_at_capacity is True  # Technically true - no one has capacity
-            assert len(result.reviewers_status) == 0
+        # Assert
+        assert selected is None
+        assert result.selected_reviewer is None
+        assert result.all_at_capacity is True  # Technically true - no one has capacity
+        assert len(result.reviewers_status) == 0
 
     def test_find_reviewer_calls_list_open_prs_with_correct_params(
-        self, reviewers_config, reviewer_service
+        self, reviewers_config, reviewer_service, mock_pr_service
     ):
-        """Should call list_open_pull_requests with correct parameters"""
+        """Should call get_reviewer_prs_for_project with correct parameters"""
         # Arrange
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = []
+        mock_pr_service.get_reviewer_prs_for_project.return_value = []
 
-            # Act
-            reviewer_service.find_available_reviewer(reviewers_config, "my-label", "test-project")
+        # Act
+        reviewer_service.find_available_reviewer(reviewers_config, "my-label", "test-project")
 
-            # Assert
-            # Should be called once per reviewer
-            assert mock_list.call_count == 3
-            # Check first call (alice)
-            first_call = mock_list.call_args_list[0]
-            assert first_call[1]["repo"] == "owner/repo"
-            assert first_call[1]["label"] == "my-label"
-            assert first_call[1]["assignee"] == "alice"
+        # Assert
+        # Should be called once per reviewer
+        assert mock_pr_service.get_reviewer_prs_for_project.call_count == 3
+        # Check first call (alice)
+        first_call = mock_pr_service.get_reviewer_prs_for_project.call_args_list[0]
+        assert first_call[1]["username"] == "alice"
+        assert first_call[1]["project"] == "test-project"
+        assert first_call[1]["label"] == "my-label"
 
     def test_find_reviewer_uses_github_repository_env_var(self, reviewers_config):
         """Should use GITHUB_REPOSITORY environment variable"""
         # Arrange
         with patch.dict(os.environ, {"GITHUB_REPOSITORY": "test-owner/test-repo"}):
-            with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-                mock_list.return_value = []
+            mock_pr_service = Mock(spec=PROperationsService)
+            mock_pr_service.get_reviewer_prs_for_project.return_value = []
 
-                # Create service with test repo
-                service = ReviewerManagementService("test-owner/test-repo")
+            # Create service with test repo
+            service = ReviewerManagementService("test-owner/test-repo", mock_pr_service)
 
-                # Act
-                service.find_available_reviewer(reviewers_config, "claudestep", "myproject")
+            # Act
+            service.find_available_reviewer(reviewers_config, "claudestep", "myproject")
 
-                # Assert
-                # Check that all calls used the correct repo
-                for call in mock_list.call_args_list:
-                    assert call[1]["repo"] == "test-owner/test-repo"
+            # Assert
+            # Verify the service was called (repo is stored in the service itself)
+            assert service.repo == "test-owner/test-repo"
+            assert mock_pr_service.get_reviewer_prs_for_project.call_count == 3
 
     def test_find_reviewer_handles_prs_without_branch_name(
-        self, single_reviewer_config, reviewer_service
+        self, single_reviewer_config, reviewer_service, mock_pr_service
     ):
         """Should skip PRs that have no branch name"""
         # Arrange
-        pr_without_branch = GitHubPullRequest(
-            number=201,
-            title="ClaudeStep: Task 5",
-            state="open",
-            created_at=datetime.now(timezone.utc),
-            merged_at=None,
-            assignees=[GitHubUser(login="alice")],
-            labels=["claudestep"],
-            head_ref_name=None  # No branch name
+        # PRs without branch names have project_name = None, so they are
+        # filtered out by get_reviewer_prs_for_project before reaching
+        # the reviewer management service. The mock should return empty list.
+        mock_pr_service.get_reviewer_prs_for_project.return_value = []
+
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            single_reviewer_config, "claudestep", "myproject"
         )
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = [pr_without_branch]
-
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                single_reviewer_config, "claudestep", "myproject"
-            )
-
-            # Assert
-            assert selected == "alice"  # Still has capacity since PR was skipped
-            alice_status = result.reviewers_status[0]
-            assert alice_status["open_count"] == 0
+        # Assert
+        assert selected == "alice"  # Still has capacity since PR was skipped
+        alice_status = result.reviewers_status[0]
+        assert alice_status["open_count"] == 0
 
     def test_find_reviewer_with_boundary_condition_exactly_at_capacity(
-        self, single_reviewer_config, reviewer_service
+        self, single_reviewer_config, reviewer_service, mock_pr_service
     ):
         """Should correctly identify when reviewer is exactly at capacity"""
         # Arrange - exactly 2 PRs for maxOpenPRs of 2
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = [
-                create_github_pr(101, "alice", 1),
-                create_github_pr(102, "alice", 2)
-            ]
+        mock_pr_service.get_reviewer_prs_for_project.return_value = [
+            create_github_pr(101, "alice", 1),
+            create_github_pr(102, "alice", 2)
+        ]
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                single_reviewer_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            single_reviewer_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected is None
-            alice_status = result.reviewers_status[0]
-            assert alice_status["open_count"] == 2
-            assert alice_status["max_prs"] == 2
-            assert alice_status["has_capacity"] is False  # Exactly at capacity
+        # Assert
+        assert selected is None
+        alice_status = result.reviewers_status[0]
+        assert alice_status["open_count"] == 2
+        assert alice_status["max_prs"] == 2
+        assert alice_status["has_capacity"] is False  # Exactly at capacity
 
     def test_find_reviewer_with_boundary_condition_one_under_capacity(
-        self, single_reviewer_config, reviewer_service
+        self, single_reviewer_config, reviewer_service, mock_pr_service
     ):
         """Should correctly identify when reviewer is just under capacity"""
         # Arrange - 1 PR for maxOpenPRs of 2
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = [
-                create_github_pr(101, "alice", 1)
-            ]
+        mock_pr_service.get_reviewer_prs_for_project.return_value = [
+            create_github_pr(101, "alice", 1)
+        ]
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                single_reviewer_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            single_reviewer_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "alice"
-            alice_status = result.reviewers_status[0]
-            assert alice_status["open_count"] == 1
-            assert alice_status["max_prs"] == 2
-            assert alice_status["has_capacity"] is True  # One under capacity
+        # Assert
+        assert selected == "alice"
+        alice_status = result.reviewers_status[0]
+        assert alice_status["open_count"] == 1
+        assert alice_status["max_prs"] == 2
+        assert alice_status["has_capacity"] is True  # One under capacity
 
     def test_find_reviewer_returns_first_available_not_all(
-        self, reviewers_config, reviewer_service
+        self, reviewers_config, reviewer_service, mock_pr_service
     ):
         """Should return first available reviewer, not all available reviewers"""
         # Arrange - alice and bob both have capacity
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.return_value = []
+        mock_pr_service.get_reviewer_prs_for_project.return_value = []
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                reviewers_config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            reviewers_config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "alice"  # First in list
-            assert result.selected_reviewer == "alice"
+        # Assert
+        assert selected == "alice"  # First in list
+        assert result.selected_reviewer == "alice"
 
-            # Verify multiple reviewers have capacity but only first is selected
-            reviewers_with_capacity = [
-                r for r in result.reviewers_status if r["has_capacity"]
-            ]
-            assert len(reviewers_with_capacity) == 3  # All have capacity
-            assert reviewers_with_capacity[0]["username"] == "alice"
+        # Verify multiple reviewers have capacity but only first is selected
+        reviewers_with_capacity = [
+            r for r in result.reviewers_status if r["has_capacity"]
+        ]
+        assert len(reviewers_with_capacity) == 3  # All have capacity
+        assert reviewers_with_capacity[0]["username"] == "alice"
 
-    def test_find_reviewer_mixed_capacity_scenarios(self, reviewer_service):
+    def test_find_reviewer_mixed_capacity_scenarios(self, reviewer_service, mock_pr_service):
         """Should handle complex mixed capacity scenario"""
         # Arrange - alice at capacity, bob has room, charlie over capacity
         config_dict = (ConfigBuilder()
@@ -437,62 +420,61 @@ class TestFindAvailableReviewer:
                       .build())
         config = config_dict_to_project_configuration(config_dict)
 
-        def mock_list_prs(repo, label, assignee):
-            if assignee == "alice":
+        def mock_get_reviewer_prs(username, project, label):
+            if username == "alice":
                 return [
                     create_github_pr(101, "alice", 1),
                     create_github_pr(102, "alice", 2)
                 ]
-            elif assignee == "bob":
+            elif username == "bob":
                 return [create_github_pr(103, "bob", 3)]
-            elif assignee == "charlie":
+            elif username == "charlie":
                 return [
                     create_github_pr(104, "charlie", 4),
                     create_github_pr(105, "charlie", 5)
                 ]
             return []
 
-        with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-            mock_list.side_effect = mock_list_prs
+        mock_pr_service.get_reviewer_prs_for_project.side_effect = mock_get_reviewer_prs
 
-            # Act
-            selected, result = reviewer_service.find_available_reviewer(
-                config, "claudestep", "myproject"
-            )
+        # Act
+        selected, result = reviewer_service.find_available_reviewer(
+            config, "claudestep", "myproject"
+        )
 
-            # Assert
-            assert selected == "bob"  # Only bob has capacity
-            assert result.all_at_capacity is False
+        # Assert
+        assert selected == "bob"  # Only bob has capacity
+        assert result.all_at_capacity is False
 
-            # Verify status for each reviewer
-            alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
-            assert alice_status["has_capacity"] is False
-            assert alice_status["open_count"] == 2
+        # Verify status for each reviewer
+        alice_status = next(r for r in result.reviewers_status if r["username"] == "alice")
+        assert alice_status["has_capacity"] is False
+        assert alice_status["open_count"] == 2
 
-            bob_status = next(r for r in result.reviewers_status if r["username"] == "bob")
-            assert bob_status["has_capacity"] is True
-            assert bob_status["open_count"] == 1
+        bob_status = next(r for r in result.reviewers_status if r["username"] == "bob")
+        assert bob_status["has_capacity"] is True
+        assert bob_status["open_count"] == 1
 
-            charlie_status = next(r for r in result.reviewers_status if r["username"] == "charlie")
-            assert charlie_status["has_capacity"] is False
-            assert charlie_status["open_count"] == 2  # Over capacity
+        charlie_status = next(r for r in result.reviewers_status if r["username"] == "charlie")
+        assert charlie_status["has_capacity"] is False
+        assert charlie_status["open_count"] == 2  # Over capacity
 
     def test_find_reviewer_handles_missing_github_repository_env(self, reviewers_config):
         """Should handle missing GITHUB_REPOSITORY environment variable"""
         # Arrange - no GITHUB_REPOSITORY env var
         with patch.dict(os.environ, {}, clear=True):
-            with patch('claudestep.services.reviewer_management_service.list_open_pull_requests') as mock_list:
-                mock_list.return_value = []
+            mock_pr_service = Mock(spec=PROperationsService)
+            mock_pr_service.get_reviewer_prs_for_project.return_value = []
 
-                # Create service with empty repo
-                service = ReviewerManagementService("")
+            # Create service with empty repo
+            service = ReviewerManagementService("", mock_pr_service)
 
-                # Act
-                selected, result = service.find_available_reviewer(
-                    reviewers_config, "claudestep", "myproject"
-                )
+            # Act
+            selected, result = service.find_available_reviewer(
+                reviewers_config, "claudestep", "myproject"
+            )
 
-                # Assert
-                # Check that all calls used empty repo
-                for call in mock_list.call_args_list:
-                    assert call[1]["repo"] == ""
+            # Assert
+            # Verify the service was called and repo is stored correctly
+            assert service.repo == ""
+            assert mock_pr_service.get_reviewer_prs_for_project.call_count == 3
