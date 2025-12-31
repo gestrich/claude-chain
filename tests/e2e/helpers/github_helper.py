@@ -12,6 +12,7 @@ from claudestep.domain.constants import DEFAULT_PR_LABEL
 from claudestep.domain.exceptions import GitHubAPIError
 from claudestep.infrastructure.github.operations import (
     list_pull_requests_for_project as _list_prs_for_project,
+    list_pull_requests as _list_pull_requests,
     trigger_workflow as _trigger_workflow,
     list_workflow_runs as _list_workflow_runs,
     get_pull_request_by_branch as _get_pull_request_by_branch,
@@ -448,39 +449,24 @@ class GitHubHelper:
         """
         logger.info(f"Cleaning up test PRs with title prefix '{title_prefix}'")
 
-        cmd = [
-            "gh", "pr", "list",
-            "--repo", self.repo,
-            "--state", "open",
-            "--json", "number,title",
-            "--limit", "100"
-        ]
-
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.warning(f"Failed to list PRs: {result.stderr}")
-            return
-
         try:
-            prs = json.loads(result.stdout)
+            # List all open PRs
+            prs = _list_pull_requests(repo=self.repo, state="open", limit=100)
             cleanup_count = 0
 
             for pr in prs:
-                pr_number = pr.get("number")
-                pr_title = pr.get("title", "")
-
                 # Only clean up PRs that look like test PRs
-                if pr_title.startswith(title_prefix) and "test-project-" in pr_title.lower():
+                if pr.title.startswith(title_prefix) and "test-project-" in pr.title.lower():
                     try:
-                        self.close_pull_request(pr_number)
+                        self.close_pull_request(pr.number)
                         cleanup_count += 1
                     except Exception as e:
-                        logger.warning(f"Failed to close PR #{pr_number}: {e}")
+                        logger.warning(f"Failed to close PR #{pr.number}: {e}")
 
             if cleanup_count > 0:
                 logger.info(f"Cleaned up {cleanup_count} test PR(s)")
             else:
                 logger.debug("No test PRs to clean up")
 
-        except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse PR list: {e}")
+        except GitHubAPIError as e:
+            logger.warning(f"Failed to list PRs: {e}")
