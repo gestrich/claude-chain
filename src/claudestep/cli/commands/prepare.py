@@ -158,16 +158,41 @@ Please merge your spec files to the '{base_branch}' branch before running Claude
         orphaned_prs = task_service.detect_orphaned_prs(label, detected_project, spec)
         if orphaned_prs:
             print(f"\n⚠️  Warning: Found {len(orphaned_prs)} orphaned PR(s):")
+
+            # Build console output and GitHub Actions summary
+            orphaned_list = []
             for pr in orphaned_prs:
                 if pr.task_hash:
-                    print(f"  - PR #{pr.number} ({pr.head_ref_name}) - task hash {pr.task_hash} no longer matches any task")
+                    msg = f"PR #{pr.number} ({pr.head_ref_name}) - task hash {pr.task_hash} no longer matches any task"
+                    print(f"  - {msg}")
+                    orphaned_list.append(f"- {msg}")
                 elif pr.task_index:
-                    print(f"  - PR #{pr.number} ({pr.head_ref_name}) - task index {pr.task_index} no longer valid")
+                    msg = f"PR #{pr.number} ({pr.head_ref_name}) - task index {pr.task_index} no longer valid"
+                    print(f"  - {msg}")
+                    orphaned_list.append(f"- {msg}")
+
             print("\nTo resolve:")
             print("  1. Review these PRs and verify if they should be closed")
             print("  2. Close any PRs for modified/removed tasks")
             print("  3. ClaudeStep will automatically create new PRs for current tasks")
             print()
+
+            # Add to GitHub Actions step summary with PR links
+            repo = os.environ.get("GITHUB_REPOSITORY", "")
+            if repo:
+                summary = f"\n## ⚠️ Orphaned PRs Detected\n\n"
+                summary += f"Found {len(orphaned_prs)} PR(s) for tasks that have been modified or removed:\n\n"
+                for pr in orphaned_prs:
+                    pr_url = f"https://github.com/{repo}/pull/{pr.number}"
+                    if pr.task_hash:
+                        summary += f"- [PR #{pr.number}]({pr_url}) (`{pr.head_ref_name}`) - task hash `{pr.task_hash}` no longer matches any task\n"
+                    elif pr.task_index:
+                        summary += f"- [PR #{pr.number}]({pr_url}) (`{pr.head_ref_name}`) - task index `{pr.task_index}` no longer valid\n"
+                summary += "\n**To resolve:**\n"
+                summary += "1. Review these PRs and verify if they should be closed\n"
+                summary += "2. Close any PRs for modified/removed tasks\n"
+                summary += "3. ClaudeStep will automatically create new PRs for current tasks\n"
+                gh.write_step_summary(summary)
 
         # Get in-progress tasks (both index-based and hash-based)
         in_progress_indices, in_progress_hashes = task_service.get_in_progress_tasks(label, detected_project)

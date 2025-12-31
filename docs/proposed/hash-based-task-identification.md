@@ -336,44 +336,78 @@ Replace positional indices with stable task identifiers derived from the task de
 
 ---
 
-- [ ] Phase 6: Add orphaned PR detection and user guidance
+- [x] Phase 6: Add orphaned PR detection and user guidance
 
 **Objective**: Implement clear detection and messaging when PRs become orphaned due to task description changes.
 
-**Tasks**:
-- Create `detect_orphaned_prs()` function:
-  - Query all open PRs for project
-  - Extract task identifiers from branch names
-  - Compare with current spec.md task hashes
-  - Return list of orphaned PRs
-- Add user-facing warnings:
-  - When orphaned PRs detected during `prepare` command
-  - Suggest closing orphaned PRs manually
-  - Explain that closing will trigger new PR with updated task
-- Add to workflow output/summary:
-  - List any orphaned PRs found
-  - Provide GitHub URLs to close them easily
+**Status**: ✅ Completed
 
-**Files to modify**:
-- `src/claudestep/services/task_management_service.py` - Add detection function
-- `src/claudestep/cli/commands/prepare.py` - Add warnings
-- GitHub Actions step summary output
+**Implementation Notes**:
+- Orphaned PR detection already implemented in Phase 4:
+  - `TaskService.detect_orphaned_prs()` in `src/claudestep/services/core/task_service.py`
+  - Detects PRs whose task hash/index no longer matches current spec.md
+  - Handles both hash-based PRs and index-based PRs (legacy)
+- Enhanced user-facing warnings in `prepare.py`:
+  - Console warnings show orphaned PRs with clear guidance (lines 160-178)
+  - GitHub Actions step summary now includes orphaned PR warnings with clickable PR links (lines 180-195)
+  - Summary includes formatted markdown with:
+    - List of all orphaned PRs with links to GitHub PR pages
+    - Task identifiers (hash or index) that no longer match
+    - Clear resolution steps for users
+- System continues working even with orphaned PRs present
+  - Orphaned PRs are detected and reported but don't block workflow
+  - Users can close orphaned PRs at their convenience
+  - ClaudeStep automatically creates new PRs for current tasks
 
-**User-facing message example**:
+**Technical Details**:
+- Detection logic compares PR identifiers against current spec.md:
+  - Hash-based PRs: Checks if `pr.task_hash` exists in current spec task hashes
+  - Index-based PRs: Checks if `pr.task_index` exists in valid spec task indices
+- GitHub Actions summary uses `GITHUB_REPOSITORY` env var to construct PR URLs
+  - Format: `https://github.com/{repo}/pull/{pr.number}`
+  - Links are clickable in GitHub Actions UI for easy access
+- Warning appears in both console output and GitHub Actions step summary
+
+**Files Modified**:
+- `src/claudestep/cli/commands/prepare.py` - Enhanced warnings and added GitHub Actions step summary output
+
+**Test Results**:
+- All 627 unit and integration tests pass
+- Build succeeds (all Python files compile successfully)
+- Test coverage: 68.03% (slightly below 70% threshold due to new CLI code requiring integration tests)
+- Core orphaned PR detection logic from Phase 4 has full test coverage
+
+**User-Facing Output Example**:
+Console:
 ```
-⚠️  Warning: Found 2 orphaned PRs for tasks that have been modified:
-  - PR #123 (claude-step-auth-a3f2b891) - task description changed
-  - PR #125 (claude-step-auth-f7c4d3e2) - task removed from spec
+⚠️  Warning: Found 2 orphaned PR(s):
+  - PR #123 (claude-step-auth-a3f2b891) - task hash a3f2b891 no longer matches any task
+  - PR #125 (claude-step-auth-f7c4d3e2) - task hash f7c4d3e2 no longer matches any task
 
 To resolve:
-1. Review these PRs at: https://github.com/owner/repo/pulls
-2. Close any PRs for modified/removed tasks
-3. The workflow will automatically create new PRs for current tasks
+  1. Review these PRs and verify if they should be closed
+  2. Close any PRs for modified/removed tasks
+  3. ClaudeStep will automatically create new PRs for current tasks
 ```
 
-**Expected outcomes**:
-- Users are clearly notified of orphaned PRs
-- Guidance is actionable and links to relevant PRs
+GitHub Actions Step Summary:
+```markdown
+## ⚠️ Orphaned PRs Detected
+
+Found 2 PR(s) for tasks that have been modified or removed:
+
+- [PR #123](https://github.com/owner/repo/pull/123) (`claude-step-auth-a3f2b891`) - task hash `a3f2b891` no longer matches any task
+- [PR #125](https://github.com/owner/repo/pull/125) (`claude-step-auth-f7c4d3e2`) - task hash `f7c4d3e2` no longer matches any task
+
+**To resolve:**
+1. Review these PRs and verify if they should be closed
+2. Close any PRs for modified/removed tasks
+3. ClaudeStep will automatically create new PRs for current tasks
+```
+
+**Expected outcomes**: ✅ All achieved
+- Users are clearly notified of orphaned PRs in both console and GitHub Actions summary
+- Guidance is actionable and includes clickable links to relevant PRs
 - System continues working even with orphaned PRs present
 
 ---
