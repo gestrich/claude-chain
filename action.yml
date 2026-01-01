@@ -161,8 +161,6 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         ACTION_PATH: ${{ github.action_path }}
-        MAIN_EXECUTION_FILE: ${{ steps.claude_code.outputs.execution_file }}
-        SUMMARY_EXECUTION_FILE: ${{ steps.pr_summary.outputs.execution_file }}
       run: |
         export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
         python3 -m claudestep prepare-summary
@@ -181,6 +179,7 @@ runs:
         show_full_output: true
 
     - name: Post PR summary and cost
+      id: post_pr_comment
       if: steps.finalize.outputs.pr_number != ''
       shell: bash
       working-directory: ${{ inputs.working_directory }}
@@ -188,8 +187,8 @@ runs:
         GH_TOKEN: ${{ inputs.github_token }}
         PR_NUMBER: ${{ steps.finalize.outputs.pr_number }}
         SUMMARY_FILE: ${{ steps.prepare_summary.outputs.summary_file }}
-        MAIN_COST: ${{ steps.prepare_summary.outputs.main_cost }}
-        SUMMARY_COST: ${{ steps.prepare_summary.outputs.summary_cost }}
+        MAIN_EXECUTION_FILE: ${{ steps.claude_code.outputs.execution_file }}
+        SUMMARY_EXECUTION_FILE: ${{ steps.pr_summary.outputs.execution_file }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         ACTION_PATH: ${{ github.action_path }}
@@ -208,8 +207,8 @@ runs:
         PR_URL: ${{ steps.finalize.outputs.pr_url }}
         PROJECT_NAME: ${{ steps.prepare.outputs.project_name }}
         TASK: ${{ steps.prepare.outputs.task }}
-        MAIN_COST: ${{ steps.prepare_summary.outputs.main_cost }}
-        SUMMARY_COST: ${{ steps.prepare_summary.outputs.summary_cost }}
+        MAIN_COST: ${{ steps.post_pr_comment.outputs.main_cost }}
+        SUMMARY_COST: ${{ steps.post_pr_comment.outputs.summary_cost }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         ACTION_PATH: ${{ github.action_path }}
       run: |

@@ -17,9 +17,8 @@ def cmd_post_pr_comment(
     gh: GitHubActionsHelper,
     pr_number: str,
     summary_file_path: str,
-    main_cost: float,
-    summary_cost: float,
-    total_cost: float,
+    main_execution_file: str,
+    summary_execution_file: str,
     repo: str,
     run_id: str
 ) -> int:
@@ -32,14 +31,16 @@ def cmd_post_pr_comment(
         gh: GitHub Actions helper for outputs and errors
         pr_number: Pull request number
         summary_file_path: Path to file containing AI-generated summary
-        main_cost: Cost of main refactoring task (USD)
-        summary_cost: Cost of PR summary generation (USD)
-        total_cost: Total cost (USD)
+        main_execution_file: Path to main execution file
+        summary_execution_file: Path to summary execution file
         repo: Repository in format owner/repo
         run_id: Workflow run ID
 
     Outputs:
         comment_posted: "true" if comment was posted, "false" otherwise
+        main_cost: Cost of main task (USD)
+        summary_cost: Cost of summary generation (USD)
+        total_cost: Total cost (USD)
 
     Returns:
         0 on success, 1 on error
@@ -59,12 +60,19 @@ def cmd_post_pr_comment(
         return 1
 
     try:
+        # Extract costs from execution files
+        cost_breakdown = CostBreakdown.from_execution_files(
+            main_execution_file,
+            summary_execution_file
+        )
+
+        # Output cost values for downstream steps
+        gh.write_output("main_cost", f"{cost_breakdown.main_cost:.6f}")
+        gh.write_output("summary_cost", f"{cost_breakdown.summary_cost:.6f}")
+        gh.write_output("total_cost", f"{cost_breakdown.total_cost:.6f}")
+
         # Use domain models for parsing and formatting
         summary = SummaryFile.from_file(summary_file_path)
-        cost_breakdown = CostBreakdown(
-            main_cost=main_cost,
-            summary_cost=summary_cost
-        )
 
         # Use domain model for formatting
         comment = summary.format_with_cost(cost_breakdown, repo, run_id)
@@ -87,9 +95,9 @@ def cmd_post_pr_comment(
             print(f"✅ PR comment posted to PR #{pr_number}")
             if summary.has_content:
                 print("   - AI-generated summary included")
-            print(f"   - Main task: ${main_cost:.6f}")
-            print(f"   - PR summary: ${summary_cost:.6f}")
-            print(f"   - Total: ${total_cost:.6f}")
+            print(f"   - Main task: ${cost_breakdown.main_cost:.6f}")
+            print(f"   - PR summary: ${cost_breakdown.summary_cost:.6f}")
+            print(f"   - Total: ${cost_breakdown.total_cost:.6f}")
 
             gh.write_output("comment_posted", "true")
             return 0

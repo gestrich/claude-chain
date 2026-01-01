@@ -130,6 +130,33 @@ def test_basic_workflow_end_to_end(
         f"PR #{pr.number} combined comment should have ClaudeStep footer. " \
         f"Found {len(comments)} comment(s). PR URL: {pr_url}"
 
+    # Verify costs are non-zero (validates execution file parsing works correctly)
+    import re
+    for body in comment_bodies:
+        if "## 💰 Cost Breakdown" in body:
+            # Extract cost values from the table
+            # Pattern matches lines like: | Main refactoring task | $0.123456 |
+            cost_pattern = r'\|\s*(?:Main refactoring task|PR summary generation)\s*\|\s*\$(\d+\.\d+)\s*\|'
+            matches = re.findall(cost_pattern, body)
+
+            if matches:
+                costs = [float(m) for m in matches]
+                # Main refactoring task cost should never be zero
+                assert len(costs) >= 1, \
+                    f"Cost breakdown should have at least one cost value. PR URL: {pr_url}"
+                assert costs[0] > 0, \
+                    f"Main refactoring task cost should be non-zero, got ${costs[0]}. " \
+                    f"This indicates execution file parsing failed. PR URL: {pr_url}"
+                # If there's a summary cost, it should also be non-zero (when summary generation runs)
+                if len(costs) >= 2 and "PR summary generation" in body:
+                    assert costs[1] > 0, \
+                        f"PR summary generation cost should be non-zero when summary is generated, got ${costs[1]}. " \
+                        f"This indicates execution file parsing failed. PR URL: {pr_url}"
+                break
+    else:
+        # If we didn't find cost breakdown, fail the test
+        assert False, f"Could not find cost breakdown in PR #{pr.number} comments. PR URL: {pr_url}"
+
     # Clean up: delete the PR branch
     gh.delete_branch(branch_name)
 

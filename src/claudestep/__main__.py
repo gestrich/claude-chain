@@ -51,18 +51,15 @@ def main():
             task=os.environ.get("TASK", ""),
             repo=os.environ.get("GITHUB_REPOSITORY", ""),
             run_id=os.environ.get("GITHUB_RUN_ID", ""),
-            action_path=os.environ.get("ACTION_PATH", ""),
-            main_execution_file=os.environ.get("MAIN_EXECUTION_FILE", ""),
-            summary_execution_file=os.environ.get("SUMMARY_EXECUTION_FILE", "")
+            action_path=os.environ.get("ACTION_PATH", "")
         )
     elif args.command == "post-pr-comment":
         return cmd_post_pr_comment(
             gh=gh,
             pr_number=os.environ.get("PR_NUMBER", "").strip(),
             summary_file_path=os.environ.get("SUMMARY_FILE", "").strip(),
-            main_cost=float(os.environ.get("MAIN_COST", "0")),
-            summary_cost=float(os.environ.get("SUMMARY_COST", "0")),
-            total_cost=float(os.environ.get("TOTAL_COST", "0")),
+            main_execution_file=os.environ.get("MAIN_EXECUTION_FILE", ""),
+            summary_execution_file=os.environ.get("SUMMARY_EXECUTION_FILE", ""),
             repo=os.environ.get("GITHUB_REPOSITORY", ""),
             run_id=os.environ.get("GITHUB_RUN_ID", "")
         )
