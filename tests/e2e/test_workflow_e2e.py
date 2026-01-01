@@ -47,7 +47,7 @@ def test_auto_start_workflow(
         setup_test_project: Test project created and pushed to main-e2e
     """
     from claudestep.domain.constants import DEFAULT_PR_LABEL
-    from ..constants import E2E_TEST_BRANCH
+    from tests.e2e.constants import E2E_TEST_BRANCH
 
     test_project = setup_test_project
 
@@ -153,7 +153,7 @@ def test_merge_triggered_workflow(
         setup_test_project: Test project created and pushed to main-e2e (has 3 tasks)
     """
     from claudestep.domain.constants import DEFAULT_PR_LABEL
-    from ..constants import E2E_TEST_BRANCH
+    from tests.e2e.constants import E2E_TEST_BRANCH
 
     test_project = setup_test_project
 

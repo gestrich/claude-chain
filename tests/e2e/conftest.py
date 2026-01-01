@@ -129,7 +129,7 @@ def setup_test_project(
     """
     # Create project with provided content
     project_manager.create_test_project(
-        project_id=test_project.replace("e2e-test-", ""),
+        project_name=test_project,
         spec_content=test_spec_content,
         config_content=test_config_content,
         pr_template_content=test_pr_template_content
@@ -175,6 +175,7 @@ def cleanup_previous_test_runs():
 
     Cleanup tasks:
     - Delete old main-e2e branch if it exists
+    - Create fresh main-e2e branch from main
     - Close any open PRs with "claudestep" label
     - Remove "claudestep" label from ALL PRs (open and closed)
     - Clean up test branches from previous failed runs
@@ -183,12 +184,15 @@ def cleanup_previous_test_runs():
         None - Just ensures cleanup happens before tests
     """
     gh = GitHubHelper(repo="gestrich/claude-step")
+    from .helpers.test_branch_manager import TestBranchManager
 
-    # Delete old main-e2e branch if it exists
+    # Delete old main-e2e branch and create a fresh one
+    branch_manager = TestBranchManager()
     try:
-        gh.delete_branch("main-e2e")
+        branch_manager.setup_test_branch()
     except Exception as e:
-        # Branch might not exist, which is fine
+        print(f"Warning: Failed to set up test branch: {e}")
+        # Continue anyway - the branch might already exist
         pass
 
     # Clean up test branches from previous failed runs

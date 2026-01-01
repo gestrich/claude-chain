@@ -41,7 +41,8 @@ class TestProjectManager:
         project_id: Optional[str] = None,
         spec_content: Optional[str] = None,
         config_content: Optional[str] = None,
-        pr_template_content: Optional[str] = None
+        pr_template_content: Optional[str] = None,
+        project_name: Optional[str] = None
     ) -> str:
         """Create a test project with spec.md and configuration files.
 
@@ -50,14 +51,16 @@ class TestProjectManager:
             spec_content: Content for spec.md. If None, uses a default spec.
             config_content: Content for configuration.yml. If None, uses default.
             pr_template_content: Content for pr-template.md. If None, uses default.
+            project_name: Full project name. If provided, overrides project_id.
 
         Returns:
-            Project name (e.g., "test-project-abc123")
+            Project name (e.g., "test-project-abc123" or "e2e-test-abc123")
         """
-        if project_id is None:
-            project_id = uuid.uuid4().hex[:8]
+        if project_name is None:
+            if project_id is None:
+                project_id = uuid.uuid4().hex[:8]
+            project_name = f"test-project-{project_id}"
 
-        project_name = f"test-project-{project_id}"
         project_path = self.projects_dir / project_name
 
         # Create project directory
