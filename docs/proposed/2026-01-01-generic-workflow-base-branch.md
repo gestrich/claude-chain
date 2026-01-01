@@ -941,7 +941,7 @@ All documentation was already updated in previous phases. This phase verified th
 
 ---
 
-- [ ] Phase 6: Update E2E test plan
+- [x] Phase 6: Update E2E test plan
 
 **Goal**: Simplify the E2E test redesign plan by removing workflow-specific phases.
 
@@ -957,6 +957,41 @@ All documentation was already updated in previous phases. This phase verified th
    - Simplifies test setup and reduces coupling
 
 **Expected outcome**: E2E test plan is simpler without workflow-specific configuration phases.
+
+---
+
+### Phase 6 Completion Results
+
+**Completed**: 2026-01-01
+
+#### Implementation Summary
+
+Updated E2E testing documentation to reflect that workflows are now generic:
+
+1. **Updated `docs/completed/2026-01-01-redesign-e2e-tests.md`**:
+   - Added notes to Phase 8 and Phase 9 indicating they are superseded by the generic workflow work
+   - Phases are marked as completed but notes clarify that the implementation has been extended beyond what was originally planned
+
+2. **Updated `docs/feature-architecture/e2e-testing.md`**:
+   - Changed all `e2e-test` branch references to `main-e2e`
+   - Updated branch isolation model to explain that production workflows are used (no test-specific workflows needed)
+   - Removed references to `claudestep-test.yml` test-specific workflow
+   - Updated test lifecycle to note that production workflows automatically adapt to `main-e2e`
+   - Added note about generic workflows in "Important Notes" section
+   - Updated project naming convention to `e2e-test-{uuid}`
+   - Updated references section to include production workflows and E2E test redesign doc
+
+#### Key Simplifications
+
+The E2E test infrastructure is now simpler because:
+- **No test-specific workflows**: Tests use production `claudestep.yml` and `claudestep-auto-start.yml`
+- **No workflow configuration**: Tests just push specs to `main-e2e` and workflows automatically target that branch
+- **Reduced coupling**: Tests don't need to understand or modify workflow base branch logic
+- **True integration testing**: Tests exercise the actual production workflows, not test doubles
+
+#### Build Verification
+
+✅ All 706 unit and integration tests pass
 
 ---
 

@@ -290,6 +290,8 @@ This redesign will create a more realistic E2E test suite that:
 
 - [x] Phase 8: Update auto-start workflow to trigger on main-e2e
 
+> **Note:** This phase has been superseded by the generic workflow base branch work. The auto-start workflow now triggers on **any branch** (not just `main` and `main-e2e`), making it fully generic. See `docs/proposed/2026-01-01-generic-workflow-base-branch.md` for details.
+
 **Goal**: Update the auto-start workflow to trigger on both `main` and `main-e2e` branches.
 
 **Tasks**:
@@ -325,6 +327,8 @@ This redesign will create a more realistic E2E test suite that:
 ---
 
 - [x] Phase 9: Update main claudestep workflow to support main-e2e
+
+> **Note:** This phase has been superseded by the generic workflow base branch work. The main ClaudeStep workflow now works on **any branch** automatically by inferring base branch from event context. See `docs/proposed/2026-01-01-generic-workflow-base-branch.md` for details.
 
 **Goal**: Update the main ClaudeStep workflow to work with both `main` and `main-e2e` branches.
 
