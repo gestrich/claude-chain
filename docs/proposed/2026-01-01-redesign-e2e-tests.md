@@ -251,28 +251,40 @@ This redesign will create a more realistic E2E test suite that:
 
 ---
 
-- [ ] Phase 7: Remove old test files and update workflow references
+- [x] Phase 7: Remove old test files and update workflow references
 
 **Goal**: Clean up obsolete test code and update all workflow/test references.
 
 **Tasks**:
-1. Remove or update `test_basic_workflow_end_to_end` in [test_workflow_e2e.py](tests/e2e/test_workflow_e2e.py:35-162):
+1. ✅ Remove or update `test_basic_workflow_end_to_end` in [test_workflow_e2e.py](tests/e2e/test_workflow_e2e.py:35-162):
    - This manually triggers workflows, which doesn't match the new E2E approach
    - Either remove it or repurpose it as a unit test for manual workflow triggering
 
-2. Remove or update `test_reviewer_capacity_limits` in [test_workflow_e2e.py](tests/e2e/test_workflow_e2e.py:164-257):
+2. ✅ Remove or update `test_reviewer_capacity_limits` in [test_workflow_e2e.py](tests/e2e/test_workflow_e2e.py:164-257):
    - This also manually triggers workflows
    - Consider if reviewer capacity needs separate E2E validation or if it's covered by other tests
 
-3. Update all test docstrings to reference `main-e2e` instead of `e2e-test`
+3. ✅ Update all test docstrings to reference `main-e2e` instead of `e2e-test`
 
-4. Update [e2e-test.yml](../.github/workflows/e2e-test.yml) workflow:
+4. ✅ Update [e2e-test.yml](../.github/workflows/e2e-test.yml) workflow:
    - Update branch references from `e2e-test` to `main-e2e`
    - Update comments/documentation to reflect new approach
 
-5. Search codebase for any remaining `e2e-test` references and update to `main-e2e`
+5. ✅ Search codebase for any remaining `e2e-test` references and update to `main-e2e`
 
 **Expected outcome**: All obsolete code removed, all references updated to new branch name.
+
+**Technical notes**:
+- Removed `test_basic_workflow_end_to_end` (lines 38-158) and `test_reviewer_capacity_limits` (lines 160-234) from [test_workflow_e2e.py](tests/e2e/test_workflow_e2e.py) as they manually trigger workflows via `workflow_dispatch` which doesn't match the new E2E approach that tests real user workflows (auto-start and PR merge triggers)
+- Updated module docstring to reflect the current test suite with only `test_auto_start_workflow` and `test_merge_triggered_workflow`
+- The e2e-test.yml workflow already references `main-e2e` correctly (verified at line 97)
+- Test docstrings for remaining tests already reference `main-e2e` correctly
+- Removed the old permanent `e2e-test-project` directory from `claude-step/` as it's no longer needed - tests now use dynamically generated projects
+- Remaining `e2e-test` references in the codebase are appropriate:
+  - Project name prefix pattern: `e2e-test-{uuid}` (distinct from branch name `main-e2e`)
+  - Documentation showing historical context or examples
+  - Artifact names in workflows (e.g., `e2e-test-diagnostics.zip`, `e2e-test-output.log`)
+- All 592 unit tests pass successfully
 
 ---
 
