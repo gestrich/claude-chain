@@ -111,4 +111,31 @@ def create_parser() -> argparse.ArgumentParser:
         help="Space-separated list of projects that failed to trigger"
     )
 
+    parser_parse_event = subparsers.add_parser(
+        "parse-event",
+        help="Parse GitHub event context and output action parameters"
+    )
+    parser_parse_event.add_argument(
+        "--event-name",
+        help="GitHub event name (e.g., pull_request, push, workflow_dispatch)"
+    )
+    parser_parse_event.add_argument(
+        "--event-json",
+        help="GitHub event JSON payload"
+    )
+    parser_parse_event.add_argument(
+        "--project-name",
+        help="Optional project name override"
+    )
+    parser_parse_event.add_argument(
+        "--default-base-branch",
+        default="main",
+        help="Default base branch if not determined from event (default: main)"
+    )
+    parser_parse_event.add_argument(
+        "--pr-label",
+        default="claudestep",
+        help="Required label for PR events (default: claudestep)"
+    )
+
     return parser

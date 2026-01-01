@@ -14,6 +14,7 @@ from claudestep.cli.commands.discover import main as cmd_discover
 from claudestep.cli.commands.discover_ready import main as cmd_discover_ready
 from claudestep.cli.commands.finalize import cmd_finalize
 from claudestep.cli.commands.notify_pr import cmd_notify_pr
+from claudestep.cli.commands.parse_event import main as cmd_parse_event
 from claudestep.cli.commands.post_pr_comment import cmd_post_pr_comment
 from claudestep.cli.commands.prepare import cmd_prepare
 from claudestep.cli.commands.prepare_summary import cmd_prepare_summary
@@ -99,6 +100,10 @@ def main():
             triggered_projects=args.triggered_projects or os.environ.get("TRIGGERED_PROJECTS", ""),
             failed_projects=args.failed_projects or os.environ.get("FAILED_PROJECTS", ""),
         )
+    elif args.command == "parse-event":
+        # parse-event reads from environment variables
+        # This allows it to work with the action.yml which sets env vars
+        return cmd_parse_event()
     else:
         gh.set_error(f"Unknown command: {args.command}")
         return 1

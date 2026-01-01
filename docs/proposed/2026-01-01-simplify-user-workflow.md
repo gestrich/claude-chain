@@ -242,7 +242,7 @@ runs:
 - All 776 unit/integration tests pass
 - Note: Phase 4 will implement the actual `parse-event` CLI command that this step invokes
 
-- [ ] Phase 4: Add parse-event CLI command
+- [x] Phase 4: Add parse-event CLI command
 
 Add new CLI command to handle event parsing.
 
@@ -288,6 +288,22 @@ def cmd_parse_event(
 ```
 
 **Integration tests**: `tests/integration/cli/commands/test_parse_event.py`
+
+**Completed:** Implemented the `parse-event` CLI command with:
+- New `src/claudestep/cli/commands/parse_event.py` module with `cmd_parse_event()` function
+- Environment variable-based parameter passing (EVENT_NAME, EVENT_JSON, PROJECT_NAME, DEFAULT_BASE_BRANCH, PR_LABEL) to match action.yml invocation
+- Added `parse-event` subcommand to parser.py with CLI argument support
+- Registered command handler in `__main__.py`
+- Comprehensive output fields: skip, skip_reason, checkout_ref, project_name, base_branch, merged_pr_number
+- Console logging for debugging
+- 21 integration tests covering:
+  - Pull request events (merged with label, not merged, missing label, custom labels)
+  - Workflow dispatch events (with/without project name)
+  - Push events
+  - Branch pattern extraction for project names
+  - Error handling (invalid JSON, empty events, unknown event types)
+  - Output consistency verification
+- All 797 unit/integration tests pass
 
 - [ ] Phase 5: Create simplified example workflow
 
