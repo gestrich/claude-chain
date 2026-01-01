@@ -406,6 +406,27 @@ class GitHubHelper:
         except GitHubAPIError as e:
             logger.warning(f"Failed to list branches: {e}")
 
+    def remove_label_from_pr(self, pr_number: int, label: str) -> None:
+        """Remove a label from a pull request.
+
+        Args:
+            pr_number: PR number to remove label from
+            label: Label name to remove
+        """
+        logger.info(f"Removing label '{label}' from PR #{pr_number}")
+
+        try:
+            from claudestep.infrastructure.github.operations import run_gh_command
+            run_gh_command([
+                "api",
+                f"/repos/{self.repo}/issues/{pr_number}/labels/{label}",
+                "--method", "DELETE"
+            ])
+            logger.info(f"Successfully removed label '{label}' from PR #{pr_number}")
+        except Exception as e:
+            # Label might not exist on the PR, which is fine
+            logger.debug(f"Could not remove label '{label}' from PR #{pr_number}: {e}")
+
     def cleanup_test_prs(self, title_prefix: str = "ClaudeStep") -> None:
         """Clean up open test PRs from previous failed runs.
 

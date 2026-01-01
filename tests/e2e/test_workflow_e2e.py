@@ -27,15 +27,13 @@ TESTS IN THIS MODULE:
 """
 
 import pytest
-from typing import List
 
 from .helpers.github_helper import GitHubHelper
 
 
 def test_basic_workflow_end_to_end(
     gh: GitHubHelper,
-    test_project: str,
-    cleanup_prs: List[int]
+    test_project: str
 ) -> None:
     """Test complete ClaudeStep workflow: spec → PR with summary and cost info.
 
@@ -46,12 +44,12 @@ def test_basic_workflow_end_to_end(
     4. Verifying a PR was created with expected content
     5. Verifying the PR has an AI-generated summary comment
     6. Verifying the PR has cost/usage information
-    7. Cleaning up test resources (PRs and branches)
+
+    Note: Cleanup happens at test START (not end) to allow manual inspection.
 
     Args:
         gh: GitHub helper fixture
         test_project: Test project name from fixture (e2e-test-project)
-        cleanup_prs: PR cleanup fixture
     """
     # Trigger the claudestep-test workflow
     # The workflow will fetch specs from main branch via GitHub API
@@ -91,9 +89,6 @@ def test_basic_workflow_end_to_end(
 
     assert pr.state == "open", \
         f"PR #{pr.number} should be open but is {pr.state}. PR URL: {pr_url}"
-
-    # Track PR for cleanup
-    cleanup_prs.append(pr.number)
 
     # Verify PR has a title
     assert pr.title, f"PR #{pr.number} should have a title. PR URL: {pr_url}"
@@ -157,14 +152,10 @@ def test_basic_workflow_end_to_end(
         # If we didn't find cost breakdown, fail the test
         assert False, f"Could not find cost breakdown in PR #{pr.number} comments. PR URL: {pr_url}"
 
-    # Clean up: delete the PR branch
-    gh.delete_branch(branch_name)
-
 
 def test_reviewer_capacity_limits(
     gh: GitHubHelper,
-    test_project: str,
-    cleanup_prs: List[int]
+    test_project: str
 ) -> None:
     """Test that ClaudeStep respects reviewer capacity limits.
 
@@ -179,10 +170,11 @@ def test_reviewer_capacity_limits(
     With the new spec-file-source-of-truth design, the test project exists
     permanently in the main branch with pre-configured capacity limits.
 
+    Cleanup happens at test START (not end) to allow manual inspection.
+
     Args:
         gh: GitHub helper fixture
         test_project: Test project name from fixture (e2e-test-project)
-        cleanup_prs: PR cleanup fixture
     """
     # The permanent e2e-test-project has maxOpenPRs: 5 configured
     # We'll test that capacity limits are respected
@@ -208,9 +200,6 @@ def test_reviewer_capacity_limits(
         assert len(prs_after_first) >= 1, \
             f"First PR should be created. Workflow run: {run_url_1}"
 
-        for pr in prs_after_first:
-            cleanup_prs.append(pr.number)
-
         # === Second workflow run: should create PR for second task ===
         gh.trigger_workflow(
             workflow_name="claudestep.yml",
@@ -231,35 +220,18 @@ def test_reviewer_capacity_limits(
         assert len(prs_after_second) >= 2, \
             f"Second PR should be created. Workflow run: {run_url_2}"
 
-        # Track all PRs for cleanup
-        for pr in prs_after_second:
-            if pr.number not in cleanup_prs:
-                cleanup_prs.append(pr.number)
-
         # Verify at least 2 PRs were created successfully
         assert len(prs_after_second) >= 2, \
             f"Expected at least 2 PRs to be created. " \
             f"Workflow runs: [1] {run_url_1}, [2] {run_url_2}"
 
-        # Clean up branches
-        for pr in prs_after_second:
-            gh.delete_branch(pr.head_ref_name)
-
     except Exception as e:
-        # Clean up any PRs that were created before the error
-        try:
-            all_prs = gh.get_pull_requests_for_project(test_project)
-            for pr in all_prs:
-                gh.delete_branch(pr.head_ref_name)
-        except:
-            pass  # Ignore errors during cleanup
         raise e
 
 
 def test_merge_triggered_workflow(
     gh: GitHubHelper,
-    test_project: str,
-    cleanup_prs: List[int]
+    test_project: str
 ) -> None:
     """Test that merging a PR triggers creation of the next PR.
 
@@ -270,10 +242,11 @@ def test_merge_triggered_workflow(
     which may require specific repository permissions. This is a placeholder
     implementation that documents the expected behavior.
 
+    Cleanup happens at test START (not end) to allow manual inspection.
+
     Args:
         gh: GitHub helper fixture
         test_project: Test project name from fixture (e2e-test-project)
-        cleanup_prs: PR cleanup fixture
     """
     pytest.skip("Merge-triggered workflow test requires PR merge permissions")
 

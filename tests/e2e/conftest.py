@@ -61,31 +61,6 @@ def test_project() -> str:
     return "e2e-test-project"
 
 
-@pytest.fixture
-def cleanup_prs(gh: GitHubHelper) -> Generator[List[int], None, None]:
-    """Track and cleanup PRs created during tests.
-
-    Usage in tests:
-        def test_something(cleanup_prs):
-            # Create PR
-            pr_number = create_pr()
-            cleanup_prs.append(pr_number)
-            # Test continues...
-
-    Yields:
-        List to append PR numbers to for cleanup
-    """
-    pr_numbers: List[int] = []
-
-    try:
-        yield pr_numbers
-    finally:
-        # Cleanup: close all tracked PRs
-        for pr_number in pr_numbers:
-            try:
-                gh.close_pull_request(pr_number)
-            except Exception as e:
-                print(f"Warning: Failed to close PR #{pr_number}: {e}")
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -109,22 +84,68 @@ def test_branch():
 
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_previous_test_runs():
-    """Clean up resources from previous failed test runs.
+    """Clean up resources from previous test runs at test start.
 
-    This fixture runs once before all tests to ensure a clean state,
-    making tests more reliable by cleaning up leftover branches and PRs
-    from previous failed runs.
+    This fixture runs once before all tests to ensure a clean state.
+    Cleanup at test START (not end) allows manual inspection of test results.
+
+    Cleanup tasks:
+    - Delete old main-e2e branch if it exists
+    - Close any open PRs with "claudestep" label
+    - Remove "claudestep" label from ALL PRs (open and closed)
+    - Clean up test branches from previous failed runs
 
     Yields:
         None - Just ensures cleanup happens before tests
     """
     gh = GitHubHelper(repo="gestrich/claude-step")
 
+    # Delete old main-e2e branch if it exists
+    try:
+        gh.delete_branch("main-e2e")
+    except Exception as e:
+        # Branch might not exist, which is fine
+        pass
+
     # Clean up test branches from previous failed runs
     gh.cleanup_test_branches(pattern_prefix="claude-step-test-")
 
-    # Clean up test PRs from previous failed runs
-    gh.cleanup_test_prs(title_prefix="ClaudeStep")
+    # Get all PRs with claudestep label (both open and closed)
+    from claudestep.domain.constants import DEFAULT_PR_LABEL
+    from claudestep.infrastructure.github.operations import list_pull_requests
+
+    # Close open PRs with claudestep label
+    try:
+        open_prs = list_pull_requests(
+            repo=gh.repo,
+            state="open",
+            label=DEFAULT_PR_LABEL,
+            limit=100
+        )
+        for pr in open_prs:
+            try:
+                gh.close_pull_request(pr.number)
+            except Exception as e:
+                print(f"Warning: Failed to close PR #{pr.number}: {e}")
+    except Exception as e:
+        print(f"Warning: Failed to list open PRs: {e}")
+
+    # Remove claudestep label from ALL PRs (open and closed)
+    try:
+        all_prs = list_pull_requests(
+            repo=gh.repo,
+            state="all",
+            label=DEFAULT_PR_LABEL,
+            limit=100
+        )
+        for pr in all_prs:
+            try:
+                gh.remove_label_from_pr(pr.number, DEFAULT_PR_LABEL)
+            except Exception as e:
+                # Label might not exist on the PR, which is fine
+                pass
+    except Exception as e:
+        print(f"Warning: Failed to remove labels from PRs: {e}")
 
     yield
-    # Post-test cleanup handled by individual test fixtures
+    # No post-test cleanup - artifacts remain for manual inspection

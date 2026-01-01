@@ -20,20 +20,26 @@ This redesign will create a more realistic E2E test suite that:
 
 ## Phases
 
-- [ ] Phase 1: Update cleanup to run at test start
+- [x] Phase 1: Update cleanup to run at test start
 
 **Goal**: Move all cleanup logic from test end to test start, and expand it to close/unlabel old PRs.
 
 **Tasks**:
-1. Remove the `cleanup_prs` fixture from [conftest.py](tests/e2e/conftest.py:65-88) (currently runs at test end)
-2. Update the `cleanup_previous_test_runs` fixture in [conftest.py](tests/e2e/conftest.py:111-130) to:
+1. ✅ Remove the `cleanup_prs` fixture from [conftest.py](tests/e2e/conftest.py:65-88) (currently runs at test end)
+2. ✅ Update the `cleanup_previous_test_runs` fixture in [conftest.py](tests/e2e/conftest.py:111-130) to:
    - Close any open PRs with "claudestep" label (not just delete branches)
    - Remove "claudestep" label from ALL PRs (open and closed) to prevent old test data from interfering
    - Delete old `main-e2e` branch if it exists (not `e2e-test`)
-3. Add new method to [GitHubHelper](tests/e2e/helpers/github_helper.py) for removing labels from PRs
-4. Update all test functions to remove `cleanup_prs` parameter since cleanup no longer happens at test end
+3. ✅ Add new method to [GitHubHelper](tests/e2e/helpers/github_helper.py) for removing labels from PRs
+4. ✅ Update all test functions to remove `cleanup_prs` parameter since cleanup no longer happens at test end
 
 **Expected outcome**: When tests start, they clean up all old test artifacts. When tests end, artifacts remain for manual inspection.
+
+**Technical notes**:
+- Added `remove_label_from_pr()` method to GitHubHelper that uses GitHub API DELETE endpoint: `/repos/{repo}/issues/{pr_number}/labels/{label}`
+- The cleanup fixture now uses `list_pull_requests()` with `label=DEFAULT_PR_LABEL` to find all PRs (both open and closed) with the claudestep label
+- Cleanup operations are wrapped in try/except blocks to handle cases where branches/labels don't exist (idempotent cleanup)
+- Removed unused `List` import from test_workflow_e2e.py after removing cleanup_prs parameter
 
 ---
 
