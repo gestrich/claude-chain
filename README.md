@@ -157,15 +157,17 @@ git push origin main
 
 **That's it!** The first task will automatically start within a few minutes.
 
+> **Note:** ClaudeStep workflows are **branch-agnostic** and work on any branch. Push your spec to whichever branch you want PRs to target. The workflows automatically detect the base branch from the push event and create PRs targeting that same branch.
+
 #### Auto-Start Feature
 
-When you push a new `spec.md` file to your base branch, ClaudeStep automatically detects it and starts the first task for you. No manual triggering needed!
+When you push a new `spec.md` file to any branch, ClaudeStep automatically detects it and starts the first task for you. No manual triggering needed!
 
 **What happens automatically:**
-1. You merge your spec to main branch
+1. You push your spec to a branch (e.g., `main` or `main-e2e`)
 2. ClaudeStep detects the new project (no existing PRs)
 3. The first task automatically starts
-4. A PR is created for task 1
+4. A PR is created for task 1 (targeting the same branch where you pushed the spec)
 5. When you merge that PR, task 2 automatically starts
 6. The process continues until all tasks are complete
 
@@ -189,7 +191,7 @@ Review the generated PR, verify it follows your spec, and make any needed fixes.
 
 ### First Task Doesn't Auto-Start
 
-If the first task doesn't automatically start after pushing your spec to main:
+If the first task doesn't automatically start after pushing your spec:
 
 1. **Check the workflow run**: Go to Actions > ClaudeStep Auto-Start and verify it ran
 2. **Review the summary**: The workflow provides a summary showing which projects were detected and whether they were triggered
@@ -301,7 +303,7 @@ jobs:
 | `project_name` | Y | - | Project folder name under `/claude-step` |
 | `claude_model` | N | `claude-sonnet-4-5` | Claude model to use (e.g., claude-3-haiku-20240307, claude-sonnet-4-5, claude-opus-4-5) |
 | `claude_allowed_tools` | N | `Write,Read,Bash,Edit` | Comma-separated list of tools Claude can use |
-| `base_branch` | N | `main` | Base branch where spec files must exist and PRs will target. Spec files are fetched from this branch via GitHub API. |
+| `base_branch` | N | (inferred) | Base branch where spec files exist and PRs will target. Automatically inferred from workflow context (PR merge or checkout_ref). Spec files are fetched from this branch via GitHub API. |
 | `working_directory` | N | `.` | Working directory |
 | `add_pr_summary` | N | `true` | Add AI-generated summary comment to PR |
 | `slack_webhook_url` | N | - | Slack webhook URL for PR notifications |

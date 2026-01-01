@@ -43,7 +43,7 @@ Include patterns to follow, code examples, and edge cases.
 - [ ] Third step to refactor
 ```
 
-### 4. Push to Main Branch
+### 4. Push to Your Base Branch
 
 ```bash
 git add claude-step/my-refactor/
@@ -53,18 +53,25 @@ git push origin main
 
 **That's it!** The first task will automatically start within a few minutes.
 
+> **Note:** ClaudeStep workflows work on **any branch**. Push your spec to whichever branch you want PRs to target (typically `main` for production, or a test branch like `main-e2e` for testing). The workflows automatically adapt to the branch you push to.
+
 ---
 
 ## What Happens Automatically
 
 ### Auto-Start Workflow
 
-When you push a new `spec.md` file to your main branch, ClaudeStep automatically:
+When you push a new `spec.md` file to any branch, ClaudeStep automatically:
 
 1. **Detects the new project** (no existing PRs found)
 2. **Triggers the ClaudeStep workflow** for your project
 3. **Creates a PR for the first task** within 2-5 minutes
 4. **Assigns the PR** to an available reviewer
+
+The PR will automatically target the same branch where you pushed the spec file. For example:
+- Push to `main` → PRs target `main`
+- Push to `main-e2e` → PRs target `main-e2e`
+- Push to `feature/test` → PRs target `feature/test`
 
 ### Subsequent Tasks
 
@@ -78,15 +85,15 @@ After the first task:
 ### Example Timeline
 
 ```
-0:00 - You push spec.md to main
+0:00 - You push spec.md to your branch (e.g., main)
 0:01 - Auto-start workflow detects new project
 0:02 - ClaudeStep workflow starts
-0:05 - PR #1 created for first task
+0:05 - PR #1 created for first task (targeting your branch)
 ...
 You merge PR #1
 ...
 0:10 - ClaudeStep detects merge
-0:12 - PR #2 created for second task
+0:12 - PR #2 created for second task (targeting same branch)
 ...
 (continues for all tasks)
 ```
@@ -97,7 +104,7 @@ You merge PR #1
 
 ### First Task Doesn't Auto-Start
 
-If the first task doesn't automatically start after pushing your spec to main:
+If the first task doesn't automatically start after pushing your spec:
 
 #### 1. Check the Auto-Start Workflow Run
 
@@ -171,8 +178,10 @@ Please merge your spec files to the 'main' branch before running ClaudeStep.
 **Solution:**
 1. Verify files exist in your repository: `ls claude-step/my-refactor/`
 2. Ensure files are committed: `git status`
-3. Push to main branch: `git push origin main`
+3. Push to your base branch: `git push origin main` (or whatever branch you're using)
 4. Wait for auto-start workflow to run again
+
+> **Note:** The error message shows the branch ClaudeStep is looking in. Ensure your spec files are in that branch.
 
 ### Workflow Permissions Issues
 

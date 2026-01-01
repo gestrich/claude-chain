@@ -117,12 +117,12 @@ When you change a task description, you create a **new task** with a **new hash*
 **Option 1: No Open PRs** (Safest)
 1. Wait until no PR is open for the task
 2. Modify the description
-3. Merge to main
+3. Merge to your base branch
 4. Next workflow run creates PR with new description
 
 **Option 2: Close and Recreate**
 1. Modify the description in spec.md
-2. Merge to main
+2. Merge to your base branch
 3. Close the orphaned PR (ClaudeStep will warn you which ones)
 4. Next workflow run creates new PR with updated description
 
