@@ -133,10 +133,10 @@ class TestAutoStartWorkflowYAML:
         triggers = workflow_data.get(True) or workflow_data.get("on")
         assert triggers is not None, "Workflow should have triggers section"
 
-        # Should trigger on push to main
+        # Should trigger on push to any branch (generic workflow)
         assert "push" in triggers, "Workflow should trigger on push"
-        assert "main" in triggers["push"]["branches"], \
-            "Workflow should trigger on push to main branch"
+        assert "**" in triggers["push"]["branches"], \
+            "Workflow should trigger on push to any branch"
 
         # Should filter by spec.md paths
         assert "paths" in triggers["push"], "Workflow should have path filters"

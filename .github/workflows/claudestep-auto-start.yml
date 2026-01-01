@@ -1,12 +1,14 @@
 name: ClaudeStep Auto-Start
 
-# This workflow triggers on both production (main) and E2E test (main-e2e) branches
-# to support automated testing of the auto-start functionality
+# This workflow is generic and works on ANY branch.
+# The base branch is automatically derived from the push event (github.ref_name).
+# When a spec is pushed to 'main', PRs target 'main'.
+# When a spec is pushed to 'main-e2e', PRs target 'main-e2e'.
+# When a spec is pushed to any other branch, PRs target that branch.
 on:
   push:
     branches:
-      - main
-      - main-e2e
+      - '**'  # Trigger on ANY branch
     paths:
       - 'claude-step/*/spec.md'
 
@@ -31,12 +33,18 @@ jobs:
       - name: Install ClaudeStep
         run: pip install -e .
 
+      - name: Log derived base branch
+        run: |
+          echo "Auto-start triggered on branch: ${{ github.ref_name }}"
+          echo "PRs will target base branch: ${{ github.ref_name }}"
+
       - name: Detect and trigger auto-start
         id: auto_start
         run: python3 -m claudestep auto-start
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
-          BASE_BRANCH: ${{ github.ref_name }}  # Will be 'main' or 'main-e2e'
+          # Derive base branch from the branch that was pushed to (works on any branch)
+          BASE_BRANCH: ${{ github.ref_name }}
           REF_BEFORE: ${{ github.event.before }}
           REF_AFTER: ${{ github.sha }}
           GH_TOKEN: ${{ github.token }}

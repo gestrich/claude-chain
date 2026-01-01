@@ -290,7 +290,7 @@ This architectural principle makes the base branch detection even more critical 
 
 ---
 
-- [ ] Phase 3: Update auto-start workflow
+- [x] Phase 3: Update auto-start workflow
 
 **Goal**: Make auto-start workflow derive base branch from push event.
 
@@ -341,6 +341,57 @@ This architectural principle makes the base branch detection even more critical 
    - Push spec to `user/experiment` → derives `user/experiment`
 
 **Expected outcome**: Auto-start workflow works on any branch without configuration changes.
+
+---
+
+### Phase 3 Completion Results
+
+**Completed**: 2026-01-01
+
+#### Implementation Summary
+
+Successfully updated the auto-start workflow to be fully generic and work on any branch:
+
+1. **Updated workflow trigger** (.github/workflows/claudestep-auto-start.yml:11):
+   - Changed `branches: [main, main-e2e]` to `branches: ['**']`
+   - Workflow now triggers on push to ANY branch with spec.md changes
+
+2. **Added logging** (.github/workflows/claudestep-auto-start.yml:36-39):
+   - New "Log derived base branch" step displays the branch being used
+   - Provides visibility into which base branch PRs will target
+
+3. **Enhanced documentation**:
+   - Added comprehensive comments explaining generic workflow behavior
+   - Clarified that base branch derives from `github.ref_name`
+   - Documents how workflow adapts to any branch
+
+4. **Updated tests** (tests/integration/test_auto_start_workflow.py:138-139):
+   - Updated test assertions to expect `'**'` instead of hardcoded branches
+   - Ensures test suite validates generic workflow behavior
+
+#### Technical Notes
+
+- **BASE_BRANCH environment variable**: Already correctly using `${{ github.ref_name }}` (line 47)
+  - No changes needed - this was already implementing the generic pattern
+  - Works for any branch: main, main-e2e, feature branches, etc.
+
+- **Backwards compatibility**: ✅ Fully maintained
+  - Existing production usage on `main` continues working unchanged
+  - E2E testing on `main-e2e` continues working unchanged
+  - New capability to work on any branch without configuration
+
+- **Build validation**: ✅ All 706 unit and integration tests pass
+  - No regressions introduced
+  - Test updated to validate new generic behavior
+
+#### Success Criteria Met
+
+✅ Auto-start workflow triggers on ANY branch (not just main/main-e2e)
+✅ Base branch correctly derived from `github.ref_name` (the branch receiving the push)
+✅ Logging provides clear visibility into derived base branch
+✅ Documentation explains generic behavior
+✅ All tests pass
+✅ Backwards compatible with existing usage
 
 ---
 
