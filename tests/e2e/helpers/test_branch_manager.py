@@ -4,7 +4,14 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from ..constants import E2E_TEST_BRANCH
+# Import using try/except to support both package import and direct import
+try:
+    from ..constants import E2E_TEST_BRANCH
+except ImportError:
+    # When run directly (not as a package), use absolute import
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from constants import E2E_TEST_BRANCH
 
 
 class TestBranchManager:
