@@ -147,7 +147,7 @@ Update the workflow header comments to reflect the simplified design:
 - Updated `tests/integration/test_auto_start_workflow.py`: renamed `test_claudestep_has_generic_workflow_documentation` to `test_claudestep_has_event_handling_documentation` to match new simplified header language
 - All 791 unit/integration tests pass
 
-- [ ] Phase 4: Delete examples directory
+- [x] Phase 4: Delete examples directory
 
 Remove the `examples/` directory since `claudestep.yml` now serves as the canonical example:
 
@@ -160,6 +160,12 @@ The `examples/claudestep-simplified.yml` file was a temporary demonstration. Now
 **Files to delete:**
 - `examples/claudestep-simplified.yml`
 - `examples/` directory
+
+**Completed:** 2026-01-01
+
+**Technical notes:**
+- Deleted `examples/` directory containing `claudestep-simplified.yml`
+- All 791 unit/integration tests pass
 
 - [ ] Phase 5: Update README references
 
