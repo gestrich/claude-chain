@@ -428,6 +428,129 @@ reviewers:
         }
 
 
+class TestProjectConfigurationBaseBranch:
+    """Test suite for ProjectConfiguration base_branch functionality"""
+
+    def test_from_yaml_string_parses_base_branch(self):
+        """Should parse baseBranch from YAML configuration"""
+        # Arrange
+        project = Project("my-project")
+        yaml_content = """
+reviewers:
+  - username: alice
+    maxOpenPRs: 2
+baseBranch: develop
+"""
+
+        # Act
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        # Assert
+        assert config.base_branch == "develop"
+
+    def test_from_yaml_string_base_branch_is_none_when_not_specified(self):
+        """Should have None base_branch when not specified in YAML"""
+        # Arrange
+        project = Project("my-project")
+        yaml_content = """
+reviewers:
+  - username: alice
+    maxOpenPRs: 2
+"""
+
+        # Act
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        # Assert
+        assert config.base_branch is None
+
+    def test_get_base_branch_returns_config_value_when_set(self):
+        """Should return config's base_branch when it is set"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            base_branch="develop"
+        )
+
+        # Act
+        result = config.get_base_branch("main")
+
+        # Assert
+        assert result == "develop"
+
+    def test_get_base_branch_returns_default_when_not_set(self):
+        """Should return default_base_branch when config's base_branch is not set"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            base_branch=None
+        )
+
+        # Act
+        result = config.get_base_branch("main")
+
+        # Assert
+        assert result == "main"
+
+    def test_to_dict_includes_base_branch_when_set(self):
+        """Should include baseBranch in dict when base_branch is set"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            base_branch="develop"
+        )
+
+        # Act
+        result = config.to_dict()
+
+        # Assert
+        assert "baseBranch" in result
+        assert result["baseBranch"] == "develop"
+
+    def test_to_dict_excludes_base_branch_when_not_set(self):
+        """Should not include baseBranch in dict when base_branch is None"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            base_branch=None
+        )
+
+        # Act
+        result = config.to_dict()
+
+        # Assert
+        assert "baseBranch" not in result
+
+    def test_base_branch_with_special_characters(self):
+        """Should handle base_branch with special characters like slashes"""
+        # Arrange
+        project = Project("my-project")
+        yaml_content = """
+reviewers:
+  - username: alice
+baseBranch: feature/my-branch
+"""
+
+        # Act
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        # Assert
+        assert config.base_branch == "feature/my-branch"
+        assert config.get_base_branch("main") == "feature/my-branch"
+
+        # Verify to_dict also handles it correctly
+        result = config.to_dict()
+        assert result["baseBranch"] == "feature/my-branch"
+
+
 class TestProjectConfigurationIntegration:
     """Integration tests for ProjectConfiguration with various scenarios"""
 

@@ -46,6 +46,7 @@ class ProjectConfiguration:
 
     project: Project
     reviewers: List[Reviewer]
+    base_branch: Optional[str] = None  # Optional override for target base branch
 
     @classmethod
     def from_yaml_string(cls, project: Project, yaml_content: str) -> 'ProjectConfiguration':
@@ -63,10 +64,12 @@ class ProjectConfiguration:
         config = load_config_from_string(yaml_content, project.config_path)
         reviewers_config = config.get("reviewers", [])
         reviewers = [Reviewer.from_dict(r) for r in reviewers_config if "username" in r]
+        base_branch = config.get("baseBranch")
 
         return cls(
             project=project,
-            reviewers=reviewers
+            reviewers=reviewers,
+            base_branch=base_branch
         )
 
     def get_reviewer_usernames(self) -> List[str]:
@@ -88,13 +91,29 @@ class ProjectConfiguration:
         """
         return next((r for r in self.reviewers if r.username == username), None)
 
+    def get_base_branch(self, default_base_branch: str) -> str:
+        """Resolve base branch from project config or fall back to default.
+
+        Args:
+            default_base_branch: Default from workflow/CLI (required, no default here)
+
+        Returns:
+            Project's baseBranch if set, otherwise the default
+        """
+        if self.base_branch:
+            return self.base_branch
+        return default_base_branch
+
     def to_dict(self) -> dict:
         """Convert to dictionary representation
 
         Returns:
             Dictionary with project and reviewer configuration
         """
-        return {
+        result = {
             "project": self.project.name,
             "reviewers": [r.to_dict() for r in self.reviewers]
         }
+        if self.base_branch:
+            result["baseBranch"] = self.base_branch
+        return result
