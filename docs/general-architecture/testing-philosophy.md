@@ -114,6 +114,15 @@ This makes tests easy to read and understand.
 
 **Why?** When a test fails, you should immediately know what broke. Multi-concept tests make debugging harder.
 
+**Exception for E2E Tests:** End-to-end tests are expensive and slow to run (often taking minutes). For E2E tests, it's acceptable and encouraged to verify multiple related aspects of a workflow in a single test to minimize execution time. For example, an E2E test that triggers a workflow can verify:
+- The workflow completes successfully
+- A PR was created
+- The PR has correct labels
+- The PR has an AI summary
+- The PR has cost information
+
+This is a pragmatic trade-off: E2E tests prioritize execution speed over granular isolation, while unit/integration tests maintain strict one-concept-per-test discipline.
+
 ## Test Architecture Overview
 
 ### Directory Structure
