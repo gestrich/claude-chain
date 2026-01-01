@@ -116,15 +116,15 @@ class AutoStartService:
                 continue
 
             try:
-                # Use PRService to get all PRs for this project
-                prs = self.pr_service.get_project_prs(project.name, state="all")
+                # Use PRService to get open PRs for this project
+                prs = self.pr_service.get_project_prs(project.name, state="open")
 
-                # If no PRs exist, this is a new project
+                # If no open PRs exist, this project is ready for auto-start
                 if len(prs) == 0:
                     new_projects.append(project)
-                    print(f"  ✓ {project.name} is a new project (no existing PRs)")
+                    print(f"  ✓ {project.name} has no open PRs, ready for auto-start")
                 else:
-                    print(f"  ✗ {project.name} has {len(prs)} existing PR(s), skipping")
+                    print(f"  ✗ {project.name} has {len(prs)} open PR(s), skipping")
 
             except Exception as e:
                 # Log warning, skip project on API failure
@@ -167,23 +167,23 @@ class AutoStartService:
                 reason="Project spec was deleted"
             )
 
-        # Check if project has existing PRs
+        # Check if project has open PRs
         try:
-            prs = self.pr_service.get_project_prs(project.name, state="all")
+            prs = self.pr_service.get_project_prs(project.name, state="open")
 
             if len(prs) == 0:
-                # New project - should trigger
+                # No open PRs - ready for work (new project or completed project)
                 return AutoStartDecision(
                     project=project,
                     should_trigger=True,
-                    reason="New project detected"
+                    reason="No open PRs, ready for work"
                 )
             else:
-                # Existing project - should not trigger
+                # Has open PRs - should not trigger
                 return AutoStartDecision(
                     project=project,
                     should_trigger=False,
-                    reason=f"Project has {len(prs)} existing PR(s)"
+                    reason=f"Project has {len(prs)} open PR(s)"
                 )
 
         except Exception as e:

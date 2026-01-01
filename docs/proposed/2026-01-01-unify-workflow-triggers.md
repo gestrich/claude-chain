@@ -118,7 +118,7 @@ Added 4 new integration tests in `tests/integration/cli/commands/test_prepare.py
 
 All 599 unit tests and 133 integration tests pass.
 
-- [ ] Phase 3: Fix auto-start for completed projects
+- [x] Phase 3: Fix auto-start for completed projects
 
 Fix the bug where completed projects (only closed PRs) don't auto-trigger when new tasks are added.
 
@@ -136,6 +136,8 @@ Fix the bug where completed projects (only closed PRs) don't auto-trigger when n
 - `test_determine_new_projects_treats_completed_project_as_ready`
 - `test_should_auto_trigger_approves_completed_project`
 - Update existing tests to verify `state="open"` is used
+
+**Completed:** Updated auto-start logic to check for open PRs only (not all PRs). This allows completed projects (with only closed PRs) to auto-trigger when new tasks are added. Added 4 new unit tests and updated existing tests to reflect the new behavior. All 603 unit tests pass.
 
 - [ ] Phase 4: Update E2E tests
 

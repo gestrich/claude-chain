@@ -157,8 +157,8 @@ class TestDetermineNewProjects:
 
         # Check output messages
         captured = capsys.readouterr()
-        assert "✓ project-a is a new project (no existing PRs)" in captured.out
-        assert "✓ project-b is a new project (no existing PRs)" in captured.out
+        assert "✓ project-a has no open PRs, ready for auto-start" in captured.out
+        assert "✓ project-b has no open PRs, ready for auto-start" in captured.out
 
     def test_all_existing_projects(self, capsys):
         """Test determining all projects have existing PRs"""
@@ -177,18 +177,18 @@ class TestDetermineNewProjects:
 
         # Check output messages
         captured = capsys.readouterr()
-        assert "✗ project-a has 2 existing PR(s), skipping" in captured.out
+        assert "✗ project-a has 2 open PR(s), skipping" in captured.out
 
     def test_mixed_new_and_existing(self, capsys):
         """Test mix of new and existing projects"""
         # Mock PRService with different returns for each project
         mock_pr_service = Mock()
 
-        def get_prs_side_effect(project_name, state="all"):
+        def get_prs_side_effect(project_name, state="open"):
             if project_name == "new-project":
-                return []  # No existing PRs
+                return []  # No open PRs
             else:
-                return [Mock()]  # Has existing PRs
+                return [Mock()]  # Has open PRs
 
         mock_pr_service.get_project_prs.side_effect = get_prs_side_effect
 
@@ -221,7 +221,7 @@ class TestDetermineNewProjects:
         assert new_projects[0].name == "modified-project"
 
         # PRService should only be called once (for modified project)
-        mock_pr_service.get_project_prs.assert_called_once_with("modified-project", state="all")
+        mock_pr_service.get_project_prs.assert_called_once_with("modified-project", state="open")
 
     def test_github_api_error_handling(self, capsys):
         """Test handling of GitHub API errors"""
@@ -253,12 +253,51 @@ class TestDetermineNewProjects:
         assert len(new_projects) == 0
         mock_pr_service.get_project_prs.assert_not_called()
 
+    def test_determine_new_projects_treats_completed_project_as_ready(self, capsys):
+        """Test that projects with only closed PRs (completed) are treated as ready for auto-start"""
+        # Mock PRService to return no open PRs (simulating a completed project)
+        mock_pr_service = Mock()
+        mock_pr_service.get_project_prs.return_value = []  # No open PRs
+
+        project = AutoStartProject(
+            "completed-project",
+            ProjectChangeType.MODIFIED,
+            "claude-step/completed-project/spec.md"
+        )
+
+        service = AutoStartService("owner/repo", mock_pr_service)
+        new_projects = service.determine_new_projects([project])
+
+        # Completed project should be ready for auto-start
+        assert len(new_projects) == 1
+        assert new_projects[0].name == "completed-project"
+
+        # Verify PRService was called with state="open"
+        mock_pr_service.get_project_prs.assert_called_once_with("completed-project", state="open")
+
+        # Check output message
+        captured = capsys.readouterr()
+        assert "✓ completed-project has no open PRs, ready for auto-start" in captured.out
+
+    def test_determine_new_projects_uses_state_open(self):
+        """Test that determine_new_projects() calls PRService with state='open'"""
+        mock_pr_service = Mock()
+        mock_pr_service.get_project_prs.return_value = [Mock()]  # Has open PRs
+
+        project = AutoStartProject("project-a", ProjectChangeType.MODIFIED, "claude-step/project-a/spec.md")
+
+        service = AutoStartService("owner/repo", mock_pr_service)
+        service.determine_new_projects([project])
+
+        # Verify state="open" is used
+        mock_pr_service.get_project_prs.assert_called_once_with("project-a", state="open")
+
 
 class TestShouldAutoTrigger:
     """Test should_auto_trigger() decision logic"""
 
     def test_trigger_new_project(self):
-        """Test triggering for new project"""
+        """Test triggering for new project (no open PRs)"""
         # Mock PRService to return no PRs
         mock_pr_service = Mock()
         mock_pr_service.get_project_prs.return_value = []
@@ -269,14 +308,14 @@ class TestShouldAutoTrigger:
         decision = service.should_auto_trigger(project)
 
         assert decision.should_trigger is True
-        assert decision.reason == "New project detected"
+        assert decision.reason == "No open PRs, ready for work"
         assert decision.project == project
 
     def test_skip_existing_project(self):
-        """Test skipping project with existing PRs"""
-        # Mock PRService to return existing PRs
+        """Test skipping project with open PRs"""
+        # Mock PRService to return open PRs
         mock_pr_service = Mock()
-        mock_pr_service.get_project_prs.return_value = [Mock(), Mock(), Mock()]  # 3 PRs
+        mock_pr_service.get_project_prs.return_value = [Mock(), Mock(), Mock()]  # 3 open PRs
 
         project = AutoStartProject("existing-project", ProjectChangeType.MODIFIED, "claude-step/existing-project/spec.md")
 
@@ -284,7 +323,7 @@ class TestShouldAutoTrigger:
         decision = service.should_auto_trigger(project)
 
         assert decision.should_trigger is False
-        assert decision.reason == "Project has 3 existing PR(s)"
+        assert decision.reason == "Project has 3 open PR(s)"
         assert decision.project == project
 
     def test_skip_deleted_project(self):
@@ -318,9 +357,9 @@ class TestShouldAutoTrigger:
         assert "Error checking PRs: API timeout" in decision.reason
 
     def test_single_existing_pr(self):
-        """Test project with single existing PR"""
+        """Test project with single open PR"""
         mock_pr_service = Mock()
-        mock_pr_service.get_project_prs.return_value = [Mock()]  # 1 PR
+        mock_pr_service.get_project_prs.return_value = [Mock()]  # 1 open PR
 
         project = AutoStartProject("project-a", ProjectChangeType.MODIFIED, "claude-step/project-a/spec.md")
 
@@ -328,7 +367,43 @@ class TestShouldAutoTrigger:
         decision = service.should_auto_trigger(project)
 
         assert decision.should_trigger is False
-        assert decision.reason == "Project has 1 existing PR(s)"
+        assert decision.reason == "Project has 1 open PR(s)"
+
+    def test_should_auto_trigger_approves_completed_project(self):
+        """Test that completed projects (only closed PRs) are approved for auto-trigger"""
+        # Mock PRService to return no open PRs (simulating a completed project)
+        mock_pr_service = Mock()
+        mock_pr_service.get_project_prs.return_value = []  # No open PRs
+
+        project = AutoStartProject(
+            "completed-project",
+            ProjectChangeType.MODIFIED,
+            "claude-step/completed-project/spec.md"
+        )
+
+        service = AutoStartService("owner/repo", mock_pr_service)
+        decision = service.should_auto_trigger(project)
+
+        # Completed project should trigger
+        assert decision.should_trigger is True
+        assert decision.reason == "No open PRs, ready for work"
+        assert decision.project == project
+
+        # Verify PRService was called with state="open"
+        mock_pr_service.get_project_prs.assert_called_once_with("completed-project", state="open")
+
+    def test_should_auto_trigger_uses_state_open(self):
+        """Test that should_auto_trigger() calls PRService with state='open'"""
+        mock_pr_service = Mock()
+        mock_pr_service.get_project_prs.return_value = [Mock()]  # Has open PRs
+
+        project = AutoStartProject("project-a", ProjectChangeType.MODIFIED, "claude-step/project-a/spec.md")
+
+        service = AutoStartService("owner/repo", mock_pr_service)
+        service.should_auto_trigger(project)
+
+        # Verify state="open" is used
+        mock_pr_service.get_project_prs.assert_called_once_with("project-a", state="open")
 
 
 class TestAutoStartDisabledConfiguration:
@@ -389,7 +464,7 @@ class TestAutoStartDisabledConfiguration:
 
         # Should trigger since auto-start is enabled by default
         assert decision.should_trigger is True
-        assert decision.reason == "New project detected"
+        assert decision.reason == "No open PRs, ready for work"
 
     def test_enabled_auto_start_explicit(self):
         """Test explicitly enabling auto-start"""
@@ -402,7 +477,7 @@ class TestAutoStartDisabledConfiguration:
         decision = service.should_auto_trigger(project)
 
         assert decision.should_trigger is True
-        assert decision.reason == "New project detected"
+        assert decision.reason == "No open PRs, ready for work"
 
 
 class TestServiceInitialization:
