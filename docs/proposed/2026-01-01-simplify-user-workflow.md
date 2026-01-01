@@ -115,7 +115,7 @@ outputs:
 - The outputs reference `steps.parse` which will be added in Phase 3
 - All 736 tests pass
 
-- [ ] Phase 2: Create event parsing module
+- [x] Phase 2: Create event parsing module
 
 Create a new Python module to parse GitHub event context and extract required information.
 
@@ -174,6 +174,16 @@ class GitHubEventContext:
 - Test should_skip logic (missing label, not merged, etc.)
 - Test checkout_ref determination
 - Test project extraction from branch name
+
+**Completed:** Created `GitHubEventContext` dataclass with:
+- `from_json()` class method that parses workflow_dispatch, pull_request, and push events
+- `should_skip()` method that checks for merged state and required labels on PRs
+- `get_checkout_ref()` method that determines the appropriate git ref for checkout
+- `get_default_base_branch()` method that returns the target branch for new PRs
+- `extract_project_from_branch()` method that parses ClaudeStep branch names (claude-step-{project}-{hash})
+- `has_label()` helper method for label checking
+- 40 comprehensive unit tests covering all parsing scenarios, skip logic, and edge cases
+- All 776 tests pass
 
 - [ ] Phase 3: Update action.yml to handle checkout and event parsing
 
