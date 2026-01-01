@@ -81,12 +81,12 @@ This redesign will create a more realistic E2E test suite that:
 
 ---
 
-- [ ] Phase 3: Add dynamic project generation
+- [x] Phase 3: Add dynamic project generation
 
 **Goal**: Generate test project files dynamically from fixtures in test source code, not from files stored in any branch.
 
 **Tasks**:
-1. Create new test fixtures in [conftest.py](tests/e2e/conftest.py) for test project content:
+1. ✅ Create new test fixtures in [conftest.py](tests/e2e/conftest.py) for test project content:
    ```python
    @pytest.fixture
    def test_spec_content() -> str:
@@ -128,18 +128,30 @@ This redesign will create a more realistic E2E test suite that:
    """
    ```
 
-2. Update the `test_project` fixture in [conftest.py](tests/e2e/conftest.py:48-61) to:
+2. ✅ Update the `test_project` fixture in [conftest.py](tests/e2e/conftest.py:48-61) to:
    - Return a generated project name like `"e2e-test-{uuid}"` instead of hardcoded `"e2e-test-project"`
    - Accept the content fixtures as parameters
 
-3. Add new `setup_test_project` fixture that:
+3. ✅ Add new `setup_test_project` fixture that:
    - Takes `test_project`, `test_spec_content`, `test_config_content`, `test_pr_template_content` as parameters
    - Uses `ProjectManager` to create the project on `main-e2e` branch
    - Commits and pushes to `main-e2e` (this will trigger auto-start workflow)
 
-4. Remove references to permanent `e2e-test-project` from test docstrings and comments
+4. ✅ Remove references to permanent `e2e-test-project` from test docstrings and comments
 
 **Expected outcome**: Test project files stored as Python strings in test code, dynamically written to `main-e2e` during test setup.
+
+**Technical notes**:
+- Created three new fixtures (`test_spec_content`, `test_config_content`, `test_pr_template_content`) that provide test project content as strings
+- Updated `test_project` fixture to generate dynamic project names using format `"e2e-test-{project_id}"` where `project_id` comes from the `project_id` fixture (8-character UUID)
+- Created `setup_test_project` fixture that orchestrates test project creation:
+  - Uses `TestProjectManager.create_test_project()` to create the project files locally
+  - Calls `commit_and_push_project()` with `branch=E2E_TEST_BRANCH` to push to `main-e2e`
+  - Returns the project name for use by tests
+- Updated `project_manager.py` to use `E2E_TEST_BRANCH` constant instead of hardcoded `"e2e-test"`:
+  - Changed default branch parameter in `commit_and_push_project()` and `remove_and_commit_project()` to use `E2E_TEST_BRANCH`
+  - Updated safety checks in `delete_test_project()` and `remove_and_commit_project()` to allow both `"test-project-"` and `"e2e-test-"` prefixes
+- Test project content is now completely defined in test code (no files in any branch) and generated dynamically per test run
 
 ---
 

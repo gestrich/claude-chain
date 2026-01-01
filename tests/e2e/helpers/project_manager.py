@@ -11,6 +11,8 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+from ..constants import E2E_TEST_BRANCH
+
 
 class TestProjectManager:
     """Manager for creating and cleaning up test projects in E2E tests."""
@@ -82,12 +84,12 @@ class TestProjectManager:
         """Delete a test project from the filesystem.
 
         Args:
-            project_name: Name of the project to delete (e.g., "test-project-abc123")
+            project_name: Name of the project to delete (e.g., "test-project-abc123" or "e2e-test-abc123")
         """
         project_path = self.projects_dir / project_name
 
         # Safety check: only delete test projects
-        if not project_name.startswith("test-project-"):
+        if not (project_name.startswith("test-project-") or project_name.startswith("e2e-test-")):
             raise ValueError(
                 f"Refusing to delete non-test project: {project_name}"
             )
@@ -98,14 +100,16 @@ class TestProjectManager:
     def commit_and_push_project(
         self,
         project_name: str,
-        branch: str = "e2e-test"
+        branch: str = None
     ) -> None:
         """Commit and push a test project to the repository.
 
         Args:
             project_name: Name of the project to commit
-            branch: Branch to commit to
+            branch: Branch to commit to. Defaults to E2E_TEST_BRANCH.
         """
+        if branch is None:
+            branch = E2E_TEST_BRANCH
         project_path = self.projects_dir / project_name
 
         # Add project to git
@@ -133,18 +137,20 @@ class TestProjectManager:
     def remove_and_commit_project(
         self,
         project_name: str,
-        branch: str = "e2e-test"
+        branch: str = None
     ) -> None:
         """Remove a test project and commit the removal.
 
         Args:
             project_name: Name of the project to remove
-            branch: Branch to commit to
+            branch: Branch to commit to. Defaults to E2E_TEST_BRANCH.
         """
+        if branch is None:
+            branch = E2E_TEST_BRANCH
         project_path = self.projects_dir / project_name
 
         # Safety check
-        if not project_name.startswith("test-project-"):
+        if not (project_name.startswith("test-project-") or project_name.startswith("e2e-test-")):
             raise ValueError(
                 f"Refusing to remove non-test project: {project_name}"
             )

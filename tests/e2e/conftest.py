@@ -46,22 +46,102 @@ def project_manager() -> TestProjectManager:
 
 
 @pytest.fixture
-def test_project() -> str:
-    """Provide the permanent E2E test project name.
+def test_spec_content() -> str:
+    """Return spec.md content for E2E tests with minimal AI cost.
 
-    This fixture returns the name of the permanent test project that exists
-    in the main branch at claude-step/e2e-test-project/.
+    Uses simple print statements to minimize AI processing time and cost.
+    Each task just prints a variation of "Hello World" - no actual code changes needed.
+    """
+    return """# E2E Test Project
 
-    With the new spec-file-source-of-truth design, test projects must exist
-    in the main branch. Instead of creating temporary projects, E2E tests now
-    use a permanent test project with 300+ tasks.
+**NOTE**: This is a test spec designed to minimize AI processing cost.
+No actual code changes are required - just print statements to verify the workflow.
+
+## Tasks
+
+- [ ] Task 1: Print hello - Use the AI to print "Hello, World!" to the console. No code files needed.
+- [ ] Task 2: Print greeting - Use the AI to print "Hello, E2E Test!" to the console. No code files needed.
+- [ ] Task 3: Print farewell - Use the AI to print "Goodbye, World!" to the console. No code files needed.
+"""
+
+
+@pytest.fixture
+def test_config_content() -> str:
+    """Return configuration.yml content for E2E tests."""
+    return """reviewers:
+  - username: gestrich
+    maxOpenPRs: 5
+"""
+
+
+@pytest.fixture
+def test_pr_template_content() -> str:
+    """Return pr-template.md content for E2E tests."""
+    return """## Changes
+
+{changes}
+
+## Testing
+
+This is an E2E test PR - no manual testing required.
+"""
+
+
+@pytest.fixture
+def test_project(project_id: str) -> str:
+    """Generate a unique test project name for this test run.
+
+    This fixture generates a dynamic project name instead of using a permanent
+    test project. The generated project will be created on the main-e2e branch
+    during test setup.
+
+    Args:
+        project_id: Unique 8-character hex string from project_id fixture
 
     Returns:
-        Project name: "e2e-test-project"
+        Project name: "e2e-test-{uuid}"
     """
-    return "e2e-test-project"
+    return f"e2e-test-{project_id}"
 
 
+@pytest.fixture
+def setup_test_project(
+    test_project: str,
+    test_spec_content: str,
+    test_config_content: str,
+    test_pr_template_content: str,
+    project_manager: TestProjectManager
+) -> str:
+    """Create and push a test project to main-e2e branch.
+
+    This fixture dynamically generates a test project from the content fixtures
+    and commits it to the main-e2e branch. This will trigger the auto-start workflow.
+
+    Args:
+        test_project: Unique project name from test_project fixture
+        test_spec_content: Content for spec.md
+        test_config_content: Content for configuration.yml
+        test_pr_template_content: Content for pr-template.md
+        project_manager: TestProjectManager instance
+
+    Returns:
+        Project name that was created
+    """
+    # Create project with provided content
+    project_manager.create_test_project(
+        project_id=test_project.replace("e2e-test-", ""),
+        spec_content=test_spec_content,
+        config_content=test_config_content,
+        pr_template_content=test_pr_template_content
+    )
+
+    # Commit and push to main-e2e branch (this will trigger auto-start)
+    project_manager.commit_and_push_project(
+        project_name=test_project,
+        branch=E2E_TEST_BRANCH
+    )
+
+    return test_project
 
 
 @pytest.fixture(scope="session", autouse=True)
