@@ -1380,3 +1380,181 @@ class TestPerModelBreakdown:
             assert len(breakdown.summary_models) == 1
             assert breakdown.main_models[0].model == "claude-3-haiku-20240307"
             assert breakdown.summary_models[0].model == "claude-sonnet-4-20250514"
+
+
+class TestCostBreakdownSerialization:
+    """Test suite for CostBreakdown.to_json() and from_json() methods"""
+
+    def test_to_json_returns_valid_json(self):
+        """Should return valid JSON string"""
+        # Arrange
+        breakdown = CostBreakdown(
+            main_cost=1.234567,
+            summary_cost=0.654321,
+            input_tokens=1000,
+            output_tokens=500,
+            cache_read_tokens=2000,
+            cache_write_tokens=300,
+            main_models=[
+                ModelUsage(
+                    model="claude-3-haiku-20240307",
+                    input_tokens=1000,
+                    output_tokens=500,
+                    cache_read_tokens=2000,
+                    cache_write_tokens=300,
+                )
+            ],
+        )
+
+        # Act
+        result = breakdown.to_json()
+
+        # Assert
+        parsed = json.loads(result)  # Should not raise
+        assert parsed["main_cost"] == 1.234567
+        assert parsed["summary_cost"] == 0.654321
+        assert parsed["input_tokens"] == 1000
+        assert parsed["output_tokens"] == 500
+        assert parsed["cache_read_tokens"] == 2000
+        assert parsed["cache_write_tokens"] == 300
+        assert len(parsed["models"]) == 1
+        assert parsed["models"][0]["model"] == "claude-3-haiku-20240307"
+
+    def test_from_json_restores_cost_breakdown(self):
+        """Should restore CostBreakdown from JSON"""
+        # Arrange
+        json_str = json.dumps({
+            "main_cost": 1.5,
+            "summary_cost": 0.5,
+            "input_tokens": 1000,
+            "output_tokens": 500,
+            "cache_read_tokens": 2000,
+            "cache_write_tokens": 300,
+            "models": [
+                {
+                    "model": "claude-3-haiku-20240307",
+                    "input_tokens": 1000,
+                    "output_tokens": 500,
+                    "cache_read_tokens": 2000,
+                    "cache_write_tokens": 300,
+                }
+            ]
+        })
+
+        # Act
+        result = CostBreakdown.from_json(json_str)
+
+        # Assert
+        assert result.main_cost == 1.5
+        assert result.summary_cost == 0.5
+        assert result.total_cost == 2.0
+        assert result.input_tokens == 1000
+        assert result.output_tokens == 500
+        assert result.cache_read_tokens == 2000
+        assert result.cache_write_tokens == 300
+        assert len(result.main_models) == 1
+        assert result.main_models[0].model == "claude-3-haiku-20240307"
+
+    def test_roundtrip_preserves_data(self):
+        """Should preserve all data through to_json/from_json roundtrip"""
+        # Arrange
+        original = CostBreakdown(
+            main_cost=1.234567,
+            summary_cost=0.654321,
+            input_tokens=1000,
+            output_tokens=500,
+            cache_read_tokens=2000,
+            cache_write_tokens=300,
+            main_models=[
+                ModelUsage(
+                    model="claude-3-haiku-20240307",
+                    input_tokens=600,
+                    output_tokens=300,
+                    cache_read_tokens=1200,
+                    cache_write_tokens=180,
+                ),
+                ModelUsage(
+                    model="claude-sonnet-4-20250514",
+                    input_tokens=400,
+                    output_tokens=200,
+                    cache_read_tokens=800,
+                    cache_write_tokens=120,
+                ),
+            ],
+            summary_models=[],  # Will be empty after roundtrip (models aggregated)
+        )
+
+        # Act
+        json_str = original.to_json()
+        restored = CostBreakdown.from_json(json_str)
+
+        # Assert
+        assert restored.main_cost == original.main_cost
+        assert restored.summary_cost == original.summary_cost
+        assert restored.total_cost == original.total_cost
+        assert restored.input_tokens == original.input_tokens
+        assert restored.output_tokens == original.output_tokens
+        assert restored.cache_read_tokens == original.cache_read_tokens
+        assert restored.cache_write_tokens == original.cache_write_tokens
+        # Models are aggregated on to_json, so count may differ
+        assert len(restored.get_aggregated_models()) == len(original.get_aggregated_models())
+
+    def test_from_json_handles_empty_models(self):
+        """Should handle empty models list"""
+        # Arrange
+        json_str = json.dumps({
+            "main_cost": 1.0,
+            "summary_cost": 0.5,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "models": []
+        })
+
+        # Act
+        result = CostBreakdown.from_json(json_str)
+
+        # Assert
+        assert result.main_cost == 1.0
+        assert result.summary_cost == 0.5
+        assert result.get_aggregated_models() == []
+
+    def test_from_json_raises_on_invalid_json(self):
+        """Should raise JSONDecodeError for invalid JSON"""
+        # Act & Assert
+        with pytest.raises(json.JSONDecodeError):
+            CostBreakdown.from_json("not valid json {]}")
+
+    def test_from_json_raises_on_missing_required_fields(self):
+        """Should raise KeyError when required fields are missing"""
+        # Act & Assert
+        with pytest.raises(KeyError):
+            CostBreakdown.from_json('{"main_cost": 1.0}')  # Missing summary_cost and others
+
+    def test_to_json_aggregates_models(self):
+        """Should aggregate same model from main and summary in JSON output"""
+        # Arrange
+        breakdown = CostBreakdown(
+            main_cost=0.1,
+            summary_cost=0.05,
+            input_tokens=300,
+            output_tokens=150,
+            cache_read_tokens=0,
+            cache_write_tokens=0,
+            main_models=[
+                ModelUsage(model="claude-3-haiku-20240307", input_tokens=100, output_tokens=50)
+            ],
+            summary_models=[
+                ModelUsage(model="claude-3-haiku-20240307", input_tokens=200, output_tokens=100)
+            ],
+        )
+
+        # Act
+        json_str = breakdown.to_json()
+        parsed = json.loads(json_str)
+
+        # Assert - should have single aggregated model
+        assert len(parsed["models"]) == 1
+        assert parsed["models"][0]["input_tokens"] == 300
+        assert parsed["models"][0]["output_tokens"] == 150

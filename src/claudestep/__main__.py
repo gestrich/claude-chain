@@ -72,9 +72,7 @@ def main():
             pr_url=os.environ.get("PR_URL", ""),
             project_name=os.environ.get("PROJECT_NAME", ""),
             task=os.environ.get("TASK_DESCRIPTION", ""),
-            main_cost=os.environ.get("MAIN_COST", "0"),
-            summary_cost=os.environ.get("SUMMARY_COST", "0"),
-            model_breakdown_json=os.environ.get("MODEL_BREAKDOWN", ""),
+            cost_breakdown_json=os.environ.get("COST_BREAKDOWN", ""),
             repo=os.environ.get("GITHUB_REPOSITORY", ""),
         )
     elif args.command == "statistics":

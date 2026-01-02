@@ -2,8 +2,7 @@
 Format Slack notification message for created PR.
 """
 
-import json
-
+from claudestep.domain.cost_breakdown import CostBreakdown
 from claudestep.infrastructure.github.actions import GitHubActionsHelper
 
 
@@ -13,9 +12,7 @@ def cmd_format_slack_notification(
     pr_url: str,
     project_name: str,
     task: str,
-    main_cost: str,
-    summary_cost: str,
-    model_breakdown_json: str,
+    cost_breakdown_json: str,
     repo: str,
 ) -> int:
     """
@@ -29,9 +26,7 @@ def cmd_format_slack_notification(
         pr_url: Pull request URL
         project_name: Name of the project
         task: Task description
-        main_cost: Cost of main refactoring task (USD) as string
-        summary_cost: Cost of PR summary generation (USD) as string
-        model_breakdown_json: JSON string with per-model cost breakdown
+        cost_breakdown_json: JSON string with complete cost breakdown (from CostBreakdown.to_json())
         repo: Repository in format owner/repo
 
     Outputs:
@@ -46,9 +41,7 @@ def cmd_format_slack_notification(
     pr_url = pr_url.strip()
     project_name = project_name.strip()
     task = task.strip()
-    main_cost = main_cost.strip()
-    summary_cost = summary_cost.strip()
-    model_breakdown_json = model_breakdown_json.strip()
+    cost_breakdown_json = cost_breakdown_json.strip()
 
     # If no PR, don't send notification
     if not pr_number or not pr_url:
@@ -57,37 +50,16 @@ def cmd_format_slack_notification(
         return 0
 
     try:
-        # Parse costs
-        try:
-            main_cost_val = float(main_cost)
-        except ValueError:
-            main_cost_val = 0.0
+        # Parse cost breakdown from structured JSON
+        cost_breakdown = CostBreakdown.from_json(cost_breakdown_json)
 
-        try:
-            summary_cost_val = float(summary_cost)
-        except ValueError:
-            summary_cost_val = 0.0
-
-        total_cost = main_cost_val + summary_cost_val
-
-        # Parse model breakdown
-        model_breakdown = []
-        if model_breakdown_json:
-            try:
-                model_breakdown = json.loads(model_breakdown_json)
-            except json.JSONDecodeError:
-                pass
-
-        # Format the Slack message
+        # Format the Slack message using typed model
         message = format_pr_notification(
             pr_number=pr_number,
             pr_url=pr_url,
             project_name=project_name,
             task=task,
-            main_cost=main_cost_val,
-            summary_cost=summary_cost_val,
-            total_cost=total_cost,
-            model_breakdown=model_breakdown,
+            cost_breakdown=cost_breakdown,
             repo=repo
         )
 
@@ -112,10 +84,7 @@ def format_pr_notification(
     pr_url: str,
     project_name: str,
     task: str,
-    main_cost: float,
-    summary_cost: float,
-    total_cost: float,
-    model_breakdown: list[dict],
+    cost_breakdown: CostBreakdown,
     repo: str
 ) -> str:
     """
@@ -126,10 +95,7 @@ def format_pr_notification(
         pr_url: PR URL
         project_name: Project name
         task: Task description
-        main_cost: Main task cost in USD
-        summary_cost: PR summary cost in USD
-        total_cost: Total cost in USD
-        model_breakdown: List of dicts with per-model cost data
+        cost_breakdown: CostBreakdown with costs and per-model data
         repo: Repository name
 
     Returns:
@@ -145,27 +111,26 @@ def format_pr_notification(
         "",
         "*💰 Cost Breakdown:*",
         "```",
-        f"Main task:      ${main_cost:.6f}",
-        f"PR summary:     ${summary_cost:.6f}",
+        f"Main task:      ${cost_breakdown.main_cost:.6f}",
+        f"PR summary:     ${cost_breakdown.summary_cost:.6f}",
         "─────────────────────────────",
-        f"Total:          ${total_cost:.6f}",
+        f"Total:          ${cost_breakdown.total_cost:.6f}",
         "```",
     ]
 
-    # Add per-model breakdown if available
-    if model_breakdown:
+    # Add per-model breakdown if available (using typed ModelUsage fields)
+    models = cost_breakdown.get_aggregated_models()
+    if models:
         lines.append("")
         lines.append("*📊 Per-Model Usage:*")
         lines.append("```")
-        for model in model_breakdown:
-            model_name = model.get("model", "unknown")
-            cost = model.get("cost", 0.0)
-            input_tokens = model.get("input_tokens", 0)
-            output_tokens = model.get("output_tokens", 0)
+        for model in models:
+            # Use typed fields directly instead of dict .get() access
+            calculated_cost = model.calculate_cost()
             # Truncate long model names for display
-            display_name = model_name[:30] if len(model_name) > 30 else model_name
+            display_name = model.model[:30] if len(model.model) > 30 else model.model
             lines.append(f"{display_name}")
-            lines.append(f"  Cost: ${cost:.6f} | In: {input_tokens:,} | Out: {output_tokens:,}")
+            lines.append(f"  Cost: ${calculated_cost:.6f} | In: {model.input_tokens:,} | Out: {model.output_tokens:,}")
         lines.append("```")
 
     return "\n".join(lines)

@@ -46,7 +46,7 @@ Rename the command to clearly indicate its purpose:
 - `action.yml`
 - `tests/unit/cli/commands/test_notify_pr.py` (rename)
 
-- [ ] Phase 2: Use `CostBreakdown` model in Slack formatting
+- [x] Phase 2: Use `CostBreakdown` model in Slack formatting
 
 Instead of passing three separate cost parameters, pass a serialized `CostBreakdown` and deserialize it:
 

@@ -413,6 +413,71 @@ class CostBreakdown:
             for m in models
         ]
 
+    def to_json(self) -> str:
+        """Serialize to JSON for passing between workflow steps.
+
+        Returns:
+            JSON string containing all cost breakdown data.
+        """
+        return json.dumps({
+            "main_cost": self.main_cost,
+            "summary_cost": self.summary_cost,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cache_read_tokens": self.cache_read_tokens,
+            "cache_write_tokens": self.cache_write_tokens,
+            "models": [
+                {
+                    "model": m.model,
+                    "input_tokens": m.input_tokens,
+                    "output_tokens": m.output_tokens,
+                    "cache_read_tokens": m.cache_read_tokens,
+                    "cache_write_tokens": m.cache_write_tokens,
+                }
+                for m in self.get_aggregated_models()
+            ]
+        })
+
+    @classmethod
+    def from_json(cls, json_str: str) -> 'CostBreakdown':
+        """Deserialize from JSON.
+
+        Args:
+            json_str: JSON string from to_json()
+
+        Returns:
+            CostBreakdown instance with all data restored.
+
+        Raises:
+            json.JSONDecodeError: If JSON is invalid
+            KeyError: If required fields are missing
+        """
+        data = json.loads(json_str)
+
+        # Parse model usage data
+        models = [
+            ModelUsage(
+                model=m["model"],
+                input_tokens=m["input_tokens"],
+                output_tokens=m["output_tokens"],
+                cache_read_tokens=m["cache_read_tokens"],
+                cache_write_tokens=m["cache_write_tokens"],
+            )
+            for m in data.get("models", [])
+        ]
+
+        return cls(
+            main_cost=data["main_cost"],
+            summary_cost=data["summary_cost"],
+            input_tokens=data["input_tokens"],
+            output_tokens=data["output_tokens"],
+            cache_read_tokens=data["cache_read_tokens"],
+            cache_write_tokens=data["cache_write_tokens"],
+            # Store aggregated models in main_models (they're already aggregated)
+            main_models=models,
+            summary_models=[],
+        )
+
     @staticmethod
     def _format_token_count(count: int) -> str:
         """Format token count with thousands separator."""

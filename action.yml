@@ -301,9 +301,7 @@ runs:
         PR_URL: ${{ steps.finalize.outputs.pr_url }}
         PROJECT_NAME: ${{ steps.prepare.outputs.project_name }}
         TASK_DESCRIPTION: ${{ steps.prepare.outputs.task_description }}
-        MAIN_COST: ${{ steps.post_pr_comment.outputs.main_cost }}
-        SUMMARY_COST: ${{ steps.post_pr_comment.outputs.summary_cost }}
-        MODEL_BREAKDOWN: ${{ steps.post_pr_comment.outputs.model_breakdown }}
+        COST_BREAKDOWN: ${{ steps.post_pr_comment.outputs.cost_breakdown }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         ACTION_PATH: ${{ github.action_path }}
       run: |

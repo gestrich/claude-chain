@@ -2,11 +2,34 @@
 Tests for format_slack_notification.py - Slack notification formatting command
 """
 
+import json
 from unittest.mock import Mock, patch
 
 import pytest
 
 from claudestep.cli.commands.format_slack_notification import cmd_format_slack_notification, format_pr_notification
+from claudestep.domain.cost_breakdown import CostBreakdown, ModelUsage
+
+
+def make_cost_breakdown_json(
+    main_cost: float = 0.0,
+    summary_cost: float = 0.0,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
+    models: list | None = None,
+) -> str:
+    """Helper to create valid CostBreakdown JSON for testing."""
+    return json.dumps({
+        "main_cost": main_cost,
+        "summary_cost": summary_cost,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_read_tokens": cache_read_tokens,
+        "cache_write_tokens": cache_write_tokens,
+        "models": models or []
+    })
 
 
 class TestFormatPrNotification:
@@ -15,40 +38,34 @@ class TestFormatPrNotification:
     def test_format_pr_notification_creates_slack_message(self):
         """Should format notification as Slack mrkdwn with proper structure"""
         # Arrange
-        pr_number = "42"
-        pr_url = "https://github.com/owner/repo/pull/42"
-        project_name = "my-project"
-        task = "Refactor authentication system"
-        main_cost = 0.123456
-        summary_cost = 0.045678
-        total_cost = 0.169134
-        repo = "owner/repo"
+        cost_breakdown = CostBreakdown(
+            main_cost=0.123456,
+            summary_cost=0.045678,
+        )
 
         # Act
         result = format_pr_notification(
-            pr_number=pr_number,
-            pr_url=pr_url,
-            project_name=project_name,
-            task=task,
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            model_breakdown=[],
-            repo=repo
+            pr_number="42",
+            pr_url="https://github.com/owner/repo/pull/42",
+            project_name="my-project",
+            task="Refactor authentication system",
+            cost_breakdown=cost_breakdown,
+            repo="owner/repo"
         )
 
         # Assert
         assert "🎉 *New PR Created*" in result
-        assert f"*PR:* <{pr_url}|#{pr_number}>" in result
-        assert f"*Project:* `{project_name}`" in result
-        assert f"*Task:* {task}" in result
+        assert "*PR:* <https://github.com/owner/repo/pull/42|#42>" in result
+        assert "*Project:* `my-project`" in result
+        assert "*Task:* Refactor authentication system" in result
 
     def test_format_pr_notification_includes_cost_breakdown(self):
         """Should include detailed cost breakdown in code block"""
         # Arrange
-        main_cost = 0.123456
-        summary_cost = 0.045678
-        total_cost = 0.169134
+        cost_breakdown = CostBreakdown(
+            main_cost=0.123456,
+            summary_cost=0.045678,
+        )
 
         # Act
         result = format_pr_notification(
@@ -56,10 +73,7 @@ class TestFormatPrNotification:
             pr_url="https://example.com",
             project_name="test",
             task="test task",
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            model_breakdown=[],
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
@@ -68,14 +82,15 @@ class TestFormatPrNotification:
         assert "```" in result
         assert "Main task:      $0.123456" in result
         assert "PR summary:     $0.045678" in result
-        assert "Total:          $0.169134" in result
+        assert "Total:          $0.169134" in result  # 0.123456 + 0.045678
 
     def test_format_pr_notification_uses_six_decimal_places(self):
         """Should display costs with 6 decimal places precision"""
         # Arrange
-        main_cost = 0.000001
-        summary_cost = 0.000002
-        total_cost = 0.000003
+        cost_breakdown = CostBreakdown(
+            main_cost=0.000001,
+            summary_cost=0.000002,
+        )
 
         # Act
         result = format_pr_notification(
@@ -83,24 +98,19 @@ class TestFormatPrNotification:
             pr_url="https://example.com",
             project_name="test",
             task="test",
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            model_breakdown=[],
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
         # Assert
         assert "$0.000001" in result
         assert "$0.000002" in result
-        assert "$0.000003" in result
+        assert "$0.000003" in result  # Total
 
     def test_format_pr_notification_handles_zero_costs(self):
         """Should format zero costs correctly"""
         # Arrange
-        main_cost = 0.0
-        summary_cost = 0.0
-        total_cost = 0.0
+        cost_breakdown = CostBreakdown(main_cost=0.0, summary_cost=0.0)
 
         # Act
         result = format_pr_notification(
@@ -108,10 +118,7 @@ class TestFormatPrNotification:
             pr_url="https://example.com",
             project_name="test",
             task="test",
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            model_breakdown=[],
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
@@ -124,9 +131,10 @@ class TestFormatPrNotification:
     def test_format_pr_notification_handles_large_costs(self):
         """Should format large cost values correctly"""
         # Arrange
-        main_cost = 123.456789
-        summary_cost = 45.678901
-        total_cost = 169.135690
+        cost_breakdown = CostBreakdown(
+            main_cost=123.456789,
+            summary_cost=45.678901,
+        )
 
         # Act
         result = format_pr_notification(
@@ -134,53 +142,46 @@ class TestFormatPrNotification:
             pr_url="https://example.com",
             project_name="test",
             task="test",
-            main_cost=main_cost,
-            summary_cost=summary_cost,
-            total_cost=total_cost,
-            model_breakdown=[],
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
         # Assert
         assert "$123.456789" in result
         assert "$45.678901" in result
-        assert "$169.135690" in result
+        assert "$169.135690" in result  # Total
 
     def test_format_pr_notification_formats_pr_link_as_slack_mrkdwn(self):
         """Should format PR link using Slack mrkdwn syntax"""
         # Arrange
-        pr_number = "99"
-        pr_url = "https://github.com/owner/repo/pull/99"
+        cost_breakdown = CostBreakdown(main_cost=0.0, summary_cost=0.0)
 
         # Act
         result = format_pr_notification(
-            pr_number=pr_number,
-            pr_url=pr_url,
+            pr_number="99",
+            pr_url="https://github.com/owner/repo/pull/99",
             project_name="test",
             task="test",
-            main_cost=0.0,
-            summary_cost=0.0,
-            total_cost=0.0,
-            model_breakdown=[],
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
         # Assert
         # Slack mrkdwn link format: <URL|Text>
-        assert f"<{pr_url}|#{pr_number}>" in result
+        assert "<https://github.com/owner/repo/pull/99|#99>" in result
 
     def test_format_pr_notification_includes_separator_line(self):
         """Should include visual separator in cost breakdown"""
+        # Arrange
+        cost_breakdown = CostBreakdown(main_cost=1.0, summary_cost=2.0)
+
         # Act
         result = format_pr_notification(
             pr_number="1",
             pr_url="https://example.com",
             project_name="test",
             task="test",
-            main_cost=1.0,
-            summary_cost=2.0,
-            total_cost=3.0,
-            model_breakdown=[],
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
@@ -188,16 +189,21 @@ class TestFormatPrNotification:
         assert "─────────────────────────────" in result
 
     def test_format_pr_notification_includes_model_breakdown(self):
-        """Should include per-model breakdown when provided"""
+        """Should include per-model breakdown when models are present"""
         # Arrange
-        model_breakdown = [
-            {
-                "model": "claude-3-haiku-20240307",
-                "input_tokens": 1000,
-                "output_tokens": 500,
-                "cost": 0.01,
-            }
-        ]
+        cost_breakdown = CostBreakdown(
+            main_cost=0.01,
+            summary_cost=0.0,
+            input_tokens=1000,
+            output_tokens=500,
+            main_models=[
+                ModelUsage(
+                    model="claude-3-haiku-20240307",
+                    input_tokens=1000,
+                    output_tokens=500,
+                )
+            ],
+        )
 
         # Act
         result = format_pr_notification(
@@ -205,10 +211,7 @@ class TestFormatPrNotification:
             pr_url="https://example.com",
             project_name="test",
             task="test",
-            main_cost=0.01,
-            summary_cost=0.0,
-            total_cost=0.01,
-            model_breakdown=model_breakdown,
+            cost_breakdown=cost_breakdown,
             repo="owner/repo"
         )
 
@@ -231,16 +234,22 @@ class TestCmdFormatSlackNotification:
         return mock
 
     @pytest.fixture
-    def default_params(self):
+    def default_cost_breakdown_json(self):
+        """Fixture providing standard cost breakdown JSON"""
+        return make_cost_breakdown_json(
+            main_cost=0.123456,
+            summary_cost=0.045678,
+        )
+
+    @pytest.fixture
+    def default_params(self, default_cost_breakdown_json):
         """Fixture providing standard notification parameters"""
         return {
             "pr_number": "42",
             "pr_url": "https://github.com/owner/repo/pull/42",
             "project_name": "my-project",
             "task": "Refactor authentication system",
-            "main_cost": "0.123456",
-            "summary_cost": "0.045678",
-            "model_breakdown_json": "",
+            "cost_breakdown_json": default_cost_breakdown_json,
             "repo": "owner/repo"
         }
 
@@ -281,6 +290,12 @@ class TestCmdFormatSlackNotification:
 
     def test_cmd_format_slack_notification_calculates_total_cost_correctly(self, mock_gh_actions):
         """Should calculate total cost as sum of main and summary costs"""
+        # Arrange
+        cost_breakdown_json = make_cost_breakdown_json(
+            main_cost=0.123,
+            summary_cost=0.456,
+        )
+
         # Act
         cmd_format_slack_notification(
             gh=mock_gh_actions,
@@ -288,9 +303,7 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="test",
             task="test",
-            main_cost="0.123",
-            summary_cost="0.456",
-            model_breakdown_json="",
+            cost_breakdown_json=cost_breakdown_json,
             repo="owner/repo"
         )
 
@@ -312,9 +325,7 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="test",
             task="test",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo="owner/repo"
         )
 
@@ -332,9 +343,7 @@ class TestCmdFormatSlackNotification:
             pr_url="",
             project_name="test",
             task="test",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo="owner/repo"
         )
 
@@ -351,9 +360,7 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="test",
             task="test",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo="owner/repo"
         )
 
@@ -370,9 +377,7 @@ class TestCmdFormatSlackNotification:
             pr_url="   ",
             project_name="test",
             task="test",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo="owner/repo"
         )
 
@@ -380,8 +385,8 @@ class TestCmdFormatSlackNotification:
         assert result == 0
         mock_gh_actions.write_output.assert_called_once_with("has_pr", "false")
 
-    def test_cmd_format_slack_notification_handles_invalid_cost_values(self, mock_gh_actions):
-        """Should treat invalid cost values as zero and continue"""
+    def test_cmd_format_slack_notification_handles_invalid_json(self, mock_gh_actions):
+        """Should return error when cost_breakdown_json is invalid"""
         # Act
         result = cmd_format_slack_notification(
             gh=mock_gh_actions,
@@ -389,43 +394,23 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="test",
             task="test",
-            main_cost="invalid",
-            summary_cost="not-a-number",
-            model_breakdown_json="",
+            cost_breakdown_json="not valid json {]}",
             repo="owner/repo"
         )
 
         # Assert
-        assert result == 0
-        calls = mock_gh_actions.write_output.call_args_list
-        slack_message_call = [c for c in calls if c[0][0] == "slack_message"]
-        message = slack_message_call[0][0][1]
-        assert "$0.000000" in message  # Should use 0.0 for invalid values
-
-    def test_cmd_format_slack_notification_uses_default_zero_costs(self, mock_gh_actions):
-        """Should use 0 for costs when cost strings are '0'"""
-        # Act
-        result = cmd_format_slack_notification(
-            gh=mock_gh_actions,
-            pr_number="42",
-            pr_url="https://github.com/owner/repo/pull/42",
-            project_name="test",
-            task="test",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
-            repo="owner/repo"
-        )
-
-        # Assert
-        assert result == 0
-        calls = mock_gh_actions.write_output.call_args_list
-        slack_message_call = [c for c in calls if c[0][0] == "slack_message"]
-        message = slack_message_call[0][0][1]
-        assert "$0.000000" in message
+        assert result == 1
+        mock_gh_actions.set_error.assert_called_once()
+        mock_gh_actions.write_output.assert_called_with("has_pr", "false")
 
     def test_cmd_format_slack_notification_strips_whitespace_from_inputs(self, mock_gh_actions):
         """Should strip whitespace from parameter values"""
+        # Arrange
+        cost_breakdown_json = make_cost_breakdown_json(
+            main_cost=0.123,
+            summary_cost=0.456,
+        )
+
         # Act
         result = cmd_format_slack_notification(
             gh=mock_gh_actions,
@@ -433,9 +418,7 @@ class TestCmdFormatSlackNotification:
             pr_url="  https://github.com/owner/repo/pull/42  ",
             project_name="  my-project  ",
             task="  test task  ",
-            main_cost="  0.123  ",
-            summary_cost="  0.456  ",
-            model_breakdown_json="",
+            cost_breakdown_json=f"  {cost_breakdown_json}  ",
             repo="owner/repo"
         )
 
@@ -459,9 +442,7 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="",
             task="",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo=""
         )
 
@@ -515,9 +496,7 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="test",
             task="",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo="owner/repo"
         )
 
@@ -537,9 +516,7 @@ class TestCmdFormatSlackNotification:
             pr_url="https://github.com/owner/repo/pull/42",
             project_name="",
             task="test task",
-            main_cost="0",
-            summary_cost="0",
-            model_breakdown_json="",
+            cost_breakdown_json=make_cost_breakdown_json(),
             repo="owner/repo"
         )
 
@@ -559,3 +536,41 @@ class TestCmdFormatSlackNotification:
         captured = capsys.readouterr()
         assert "=== Slack Notification Message ===" in captured.out
         assert "🎉 *New PR Created*" in captured.out
+
+    def test_cmd_format_slack_notification_with_model_breakdown(self, mock_gh_actions):
+        """Should include per-model breakdown from cost_breakdown_json"""
+        # Arrange
+        cost_breakdown_json = make_cost_breakdown_json(
+            main_cost=0.01,
+            summary_cost=0.005,
+            input_tokens=1000,
+            output_tokens=500,
+            models=[
+                {
+                    "model": "claude-3-haiku-20240307",
+                    "input_tokens": 1000,
+                    "output_tokens": 500,
+                    "cache_read_tokens": 0,
+                    "cache_write_tokens": 0,
+                }
+            ]
+        )
+
+        # Act
+        result = cmd_format_slack_notification(
+            gh=mock_gh_actions,
+            pr_number="42",
+            pr_url="https://github.com/owner/repo/pull/42",
+            project_name="test",
+            task="test",
+            cost_breakdown_json=cost_breakdown_json,
+            repo="owner/repo"
+        )
+
+        # Assert
+        assert result == 0
+        calls = mock_gh_actions.write_output.call_args_list
+        slack_message_call = [c for c in calls if c[0][0] == "slack_message"]
+        message = slack_message_call[0][0][1]
+        assert "*📊 Per-Model Usage:*" in message
+        assert "claude-3-haiku-20240307" in message

@@ -5,7 +5,6 @@ This command combines the AI-generated summary and cost breakdown into a single
 comment, using the reliable Python-based posting mechanism.
 """
 
-import json
 import os
 import subprocess
 import tempfile
@@ -42,10 +41,7 @@ def cmd_post_pr_comment(
 
     Outputs:
         comment_posted: "true" if comment was posted, "false" otherwise
-        main_cost: Cost of main task (USD)
-        summary_cost: Cost of summary generation (USD)
-        total_cost: Total cost (USD)
-        model_breakdown: JSON string with per-model cost breakdown
+        cost_breakdown: JSON string with complete cost breakdown (CostBreakdown.to_json())
 
     Returns:
         0 on success, 1 on error
@@ -71,14 +67,8 @@ def cmd_post_pr_comment(
             summary_execution_file
         )
 
-        # Output cost values for downstream steps
-        gh.write_output("main_cost", f"{cost_breakdown.main_cost:.6f}")
-        gh.write_output("summary_cost", f"{cost_breakdown.summary_cost:.6f}")
-        gh.write_output("total_cost", f"{cost_breakdown.total_cost:.6f}")
-
-        # Output per-model breakdown for Slack notifications
-        model_breakdown_json = json.dumps(cost_breakdown.to_model_breakdown_json())
-        gh.write_output("model_breakdown", model_breakdown_json)
+        # Output complete cost breakdown for downstream steps (single structured output)
+        gh.write_output("cost_breakdown", cost_breakdown.to_json())
 
         # Use domain models for parsing and formatting
         summary = SummaryFile.from_file(summary_file_path)
