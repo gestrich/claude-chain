@@ -190,6 +190,18 @@ runs:
         claude_args: '--allowedTools ${{ inputs.claude_allowed_tools }} --model ${{ inputs.claude_model }}'
         show_full_output: true
 
+    # Preserve main execution file before summary step overwrites it
+    # claude-code-action uses a fixed output filename, so we copy it to a unique location
+    - name: Preserve main execution file
+      id: preserve_main_execution
+      if: steps.claude_code.outputs.execution_file != ''
+      shell: bash
+      run: |
+        MAIN_EXEC_FILE="${{ runner.temp }}/claude-main-execution.json"
+        cp "${{ steps.claude_code.outputs.execution_file }}" "$MAIN_EXEC_FILE"
+        echo "main_execution_file=$MAIN_EXEC_FILE" >> $GITHUB_OUTPUT
+        echo "Preserved main execution file to: $MAIN_EXEC_FILE"
+
     - name: Finalize and create PR
       id: finalize
       if: always() && (inputs.github_event == '' || steps.parse.outputs.skip != 'true')
@@ -247,6 +259,17 @@ runs:
         claude_args: '--allowedTools Bash,Write --model ${{ inputs.claude_model }}'
         show_full_output: true
 
+    # Preserve summary execution file for consistent cost tracking
+    - name: Preserve summary execution file
+      id: preserve_summary_execution
+      if: steps.pr_summary.outputs.execution_file != ''
+      shell: bash
+      run: |
+        SUMMARY_EXEC_FILE="${{ runner.temp }}/claude-summary-execution.json"
+        cp "${{ steps.pr_summary.outputs.execution_file }}" "$SUMMARY_EXEC_FILE"
+        echo "summary_execution_file=$SUMMARY_EXEC_FILE" >> $GITHUB_OUTPUT
+        echo "Preserved summary execution file to: $SUMMARY_EXEC_FILE"
+
     - name: Post PR summary and cost
       id: post_pr_comment
       if: steps.finalize.outputs.pr_number != ''
@@ -256,8 +279,9 @@ runs:
         GH_TOKEN: ${{ inputs.github_token }}
         PR_NUMBER: ${{ steps.finalize.outputs.pr_number }}
         SUMMARY_FILE: ${{ steps.prepare_summary.outputs.summary_file }}
-        MAIN_EXECUTION_FILE: ${{ steps.claude_code.outputs.execution_file }}
-        SUMMARY_EXECUTION_FILE: ${{ steps.pr_summary.outputs.execution_file }}
+        # Use preserved execution files for accurate cost tracking
+        MAIN_EXECUTION_FILE: ${{ steps.preserve_main_execution.outputs.main_execution_file || steps.claude_code.outputs.execution_file }}
+        SUMMARY_EXECUTION_FILE: ${{ steps.preserve_summary_execution.outputs.summary_execution_file || steps.pr_summary.outputs.execution_file }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         ACTION_PATH: ${{ github.action_path }}
