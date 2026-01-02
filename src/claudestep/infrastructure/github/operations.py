@@ -54,6 +54,37 @@ def gh_api_call(endpoint: str, method: str = "GET") -> Dict[str, Any]:
         raise GitHubAPIError(f"Invalid JSON from API: {str(e)}")
 
 
+def compare_commits(repo: str, base: str, head: str) -> List[str]:
+    """Get list of changed files between two commits via GitHub API.
+
+    Uses the GitHub Compare API: GET /repos/{owner}/{repo}/compare/{base}...{head}
+
+    Args:
+        repo: GitHub repository (owner/name)
+        base: Base commit SHA or branch name
+        head: Head commit SHA or branch name
+
+    Returns:
+        List of file paths that were added, modified, or removed
+
+    Raises:
+        GitHubAPIError: If API call fails
+
+    Example:
+        >>> # Compare two commits
+        >>> changed_files = compare_commits("owner/repo", "abc123", "def456")
+        >>> for file_path in changed_files:
+        ...     print(f"Changed: {file_path}")
+        >>> # Compare branches
+        >>> changed_files = compare_commits("owner/repo", "main", "feature-branch")
+    """
+    endpoint = f"/repos/{repo}/compare/{base}...{head}"
+    response = gh_api_call(endpoint, method="GET")
+
+    files = response.get("files", [])
+    return [f["filename"] for f in files]
+
+
 def download_artifact_json(repo: str, artifact_id: int) -> Optional[Dict[str, Any]]:
     """Download and parse artifact JSON using GitHub API
 

@@ -12,6 +12,7 @@ import pytest
 
 from claudestep.domain.exceptions import GitHubAPIError
 from claudestep.infrastructure.github.operations import (
+    compare_commits,
     download_artifact_json,
     ensure_label_exists,
     file_exists_in_branch,
@@ -878,3 +879,142 @@ class TestListOpenPullRequests:
         assert "claudestep" in args
         assert "--limit" in args
         assert "25" in args
+
+
+class TestCompareCommits:
+    """Test suite for compare_commits function"""
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_success(self, mock_gh_api):
+        """Should return list of changed file paths"""
+        # Arrange
+        mock_gh_api.return_value = {
+            "files": [
+                {"filename": "src/main.py", "status": "modified"},
+                {"filename": "README.md", "status": "added"},
+                {"filename": "old_file.txt", "status": "removed"}
+            ]
+        }
+        repo = "owner/repo"
+        base = "abc123"
+        head = "def456"
+
+        # Act
+        result = compare_commits(repo, base, head)
+
+        # Assert
+        assert result == ["src/main.py", "README.md", "old_file.txt"]
+        mock_gh_api.assert_called_once_with(
+            f"/repos/{repo}/compare/{base}...{head}",
+            method="GET"
+        )
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_with_branch_names(self, mock_gh_api):
+        """Should work with branch names instead of SHAs"""
+        # Arrange
+        mock_gh_api.return_value = {
+            "files": [
+                {"filename": "feature.py", "status": "added"}
+            ]
+        }
+        repo = "owner/repo"
+        base = "main"
+        head = "feature-branch"
+
+        # Act
+        result = compare_commits(repo, base, head)
+
+        # Assert
+        assert result == ["feature.py"]
+        mock_gh_api.assert_called_once_with(
+            "/repos/owner/repo/compare/main...feature-branch",
+            method="GET"
+        )
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_empty_files_list(self, mock_gh_api):
+        """Should return empty list when no files changed"""
+        # Arrange
+        mock_gh_api.return_value = {"files": []}
+        repo = "owner/repo"
+        base = "abc123"
+        head = "abc123"  # Same commit
+
+        # Act
+        result = compare_commits(repo, base, head)
+
+        # Assert
+        assert result == []
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_missing_files_key(self, mock_gh_api):
+        """Should return empty list when files key is missing"""
+        # Arrange
+        mock_gh_api.return_value = {
+            "status": "identical",
+            "ahead_by": 0,
+            "behind_by": 0
+        }
+        repo = "owner/repo"
+        base = "abc123"
+        head = "abc123"
+
+        # Act
+        result = compare_commits(repo, base, head)
+
+        # Assert
+        assert result == []
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_propagates_api_error(self, mock_gh_api):
+        """Should propagate GitHubAPIError from gh_api_call"""
+        # Arrange
+        mock_gh_api.side_effect = GitHubAPIError("404 Not Found: base commit not found")
+        repo = "owner/repo"
+        base = "nonexistent"
+        head = "abc123"
+
+        # Act & Assert
+        with pytest.raises(GitHubAPIError, match="404 Not Found"):
+            compare_commits(repo, base, head)
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_many_files(self, mock_gh_api):
+        """Should handle response with many files"""
+        # Arrange
+        files = [{"filename": f"file_{i}.py", "status": "modified"} for i in range(100)]
+        mock_gh_api.return_value = {"files": files}
+        repo = "owner/repo"
+        base = "abc123"
+        head = "def456"
+
+        # Act
+        result = compare_commits(repo, base, head)
+
+        # Assert
+        assert len(result) == 100
+        assert result[0] == "file_0.py"
+        assert result[99] == "file_99.py"
+
+    @patch('claudestep.infrastructure.github.operations.gh_api_call')
+    def test_compare_commits_spec_file_detection(self, mock_gh_api):
+        """Should correctly return spec.md file paths for project detection"""
+        # Arrange
+        mock_gh_api.return_value = {
+            "files": [
+                {"filename": "claude-step/my-project/spec.md", "status": "modified"},
+                {"filename": "README.md", "status": "modified"},
+                {"filename": "src/main.py", "status": "added"}
+            ]
+        }
+        repo = "owner/repo"
+        base = "abc123"
+        head = "def456"
+
+        # Act
+        result = compare_commits(repo, base, head)
+
+        # Assert
+        assert "claude-step/my-project/spec.md" in result
+        assert len(result) == 3

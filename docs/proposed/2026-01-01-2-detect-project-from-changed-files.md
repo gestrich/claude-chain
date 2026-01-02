@@ -1,0 +1,232 @@
+# Detect Project from Changed Files via GitHub API
+
+## Background
+
+Currently, `parse_event.py` tries to determine the project name from:
+1. The `project_name` workflow input (for `workflow_dispatch`)
+2. The branch name pattern `claude-step-{project}-{hash}` (for `pull_request` events)
+
+For **push events** (triggered when a PR is merged or code is pushed directly to main), neither of these work:
+- No `project_name` input is provided
+- The branch being pushed to (`main`, `main-e2e`) doesn't contain the project name
+
+This causes the error: "Could not determine project name from branch pattern" and the workflow skips.
+
+**The Solution**: Use the GitHub Compare API to detect which spec files changed between `before_sha` and `after_sha`, then extract the project name from the file path (`claude-step/{project}/spec.md`).
+
+**Key Design Decisions**:
+1. Use this approach for ALL event types (push, workflow_dispatch without project_name, etc.) for consistency
+2. If multiple spec files are modified in a single push, throw an error (rare edge case, user should push separately)
+3. Remove the branch pattern parsing logic since it's no longer needed
+
+## Phases
+
+- [x] Phase 1: Add `compare_commits` function to infrastructure layer
+
+Add a new function to `src/claudestep/infrastructure/github/operations.py` that calls the GitHub Compare API.
+
+**Files modified:**
+- `src/claudestep/infrastructure/github/operations.py` - Added `compare_commits` function
+- `tests/unit/infrastructure/github/test_operations.py` - Added `TestCompareCommits` class with 7 test cases
+
+**Technical notes:**
+- Function uses the existing `gh_api_call` helper to call the GitHub Compare API
+- Returns list of file paths from the `files` array in the API response
+- Handles edge cases: empty files list, missing files key in response
+- Comprehensive test coverage including: success cases, branch name support, empty results, API error propagation, many files, and spec.md file detection
+
+**Implementation details:**
+```python
+def compare_commits(repo: str, base: str, head: str) -> List[str]:
+    """Get list of changed files between two commits via GitHub API.
+
+    Uses the GitHub Compare API: GET /repos/{owner}/{repo}/compare/{base}...{head}
+
+    Args:
+        repo: GitHub repository (owner/name)
+        base: Base commit SHA or branch name
+        head: Head commit SHA or branch name
+
+    Returns:
+        List of file paths that were added, modified, or removed
+
+    Raises:
+        GitHubAPIError: If API call fails
+    """
+    endpoint = f"/repos/{repo}/compare/{base}...{head}"
+    response = gh_api_call(endpoint, method="GET")
+
+    files = response.get("files", [])
+    return [f["filename"] for f in files]
+```
+
+- [ ] Phase 2: Add `detect_project_from_diff` function
+
+Add a helper function that takes a list of changed files and extracts the project name.
+
+**Files to modify:**
+- `src/claudestep/infrastructure/github/operations.py` (or could be in domain layer)
+
+**Implementation details:**
+```python
+def detect_project_from_diff(changed_files: List[str]) -> Optional[str]:
+    """Extract project name from changed spec files.
+
+    Looks for files matching pattern: claude-step/{project}/spec.md
+
+    Args:
+        changed_files: List of file paths from compare_commits
+
+    Returns:
+        Project name if exactly one spec.md was changed, None otherwise
+
+    Raises:
+        ValueError: If multiple different spec.md files were changed
+    """
+    spec_pattern = re.compile(r"^claude-step/([^/]+)/spec\.md$")
+    projects = set()
+
+    for file_path in changed_files:
+        match = spec_pattern.match(file_path)
+        if match:
+            projects.add(match.group(1))
+
+    if len(projects) == 0:
+        return None
+    elif len(projects) == 1:
+        return projects.pop()
+    else:
+        raise ValueError(f"Multiple projects modified in single push: {sorted(projects)}. Push changes to one project at a time.")
+```
+
+- [ ] Phase 3: Update `GitHubEventContext` to support project detection from diff
+
+Modify `src/claudestep/domain/github_event.py` to use the new approach.
+
+**Files to modify:**
+- `src/claudestep/domain/github_event.py`
+
+**Changes:**
+1. Remove `extract_project_from_branch()` method (no longer needed)
+2. Add new method `get_changed_files_context()` that returns `before_sha` and `after_sha` for push events
+3. For push events: return `(before_sha, after_sha)` from event payload
+4. For workflow_dispatch: return `None` (no diff context, require `project_name` input)
+
+**Note:** The actual API call happens in `parse_event.py`, not in the domain model (domain doesn't call infrastructure).
+
+- [ ] Phase 4: Update `parse_event.py` to detect project from changed files
+
+Modify the command to use the new detection approach.
+
+**Files to modify:**
+- `src/claudestep/cli/commands/parse_event.py`
+
+**New logic flow:**
+```python
+# Determine project name
+resolved_project = project_name  # From input (workflow_dispatch)
+
+if not resolved_project:
+    # Try to detect from changed files (push events)
+    if context.before_sha and context.after_sha:
+        changed_files = compare_commits(repo, context.before_sha, context.after_sha)
+        try:
+            resolved_project = detect_project_from_diff(changed_files)
+        except ValueError as e:
+            # Multiple projects modified
+            reason = str(e)
+            print(f"\n⏭️  Skipping: {reason}")
+            gh.write_output("skip", "true")
+            gh.write_output("skip_reason", reason)
+            return 0
+
+if not resolved_project:
+    if event_name == "workflow_dispatch":
+        reason = "No project_name provided for workflow_dispatch event"
+    else:
+        reason = "No spec.md changes detected in push"
+    print(f"\n⏭️  Skipping: {reason}")
+    gh.write_output("skip", "true")
+    gh.write_output("skip_reason", reason)
+    return 0
+```
+
+**Environment variable needed:**
+- Add `GITHUB_REPOSITORY` to the parse-event step in `action.yml` so the API call knows which repo to query
+
+- [ ] Phase 5: Update `action.yml` to pass repository context
+
+Ensure the parse-event step has access to the repository name for the API call.
+
+**Files to modify:**
+- `action.yml`
+
+**Change:** Add `GITHUB_REPOSITORY` to the parse-event step's environment:
+```yaml
+- name: Parse event and determine action
+  id: parse
+  if: inputs.github_event != ''
+  shell: bash
+  env:
+    EVENT_NAME: ${{ inputs.event_name }}
+    EVENT_JSON: ${{ inputs.github_event }}
+    PROJECT_NAME: ${{ inputs.project_name }}
+    DEFAULT_BASE_BRANCH: ${{ inputs.default_base_branch }}
+    PR_LABEL: ${{ inputs.pr_label }}
+    ACTION_PATH: ${{ github.action_path }}
+    GITHUB_REPOSITORY: ${{ github.repository }}  # ADD THIS
+  run: |
+    export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
+    python3 -m claudestep parse-event
+```
+
+- [ ] Phase 6: Revert E2E test workflow_dispatch changes
+
+Since push events will now correctly detect the project, we can remove the explicit `trigger_workflow()` calls we added earlier.
+
+**Files to modify:**
+- `tests/e2e/conftest.py` - Remove `gh.trigger_workflow()` from `setup_test_project` fixture
+- `tests/e2e/test_workflow_e2e.py` - Remove `gh.trigger_workflow()` from `test_merge_triggered_workflow`
+- Update docstrings to reflect that push events now work correctly
+
+**Note:** This phase may not be needed immediately if we're still running E2E tests via workflow (which uses GITHUB_TOKEN). The workflow_dispatch approach is still valid for that case. We can revisit this when implementing the local E2E execution plan.
+
+- [ ] Phase 7: Add unit tests for new functions
+
+Add comprehensive unit tests for the new infrastructure and detection functions.
+
+**Files to create/modify:**
+- `tests/unit/infrastructure/github/test_operations.py` - Tests for `compare_commits`
+- `tests/unit/infrastructure/github/test_operations.py` - Tests for `detect_project_from_diff`
+- `tests/unit/domain/test_github_event.py` - Update tests for modified `GitHubEventContext`
+
+**Test cases for `detect_project_from_diff`:**
+1. Single spec.md changed → returns project name
+2. No spec.md changed → returns None
+3. Multiple spec.md files changed → raises ValueError
+4. Other files changed (not spec.md) → returns None
+5. Spec.md in wrong directory structure → returns None
+
+- [ ] Phase 8: Validation
+
+**Automated testing:**
+1. Run unit tests:
+   ```bash
+   pytest tests/unit/ -v
+   ```
+
+2. Run integration tests:
+   ```bash
+   pytest tests/integration/ -v
+   ```
+
+**Manual verification (optional):**
+1. Push a spec file to `main-e2e` and verify workflow detects the project
+2. Merge a ClaudeStep PR and verify the next task is triggered
+
+**Success criteria:**
+- All unit tests pass
+- All integration tests pass
+- Push events to `main`/`main-e2e` correctly detect project from changed files
+- Workflow skips with clear error when multiple projects modified in single push
+- `workflow_dispatch` with `project_name` input still works as before
