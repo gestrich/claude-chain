@@ -4,20 +4,16 @@
 
 ### Convention: Multiple Actions in One Repository
 
-ClaudeStep provides **three GitHub Actions** in a single repository, plus an **auto-start workflow** for seamless onboarding:
+ClaudeStep provides **two GitHub Actions** in a single repository:
 
 1. **Main Action** (`action.yml`) - Core refactoring automation
-2. **Discovery Action** (`discovery/action.yml`) - Project discovery
-3. **Statistics Action** (`statistics/action.yml`) - Reporting and analytics
-4. **Auto-Start Workflow** (`.github/workflows/claudestep-auto-start.yml`) - Automatic first-task triggering
+2. **Statistics Action** (`statistics/action.yml`) - Reporting and analytics
 
 ### Directory Structure
 
 ```
 claude-refactor-chain/
 ├── action.yml                    # Main action (root for backwards compatibility)
-├── discovery/
-│   └── action.yml                # Discovery action
 ├── statistics/
 │   └── action.yml                # Statistics action
 ├── src/
@@ -53,13 +49,6 @@ claude-refactor-chain/
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     project_name: 'my-refactor'
-```
-
-**Discovery Action** (Project detection):
-```yaml
-- uses: gestrich/claude-step/discovery@v1
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 **Statistics Action** (Reporting):
@@ -489,7 +478,7 @@ When a ClaudeStep PR is merged:
 **ClaudeStep GitHub Actions** follow these key principles:
 
 ✅ **Python-First**: Business logic in Python, YAML as thin wrapper
-✅ **Multiple Actions**: Organized in subdirectories (`statistics/`, `discovery/`)
+✅ **Multiple Actions**: Organized in subdirectories (`statistics/`)
 ✅ **Shared Codebase**: All actions use the same Python package
 ✅ **Base Branch Source of Truth**: Spec files fetched from base branch via GitHub API
 ✅ **Testable**: Unit tests for Python code, not YAML

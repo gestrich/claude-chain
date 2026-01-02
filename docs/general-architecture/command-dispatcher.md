@@ -12,14 +12,10 @@ python3 -m claudestep <command>
 
 | Command | Description | Used By |
 |---------|-------------|---------|
-| `discover` | List all refactor projects | Discovery action |
-| `discover-ready` | List projects with capacity | Discovery action |
 | `prepare` | Setup before Claude Code execution | Main action |
 | `finalize` | Commit changes and create PR | Main action |
 | `prepare-summary` | Generate prompt for PR summary | Main action |
 | `statistics` | Generate reports and statistics | Statistics action |
-| `auto-start` | Detect new projects and trigger workflows | Auto-Start workflow |
-| `auto-start-summary` | Generate summary for auto-start results | Auto-Start workflow |
 
 ## Command Structure
 
@@ -99,8 +95,6 @@ src/claudestep/
 │
 └── cli/                     # Layer 4: Presentation layer
     ├── commands/
-    │   ├── discover.py
-    │   ├── discover_ready.py
     │   ├── prepare.py
     │   ├── finalize.py
     │   ├── prepare_summary.py

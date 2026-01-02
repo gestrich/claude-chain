@@ -127,8 +127,6 @@ python -m claudestep --help
 ```
 
 Available commands:
-- `discover` - Discover all refactor projects in the repository
-- `discover-ready` - Discover projects with capacity and available tasks
 - `prepare` - Prepare everything for Claude Code execution
 - `finalize` - Finalize after Claude Code execution (commit, PR, summary)
 - `prepare-summary` - Prepare prompt for PR summary generation
