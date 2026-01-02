@@ -202,14 +202,19 @@ if not resolved_project:
 **Environment variable needed:**
 - Add `GITHUB_REPOSITORY` to the parse-event step in `action.yml` so the API call knows which repo to query (done in Phase 5)
 
-- [ ] Phase 5: Update `action.yml` to pass repository context
+- [x] Phase 5: Update `action.yml` to pass repository context
 
 Ensure the parse-event step has access to the repository name for the API call.
 
-**Files to modify:**
-- `action.yml`
+**Files modified:**
+- `action.yml` - Added `GITHUB_REPOSITORY` environment variable to parse-event step
 
-**Change:** Add `GITHUB_REPOSITORY` to the parse-event step's environment:
+**Technical notes:**
+- Added `GITHUB_REPOSITORY: ${{ github.repository }}` to the `env` section of the "Parse event and determine action" step
+- This environment variable is read by `parse_event.py` to call the GitHub Compare API for project detection
+- All 811 unit and integration tests pass
+
+**Implementation details:**
 ```yaml
 - name: Parse event and determine action
   id: parse
@@ -222,7 +227,7 @@ Ensure the parse-event step has access to the repository name for the API call.
     DEFAULT_BASE_BRANCH: ${{ inputs.default_base_branch }}
     PR_LABEL: ${{ inputs.pr_label }}
     ACTION_PATH: ${{ github.action_path }}
-    GITHUB_REPOSITORY: ${{ github.repository }}  # ADD THIS
+    GITHUB_REPOSITORY: ${{ github.repository }}
   run: |
     export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
     python3 -m claudestep parse-event

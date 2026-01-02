@@ -127,6 +127,7 @@ runs:
         DEFAULT_BASE_BRANCH: ${{ inputs.default_base_branch }}
         PR_LABEL: ${{ inputs.pr_label }}
         ACTION_PATH: ${{ github.action_path }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
       run: |
         export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
         python3 -m claudestep parse-event
