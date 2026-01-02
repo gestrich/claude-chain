@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# =============================================================================
+# E2E TESTS TEMPORARILY DISABLED
+# =============================================================================
+# These tests are disabled because they require a specific GitHub Actions
+# environment and workflow setup that is not always available. The tests
+# interact with real GitHub workflows and can fail due to external factors
+# (workflow timeouts, GitHub API issues, etc.).
+#
+# To re-enable: Remove this exit statement.
+# =============================================================================
+echo "E2E tests temporarily disabled - see run_test.sh for details"
+exit 0
+
 # End-to-End Test Runner for ClaudeStep
 #
 # This script triggers the E2E integration tests for ClaudeStep remotely on GitHub.

@@ -6,6 +6,24 @@ GitHub helper instances, test project management, and cleanup utilities.
 
 import uuid
 import pytest
+
+
+# =============================================================================
+# E2E TESTS TEMPORARILY DISABLED
+# =============================================================================
+# These tests are disabled because they require a specific GitHub Actions
+# environment and workflow setup that is not always available. The tests
+# interact with real GitHub workflows and can fail due to external factors
+# (workflow timeouts, GitHub API issues, etc.).
+#
+# To re-enable: Remove this hook function.
+# =============================================================================
+def pytest_collection_modifyitems(config, items):
+    """Skip all E2E tests - temporarily disabled."""
+    skip_e2e = pytest.mark.skip(reason="E2E tests temporarily disabled - see conftest.py")
+    for item in items:
+        if "/e2e/" in str(item.fspath):
+            item.add_marker(skip_e2e)
 from pathlib import Path
 from typing import Generator, List
 
