@@ -13,6 +13,7 @@ import pytest
 from claudestep.domain.exceptions import GitHubAPIError
 from claudestep.infrastructure.github.operations import (
     compare_commits,
+    detect_project_from_diff,
     download_artifact_json,
     ensure_label_exists,
     file_exists_in_branch,
@@ -1018,3 +1019,147 @@ class TestCompareCommits:
         # Assert
         assert "claude-step/my-project/spec.md" in result
         assert len(result) == 3
+
+
+class TestDetectProjectFromDiff:
+    """Test suite for detect_project_from_diff function"""
+
+    def test_single_spec_file_changed(self):
+        """Should return project name when single spec.md changed"""
+        # Arrange
+        changed_files = [
+            "claude-step/my-project/spec.md",
+            "README.md",
+            "src/main.py"
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result == "my-project"
+
+    def test_no_spec_files_changed(self):
+        """Should return None when no spec.md files changed"""
+        # Arrange
+        changed_files = [
+            "src/main.py",
+            "README.md",
+            "tests/test_main.py"
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result is None
+
+    def test_multiple_spec_files_raises_error(self):
+        """Should raise ValueError when multiple spec.md files changed"""
+        # Arrange
+        changed_files = [
+            "claude-step/project-a/spec.md",
+            "claude-step/project-b/spec.md",
+            "README.md"
+        ]
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="Multiple projects modified"):
+            detect_project_from_diff(changed_files)
+
+    def test_multiple_spec_files_error_message_contains_projects(self):
+        """Should include project names in error message"""
+        # Arrange
+        changed_files = [
+            "claude-step/alpha/spec.md",
+            "claude-step/beta/spec.md"
+        ]
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="alpha") as exc_info:
+            detect_project_from_diff(changed_files)
+        assert "beta" in str(exc_info.value)
+        assert "Push changes to one project at a time" in str(exc_info.value)
+
+    def test_spec_in_wrong_directory_structure(self):
+        """Should return None for spec.md in wrong directory structure"""
+        # Arrange
+        changed_files = [
+            "specs/project/spec.md",  # Wrong parent directory
+            "claude-step/spec.md",  # Missing project subdirectory
+            "claude-step/project/nested/spec.md",  # Too deeply nested
+            "other-step/project/spec.md"  # Different prefix
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result is None
+
+    def test_empty_file_list(self):
+        """Should return None for empty file list"""
+        # Arrange
+        changed_files = []
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result is None
+
+    def test_project_name_with_hyphens(self):
+        """Should handle project names with hyphens"""
+        # Arrange
+        changed_files = [
+            "claude-step/my-awesome-project/spec.md"
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result == "my-awesome-project"
+
+    def test_project_name_with_underscores(self):
+        """Should handle project names with underscores"""
+        # Arrange
+        changed_files = [
+            "claude-step/my_project_v2/spec.md"
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result == "my_project_v2"
+
+    def test_ignores_other_files_in_project_directory(self):
+        """Should only detect spec.md, not other files in project directory"""
+        # Arrange
+        changed_files = [
+            "claude-step/project/README.md",
+            "claude-step/project/metadata.json",
+            "claude-step/project/tasks/task1.md"
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result is None
+
+    def test_multiple_files_same_project(self):
+        """Should return project name even with multiple files from same project"""
+        # Arrange
+        changed_files = [
+            "claude-step/my-project/spec.md",
+            "claude-step/my-project/README.md",
+            "src/related.py"
+        ]
+
+        # Act
+        result = detect_project_from_diff(changed_files)
+
+        # Assert
+        assert result == "my-project"

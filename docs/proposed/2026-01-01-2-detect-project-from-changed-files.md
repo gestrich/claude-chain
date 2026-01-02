@@ -60,12 +60,19 @@ def compare_commits(repo: str, base: str, head: str) -> List[str]:
     return [f["filename"] for f in files]
 ```
 
-- [ ] Phase 2: Add `detect_project_from_diff` function
+- [x] Phase 2: Add `detect_project_from_diff` function
 
 Add a helper function that takes a list of changed files and extracts the project name.
 
-**Files to modify:**
-- `src/claudestep/infrastructure/github/operations.py` (or could be in domain layer)
+**Files modified:**
+- `src/claudestep/infrastructure/github/operations.py` - Added `detect_project_from_diff` function
+- `tests/unit/infrastructure/github/test_operations.py` - Added `TestDetectProjectFromDiff` class with 10 test cases
+
+**Technical notes:**
+- Function uses regex pattern `^claude-step/([^/]+)/spec\.md$` to match spec files
+- Returns project name when exactly one spec.md is changed, None if none changed
+- Raises `ValueError` with sorted project names when multiple spec files are modified
+- Comprehensive test coverage including: single/no/multiple spec files, wrong directory structures, empty lists, project names with hyphens/underscores
 
 **Implementation details:**
 ```python

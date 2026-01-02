@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import subprocess
 import tempfile
 import zipfile
@@ -83,6 +84,52 @@ def compare_commits(repo: str, base: str, head: str) -> List[str]:
 
     files = response.get("files", [])
     return [f["filename"] for f in files]
+
+
+def detect_project_from_diff(changed_files: List[str]) -> Optional[str]:
+    """Extract project name from changed spec files.
+
+    Looks for files matching pattern: claude-step/{project}/spec.md
+
+    Args:
+        changed_files: List of file paths from compare_commits
+
+    Returns:
+        Project name if exactly one spec.md was changed, None otherwise
+
+    Raises:
+        ValueError: If multiple different spec.md files were changed
+
+    Example:
+        >>> # Single project changed
+        >>> files = ["claude-step/my-project/spec.md", "README.md"]
+        >>> detect_project_from_diff(files)
+        'my-project'
+        >>> # No spec files changed
+        >>> files = ["src/main.py", "README.md"]
+        >>> detect_project_from_diff(files)
+        None
+        >>> # Multiple projects changed (raises error)
+        >>> files = ["claude-step/project-a/spec.md", "claude-step/project-b/spec.md"]
+        >>> detect_project_from_diff(files)  # Raises ValueError
+    """
+    spec_pattern = re.compile(r"^claude-step/([^/]+)/spec\.md$")
+    projects = set()
+
+    for file_path in changed_files:
+        match = spec_pattern.match(file_path)
+        if match:
+            projects.add(match.group(1))
+
+    if len(projects) == 0:
+        return None
+    elif len(projects) == 1:
+        return projects.pop()
+    else:
+        raise ValueError(
+            f"Multiple projects modified in single push: {sorted(projects)}. "
+            "Push changes to one project at a time."
+        )
 
 
 def download_artifact_json(repo: str, artifact_id: int) -> Optional[Dict[str, Any]]:
