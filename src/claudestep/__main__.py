@@ -20,7 +20,7 @@ from claudestep.cli.commands.prepare import cmd_prepare
 from claudestep.cli.commands.prepare_summary import cmd_prepare_summary
 from claudestep.cli.commands.statistics import cmd_statistics
 from claudestep.cli.parser import create_parser
-from claudestep.domain.constants import DEFAULT_ALLOWED_TOOLS
+from claudestep.domain.constants import DEFAULT_ALLOWED_TOOLS, DEFAULT_BASE_BRANCH
 from claudestep.infrastructure.github.actions import GitHubActionsHelper
 
 
@@ -83,10 +83,12 @@ def main():
             repo=os.environ.get("GITHUB_REPOSITORY", ""),
         )
     elif args.command == "statistics":
+        # Use env var if set and non-empty, otherwise fall back to constant
+        env_base_branch = args.base_branch or os.environ.get("BASE_BRANCH", "")
         return cmd_statistics(
             gh=gh,
             repo=args.repo or os.environ.get("GITHUB_REPOSITORY", ""),
-            base_branch=args.base_branch or os.environ.get("BASE_BRANCH", "main"),
+            base_branch=env_base_branch if env_base_branch else DEFAULT_BASE_BRANCH,
             config_path=args.config_path or os.environ.get("CONFIG_PATH"),
             days_back=args.days_back or int(os.environ.get("STATS_DAYS_BACK", "30")),
             format_type=args.format or os.environ.get("STATS_FORMAT", "slack"),
@@ -102,10 +104,12 @@ def main():
         else:
             auto_start_enabled = auto_start_enabled_str
 
+        # Use env var if set and non-empty, otherwise fall back to constant
+        env_base_branch_auto = args.base_branch or os.environ.get("BASE_BRANCH", "")
         return cmd_auto_start(
             gh=gh,
             repo=args.repo or os.environ.get("GITHUB_REPOSITORY", ""),
-            base_branch=args.base_branch or os.environ.get("BASE_BRANCH", "main"),
+            base_branch=env_base_branch_auto if env_base_branch_auto else DEFAULT_BASE_BRANCH,
             ref_before=args.ref_before or os.environ.get("REF_BEFORE", ""),
             ref_after=args.ref_after or os.environ.get("REF_AFTER", ""),
             auto_start_enabled=auto_start_enabled,

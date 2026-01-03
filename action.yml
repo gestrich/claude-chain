@@ -28,9 +28,9 @@ inputs:
     description: 'Project folder name under /claude-step directory. Required if github_event is not provided.'
     required: false
   default_base_branch:
-    description: 'Default base branch if not specified in project config or event context'
+    # Default defined in src/claudestep/domain/constants.py (DEFAULT_BASE_BRANCH)
+    description: 'Default base branch if not specified in project config or event context. Defaults to main.'
     required: false
-    default: 'main'
   merged_pr_number:
     description: 'PR number that was just merged (for auto-detecting project from labels)'
     required: false
@@ -43,9 +43,9 @@ inputs:
     description: 'Comma-separated list of tools Claude can use. Defaults to minimal permissions: Read,Write,Edit,Bash(git add:*),Bash(git commit:*)'
     required: false
   base_branch:
-    description: 'Base branch where spec files must exist (fetched via GitHub API) and where pull requests will target'
+    # Default defined in src/claudestep/domain/constants.py (DEFAULT_BASE_BRANCH)
+    description: 'Base branch where spec files must exist (fetched via GitHub API) and where pull requests will target. Defaults to main.'
     required: false
-    default: 'main'
   working_directory:
     description: 'Working directory for the action'
     required: false

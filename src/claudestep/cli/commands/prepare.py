@@ -10,6 +10,7 @@ import json
 import os
 
 from claudestep.domain.config import load_config, load_config_from_string, validate_spec_format, validate_spec_format_from_string
+from claudestep.domain.constants import DEFAULT_BASE_BRANCH
 from claudestep.domain.exceptions import ConfigurationError, FileNotFoundError, GitError, GitHubAPIError
 from claudestep.domain.project import Project
 from claudestep.infrastructure.git.operations import run_git_command
@@ -81,7 +82,9 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper, default_allow
         project = Project(detected_project)
 
         # Get default base branch from environment (workflow provides this)
-        default_base_branch = os.environ.get("BASE_BRANCH", "main")
+        # Use env var if set and non-empty, otherwise fall back to constant
+        env_base_branch = os.environ.get("BASE_BRANCH", "")
+        default_base_branch = env_base_branch if env_base_branch else DEFAULT_BASE_BRANCH
         print(f"Validating spec files exist in branch '{default_base_branch}'...")
 
         # Check if spec.md exists (required) and configuration.yml (optional)
