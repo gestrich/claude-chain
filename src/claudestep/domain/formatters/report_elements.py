@@ -5,6 +5,8 @@ any formatting logic. Formatters (Slack, Markdown) know how to render
 these elements into their respective output formats.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional, Union
 
@@ -57,7 +59,7 @@ class ListItem:
         bullet: Bullet character (e.g., "-", "*", "•", or number for ordered lists)
     """
 
-    content: Union[str, Link, "TextBlock"]
+    content: Union[str, Link, TextBlock]
     bullet: str = "-"
 
 
@@ -126,6 +128,31 @@ class ProgressBar:
     label: Optional[str] = None
 
 
+@dataclass(frozen=True)
+class LabeledValue:
+    """A label-value pair element (e.g., "PR: #123", "Cost: $0.50").
+
+    Commonly used for metadata display in notifications and summaries.
+
+    Attributes:
+        label: The label text (will be rendered bold)
+        value: The value (can be plain text, Link, or styled TextBlock)
+    """
+
+    label: str
+    value: Union[str, Link, TextBlock]
+
+
+@dataclass(frozen=True)
+class Divider:
+    """A horizontal divider/separator element.
+
+    Renders as --- in markdown, similar in Slack.
+    """
+
+    pass
+
+
 @dataclass
 class Section:
     """A container grouping multiple elements with an optional header.
@@ -138,16 +165,16 @@ class Section:
     """
 
     elements: List[
-        Union[Header, TextBlock, Link, ListBlock, Table, ProgressBar, "Section"]
+        Union[Header, TextBlock, Link, ListBlock, Table, ProgressBar, LabeledValue, Divider, Section]
     ] = field(default_factory=list)
     header: Optional[Header] = None
 
     def add(
         self,
         element: Union[
-            Header, TextBlock, Link, ListBlock, Table, ProgressBar, "Section"
+            Header, TextBlock, Link, ListBlock, Table, ProgressBar, LabeledValue, Divider, Section
         ],
-    ) -> "Section":
+    ) -> Section:
         """Add an element to this section.
 
         Args:
@@ -169,4 +196,4 @@ class Section:
 
 
 # Type alias for any report element
-ReportElement = Union[Header, TextBlock, Link, ListBlock, Table, ProgressBar, Section]
+ReportElement = Union[Header, TextBlock, Link, ListBlock, Table, ProgressBar, LabeledValue, Divider, Section]

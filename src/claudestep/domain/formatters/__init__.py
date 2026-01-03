@@ -11,6 +11,8 @@ from claudestep.domain.formatters.report_elements import (
     TableRow,
     Table,
     ProgressBar,
+    LabeledValue,
+    Divider,
     Section,
     ReportElement,
 )
@@ -30,6 +32,8 @@ __all__ = [
     "TableRow",
     "Table",
     "ProgressBar",
+    "LabeledValue",
+    "Divider",
     "Section",
     "ReportElement",
     # Report formatters

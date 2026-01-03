@@ -1452,6 +1452,29 @@ def from_string(cls, value: str) -> Self:
 
 `Self` is cleaner, works correctly with subclasses, and avoids forward reference strings.
 
+### Use `from __future__ import annotations` for Self-Referential Types
+
+For classes that reference themselves in type hints (e.g., tree structures, containers with nested elements), use `from __future__ import annotations` to enable deferred evaluation:
+
+```python
+# ✅ Use: Deferred annotations for self-referential types
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Optional
+
+@dataclass
+class Section:
+    elements: List[Section]  # ✅ No quotes needed - deferred evaluation
+    parent: Optional[Section] = None
+
+    def add(self, element: Section) -> Section:  # ✅ Clean type hints
+        self.elements.append(element)
+        return self
+```
+
+Without `from __future__ import annotations`, you'd need quoted strings (`"Section"`) for forward references, which is less readable.
+
 ## Related Documentation
 
 - See [docs/completed/2025-12-30-reorganize-service-methods.md](../completed/2025-12-30-reorganize-service-methods.md) for the history of applying these principles to the codebase

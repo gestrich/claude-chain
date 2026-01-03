@@ -16,6 +16,8 @@ from claudestep.domain.formatters.report_elements import (
     ListBlock,
     Table,
     ProgressBar,
+    LabeledValue,
+    Divider,
     Section,
     ReportElement,
 )
@@ -51,6 +53,10 @@ class ReportFormatter(ABC):
             return self.format_table(element)
         elif isinstance(element, ProgressBar):
             return self.format_progress_bar(element)
+        elif isinstance(element, LabeledValue):
+            return self.format_labeled_value(element)
+        elif isinstance(element, Divider):
+            return self.format_divider(element)
         else:
             raise ValueError(f"Unknown element type: {type(element)}")
 
@@ -164,5 +170,29 @@ class ReportFormatter(ABC):
 
         Returns:
             Formatted progress bar string
+        """
+        pass
+
+    @abstractmethod
+    def format_labeled_value(self, labeled_value: LabeledValue) -> str:
+        """Format a labeled value element (e.g., "Label: value").
+
+        Args:
+            labeled_value: LabeledValue to format
+
+        Returns:
+            Formatted label-value string
+        """
+        pass
+
+    @abstractmethod
+    def format_divider(self, divider: Divider) -> str:
+        """Format a horizontal divider element.
+
+        Args:
+            divider: Divider to format
+
+        Returns:
+            Formatted divider string
         """
         pass

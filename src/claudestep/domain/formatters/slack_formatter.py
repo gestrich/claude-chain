@@ -14,6 +14,8 @@ from claudestep.domain.formatters.report_elements import (
     ListItem,
     Table,
     ProgressBar,
+    LabeledValue,
+    Divider,
 )
 from claudestep.domain.formatters.report_formatter import ReportFormatter
 from claudestep.domain.formatters.table_formatter import TableFormatter
@@ -120,3 +122,30 @@ class SlackReportFormatter(ReportFormatter):
         if progress_bar.label:
             return f"{bar} {progress_bar.label}"
         return f"{bar} {pct:.0f}%"
+
+    def format_labeled_value(self, labeled_value: LabeledValue) -> str:
+        """Format a labeled value as bold label with value.
+
+        Args:
+            labeled_value: LabeledValue to format
+
+        Returns:
+            Formatted string like "*Label:* value"
+        """
+        value = labeled_value.value
+        if isinstance(value, Link):
+            value = self.format_link(value)
+        elif isinstance(value, TextBlock):
+            value = self.format_text_block(value)
+        return f"*{labeled_value.label}:* {value}"
+
+    def format_divider(self, _divider: Divider) -> str:
+        """Format a horizontal divider.
+
+        Args:
+            divider: Divider to format
+
+        Returns:
+            Divider string (dashes work in Slack)
+        """
+        return "---"

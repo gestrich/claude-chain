@@ -21,7 +21,7 @@ This consolidates the scattered formatting logic into one cohesive domain model.
 
 ## Phases
 
-- [ ] Phase 1: Extend report elements for PR notifications
+- [x] Phase 1: Extend report elements for PR notifications
 
 Add any new element types needed for PR notifications to `src/claudestep/domain/formatters/report_elements.py`:
 - `CodeBlock` - for inline code like project names (renders as backticks in markdown, may differ in Slack)
