@@ -16,7 +16,7 @@ The key insight is that `StatisticsReport` should be the **single source of trut
 
 ## Phases
 
-- [ ] Phase 1: Extend Domain Models for Task-PR Mapping
+- [x] Phase 1: Extend Domain Models for Task-PR Mapping
 
 Add new domain models and extend `ProjectStats` to hold detailed task-PR relationships:
 

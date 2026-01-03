@@ -1408,6 +1408,28 @@ class ProjectStats:
 
 If you have a genuine cycle, either move shared code to a third module or refactor so the lower-level module doesn't need higher-level types.
 
+## Type Annotations
+
+### Use `Self` for Factory Methods
+
+When a classmethod or factory returns an instance of its own class, use `Self` from `typing` instead of quoted string annotations:
+
+```python
+# ❌ Avoid: Quoted string annotation
+@classmethod
+def from_string(cls, value: str) -> "MyClass":
+    ...
+
+# ✅ Use: Self type (Python 3.11+)
+from typing import Self
+
+@classmethod
+def from_string(cls, value: str) -> Self:
+    ...
+```
+
+`Self` is cleaner, works correctly with subclasses, and avoids forward reference strings.
+
 ## Related Documentation
 
 - See [docs/completed/2025-12-30-reorganize-service-methods.md](../completed/2025-12-30-reorganize-service-methods.md) for the history of applying these principles to the codebase

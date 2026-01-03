@@ -9,7 +9,38 @@ Following the principle: "Parse once into well-formed models"
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional
+from enum import Enum
+from typing import Dict, List, Optional, Self
+
+
+class PRState(Enum):
+    """State of a GitHub pull request.
+
+    Represents the three possible states of a PR as returned by GitHub API.
+    """
+
+    OPEN = "open"
+    CLOSED = "closed"
+    MERGED = "merged"
+
+    @classmethod
+    def from_string(cls, state: str) -> Self:
+        """Parse PR state from string (case-insensitive).
+
+        Args:
+            state: State string from GitHub API (e.g., "OPEN", "open", "merged")
+
+        Returns:
+            PRState enum value
+
+        Raises:
+            ValueError: If state string is not a valid PR state
+        """
+        normalized = state.lower()
+        for member in cls:
+            if member.value == normalized:
+                return member
+        raise ValueError(f"Invalid PR state: {state}")
 
 
 @dataclass

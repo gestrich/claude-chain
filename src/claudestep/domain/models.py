@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Dict, List, Literal, Optional
 from claudestep.domain.formatters.table_formatter import TableFormatter
 from claudestep.domain.formatting import format_usd
-from claudestep.domain.github_models import GitHubPullRequest
+from claudestep.domain.github_models import GitHubPullRequest, PRState
 
 
 @dataclass(frozen=True)
@@ -80,6 +80,88 @@ class BranchInfo:
             )
 
         return None
+
+
+class TaskStatus(Enum):
+    """Status of a task in the spec.md file.
+
+    Used to track whether a task is pending, in progress, or completed.
+    """
+
+    PENDING = "pending"  # Task not started, no PR
+    IN_PROGRESS = "in_progress"  # Task has open PR
+    COMPLETED = "completed"  # Task marked as done in spec (checkbox checked)
+
+
+@dataclass
+class TaskWithPR:
+    """A task from spec.md linked to its associated PR (if any).
+
+    This model represents the relationship between a task defined in spec.md
+    and the GitHub PR that implements it. Used for detailed statistics reporting
+    to show task-level progress and identify orphaned PRs.
+
+    Attributes:
+        task_hash: 8-character hash from spec task (stable identifier)
+        description: Task description text from spec.md
+        status: Current task status (PENDING, IN_PROGRESS, COMPLETED)
+        pr: Associated GitHub PR if one exists, None otherwise
+
+    Examples:
+        >>> # Task with associated open PR
+        >>> task = TaskWithPR(
+        ...     task_hash="a3f2b891",
+        ...     description="Add user authentication",
+        ...     status=TaskStatus.IN_PROGRESS,
+        ...     pr=some_pr
+        ... )
+        >>> task.has_pr
+        True
+
+        >>> # Task without PR
+        >>> task = TaskWithPR(
+        ...     task_hash="b4c3d2e1",
+        ...     description="Add input validation",
+        ...     status=TaskStatus.PENDING,
+        ...     pr=None
+        ... )
+        >>> task.has_pr
+        False
+    """
+
+    task_hash: str
+    description: str
+    status: TaskStatus
+    pr: Optional[GitHubPullRequest] = None
+
+    @property
+    def has_pr(self) -> bool:
+        """Check if this task has an associated PR.
+
+        Returns:
+            True if task has a PR, False otherwise
+        """
+        return self.pr is not None
+
+    @property
+    def pr_number(self) -> Optional[int]:
+        """Get the PR number if available.
+
+        Returns:
+            PR number or None if no PR
+        """
+        return self.pr.number if self.pr else None
+
+    @property
+    def pr_state(self) -> Optional[PRState]:
+        """Get the PR state if available.
+
+        Returns:
+            PRState enum value or None if no PR
+        """
+        if self.pr is None:
+            return None
+        return PRState.from_string(self.pr.state)
 
 
 def parse_iso_timestamp(timestamp_str: str) -> datetime:
@@ -334,7 +416,21 @@ class TeamMemberStats:
 
 
 class ProjectStats:
-    """Statistics for a single project"""
+    """Statistics for a single project
+
+    Attributes:
+        project_name: Name of the project
+        spec_path: Path to the spec.md file
+        total_tasks: Total number of tasks in spec.md
+        completed_tasks: Number of completed tasks (checked off)
+        in_progress_tasks: Number of tasks with open PRs
+        pending_tasks: Number of tasks without PRs
+        total_cost_usd: Total AI cost for this project
+        open_prs: List of open PRs for this project
+        stale_pr_count: Number of PRs that are stale
+        tasks: Detailed list of tasks with their PR associations
+        orphaned_prs: PRs whose task hashes don't match any current spec task
+    """
 
     def __init__(self, project_name: str, spec_path: str):
         self.project_name = project_name
@@ -346,6 +442,9 @@ class ProjectStats:
         self.total_cost_usd = 0.0
         self.open_prs: List[GitHubPullRequest] = []
         self.stale_pr_count: int = 0
+        # New: Detailed task-PR mapping
+        self.tasks: List[TaskWithPR] = []
+        self.orphaned_prs: List[GitHubPullRequest] = []
 
     @property
     def completion_percentage(self) -> float:
