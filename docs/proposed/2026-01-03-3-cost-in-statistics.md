@@ -113,7 +113,7 @@ Add artifact download and cost aggregation to `StatisticsService`:
 - Rate limiting: Artifact API calls may hit limits for large projects
 - Time window: Only count costs for PRs within the `days_back` period
 
-- [ ] Phase 3: Verify Statistics Display
+- [x] Phase 3: Verify Statistics Display
 
 Ensure cost displays correctly in all statistics output formats:
 

@@ -505,6 +505,8 @@ class ProjectStats:
             status_parts.append(f"🔄{self.in_progress_tasks}")
         if self.pending_tasks > 0:
             status_parts.append(f"⏸️{self.pending_tasks}")
+        if self.total_cost_usd > 0:
+            status_parts.append(f"💰{format_usd(self.total_cost_usd)}")
 
         lines.append(" · ".join(status_parts))
 
