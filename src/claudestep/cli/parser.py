@@ -47,6 +47,10 @@ def create_parser() -> argparse.ArgumentParser:
         "format-slack-notification",
         help="Format Slack notification message for created PR"
     )
+    parser_create_artifact = subparsers.add_parser(
+        "create-artifact",
+        help="Create task metadata artifact with cost data"
+    )
     parser_statistics = subparsers.add_parser(
         "statistics",
         help="Generate statistics and reports"
