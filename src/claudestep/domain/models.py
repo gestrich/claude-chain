@@ -490,8 +490,12 @@ class StatisticsReport:
 
         return "\n".join(lines)
 
-    def format_for_slack(self) -> str:
-        """Complete report in Slack mrkdwn format with tables"""
+    def format_for_slack(self, show_reviewer_stats: bool = False) -> str:
+        """Complete report in Slack mrkdwn format with tables
+
+        Args:
+            show_reviewer_stats: Whether to include the reviewer leaderboard (default: False)
+        """
         fmt = MarkdownFormatter(for_slack=True)
         lines = []
 
@@ -505,8 +509,8 @@ class StatisticsReport:
             lines.append(fmt.italic(f"Generated: {timestamp}"))
             lines.append("")
 
-        # Leaderboard Table
-        if self.team_stats:
+        # Leaderboard Table (only if enabled)
+        if show_reviewer_stats and self.team_stats:
             # Filter to active members only
             sorted_members = sorted(
                 self.team_stats.items(),

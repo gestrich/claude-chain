@@ -108,7 +108,9 @@ class TestCmdStatistics:
 
         # Assert
         assert result == 0
-        mock_service.collect_all_statistics.assert_called_once_with(config_path=None, days_back=30)
+        mock_service.collect_all_statistics.assert_called_once_with(
+            config_path=None, days_back=30, show_reviewer_stats=False
+        )
 
         # Verify Slack output was written
         slack_output_calls = [
@@ -156,7 +158,7 @@ class TestCmdStatistics:
         # Assert
         assert result == 0
         mock_service.collect_all_statistics.assert_called_once_with(
-            config_path="/path/to/config.yml", days_back=7
+            config_path="/path/to/config.yml", days_back=7, show_reviewer_stats=False
         )
 
         # Verify JSON output was written
@@ -193,12 +195,12 @@ class TestCmdStatistics:
 
         # Assert
         assert result == 0
-        mock_collect.assert_called_once_with(config_path=None, days_back=30)
+        mock_collect.assert_called_once_with(config_path=None, days_back=30, show_reviewer_stats=False)
 
     def test_cmd_statistics_writes_leaderboard_when_present(
         self, mock_github_helper, sample_statistics_report
     ):
-        """Should write leaderboard to step summary when team stats exist"""
+        """Should write leaderboard to step summary when team stats exist and enabled"""
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
@@ -212,11 +214,12 @@ class TestCmdStatistics:
             )
             mock_collect.return_value = sample_statistics_report
 
-            # Act
+            # Act - must enable show_reviewer_stats to see leaderboard
             result = cmd_statistics(
                 gh=mock_github_helper,
                 repo="owner/repo",
-                format_type="slack"
+                format_type="slack",
+                show_reviewer_stats=True
             )
 
         # Assert
@@ -261,7 +264,7 @@ class TestCmdStatistics:
     def test_cmd_statistics_writes_team_member_activity(
         self, mock_github_helper, sample_statistics_report
     ):
-        """Should write team member activity sorted by merged count descending"""
+        """Should write team member activity sorted by merged count descending when enabled"""
         # Arrange
         with patch(
             "claudestep.cli.commands.statistics.StatisticsService"
@@ -271,11 +274,12 @@ class TestCmdStatistics:
             mock_service_class.return_value = mock_service
             mock_collect.return_value = sample_statistics_report
 
-            # Act
+            # Act - must enable show_reviewer_stats to see team member activity
             result = cmd_statistics(
                 gh=mock_github_helper,
                 repo="owner/repo",
-                format_type="slack"
+                format_type="slack",
+                show_reviewer_stats=True
             )
 
         # Assert
@@ -305,11 +309,12 @@ class TestCmdStatistics:
             mock_service_class.return_value = mock_service
             mock_collect.return_value = empty_statistics_report
 
-            # Act
+            # Act - with show_reviewer_stats=True to test team member section
             result = cmd_statistics(
                 gh=mock_github_helper,
                 repo="owner/repo",
-                format_type="slack"
+                format_type="slack",
+                show_reviewer_stats=True
             )
 
         # Assert
@@ -531,7 +536,7 @@ class TestCmdStatistics:
 
         # Assert
         assert result == 0
-        mock_collect.assert_called_once_with(config_path=None, days_back=90)
+        mock_collect.assert_called_once_with(config_path=None, days_back=90, show_reviewer_stats=False)
 
     def test_cmd_statistics_no_leaderboard_when_empty(
         self, mock_github_helper, sample_statistics_report

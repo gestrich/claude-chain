@@ -73,6 +73,11 @@ def create_parser() -> argparse.ArgumentParser:
         choices=["slack", "json"],
         help="Output format (default: slack)"
     )
+    parser_statistics.add_argument(
+        "--show-reviewer-stats",
+        action="store_true",  # Flag presence = True, absence = False
+        help="Show reviewer leaderboard statistics (default: hidden)"
+    )
     parser_auto_start = subparsers.add_parser(
         "auto-start",
         help="Detect new projects and trigger workflows"

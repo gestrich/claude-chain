@@ -19,7 +19,7 @@ Key existing components:
 
 ## Phases
 
-- [ ] Phase 1: Add flag to disable reviewer leaderboard
+- [x] Phase 1: Add flag to disable reviewer leaderboard
 
 Add `show_reviewer_stats` parameter to control whether reviewer statistics are shown. Default to `false` (disabled).
 

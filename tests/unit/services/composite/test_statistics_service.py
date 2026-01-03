@@ -290,15 +290,20 @@ class TestStatisticsReport:
         member.merged_prs = [PRReference(pr_number=1, title="Test", project="test", timestamp=timestamp)]
         report.add_team_member(member)
 
+        # Without show_reviewer_stats, leaderboard is hidden
         slack_msg = report.format_for_slack()
         assert "ClaudeStep Statistics Report" in slack_msg
         assert "test-project" in slack_msg
-        assert "alice" in slack_msg
-        # Check for table format
+        assert "alice" not in slack_msg  # Hidden by default
+        assert "Leaderboard" not in slack_msg  # Hidden by default
         assert "```" in slack_msg  # Code block for table
         assert "Total" in slack_msg  # Table header
-        assert "Merged" in slack_msg  # Leaderboard header
         assert "2025-01-01" in slack_msg
+
+        # With show_reviewer_stats=True, leaderboard appears
+        slack_msg_with_reviewers = report.format_for_slack(show_reviewer_stats=True)
+        assert "alice" in slack_msg_with_reviewers
+        assert "Merged" in slack_msg_with_reviewers  # Leaderboard header
 
     def test_format_for_pr_comment_single_project(self):
         """Test PR comment formatting with single project"""
@@ -367,7 +372,7 @@ class TestStatisticsReport:
         assert data["team_members"]["alice"]["open_count"] == 0
 
     def test_team_stats_sorting(self):
-        """Test that team stats are sorted by activity"""
+        """Test that team stats are sorted by activity when enabled"""
         report = StatisticsReport()
         timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -384,7 +389,8 @@ class TestStatisticsReport:
         charlie.merged_prs = [PRReference(pr_number=i, title=f"PR {i}", project="proj", timestamp=timestamp) for i in range(10)]
         report.add_team_member(charlie)
 
-        slack_msg = report.format_for_slack()
+        # Must enable show_reviewer_stats to see team stats in output
+        slack_msg = report.format_for_slack(show_reviewer_stats=True)
 
         # Charlie should appear first (most active), then alice, then bob
         # Table format doesn't use @ prefix
@@ -549,7 +555,7 @@ class TestLeaderboard:
         assert "@charlie" not in leaderboard
 
     def test_leaderboard_in_slack_output(self):
-        """Test leaderboard appears in Slack formatted output"""
+        """Test leaderboard appears in Slack formatted output when enabled"""
         report = StatisticsReport()
         report.generated_at = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
         timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
@@ -558,7 +564,12 @@ class TestLeaderboard:
         alice.merged_prs = [PRReference(pr_number=1, title="PR 1", project="proj", timestamp=timestamp)]
         report.add_team_member(alice)
 
-        slack_msg = report.format_for_slack()
+        # Leaderboard hidden by default
+        slack_msg_default = report.format_for_slack()
+        assert "🏆 Leaderboard" not in slack_msg_default
+
+        # Leaderboard visible when enabled
+        slack_msg = report.format_for_slack(show_reviewer_stats=True)
 
         # Leaderboard should appear before project progress
         assert "🏆 Leaderboard" in slack_msg
@@ -886,13 +897,23 @@ reviewers:
 
         # Create service and test
         service = StatisticsService("owner/repo", mock_repo, mock_pr_service, base_branch="main")
-        report = service.collect_all_statistics("claude-step/project1/configuration.yml")
 
+        # Default: show_reviewer_stats=False, so team stats not collected
+        report = service.collect_all_statistics("claude-step/project1/configuration.yml")
         assert len(report.project_stats) == 1
         assert "project1" in report.project_stats
-        assert len(report.team_stats) == 2
-        assert "alice" in report.team_stats
-        assert "bob" in report.team_stats
+        assert len(report.team_stats) == 0  # Not collected by default
+
+        # With show_reviewer_stats=True, team stats are collected
+        report_with_reviewers = service.collect_all_statistics(
+            "claude-step/project1/configuration.yml",
+            show_reviewer_stats=True
+        )
+        assert len(report_with_reviewers.project_stats) == 1
+        assert "project1" in report_with_reviewers.project_stats
+        assert len(report_with_reviewers.team_stats) == 2
+        assert "alice" in report_with_reviewers.team_stats
+        assert "bob" in report_with_reviewers.team_stats
 
     def test_collect_all_no_repository(self):
         """Test that missing GITHUB_REPOSITORY returns empty report"""

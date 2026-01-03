@@ -47,7 +47,11 @@ class StatisticsService:
     # Public API methods
 
     def collect_all_statistics(
-        self, config_path: Optional[str] = None, days_back: int = 30, label: str = DEFAULT_PR_LABEL
+        self,
+        config_path: Optional[str] = None,
+        days_back: int = 30,
+        label: str = DEFAULT_PR_LABEL,
+        show_reviewer_stats: bool = False,
     ) -> StatisticsReport:
         """Collect statistics for all projects and team members
 
@@ -55,6 +59,7 @@ class StatisticsService:
             config_path: Optional path to specific config (for single project mode)
             days_back: Days to look back for team member stats
             label: GitHub label to filter PRs
+            show_reviewer_stats: Whether to collect reviewer statistics (default: False)
 
         Returns:
             Complete StatisticsReport
@@ -137,18 +142,21 @@ class StatisticsService:
             except Exception as e:
                 print(f"Error collecting stats for {config.project.name}: {e}")
 
-        # Collect team member statistics across all projects
-        if all_reviewers:
-            try:
-                team_stats = self.collect_team_member_stats(
-                    list(all_reviewers), days_back, label
-                )
-                for username, stats in team_stats.items():
-                    report.add_team_member(stats)
-            except Exception as e:
-                print(f"Error collecting team member stats: {e}")
+        # Collect team member statistics across all projects (only if enabled)
+        if show_reviewer_stats:
+            if all_reviewers:
+                try:
+                    team_stats = self.collect_team_member_stats(
+                        list(all_reviewers), days_back, label
+                    )
+                    for username, stats in team_stats.items():
+                        report.add_team_member(stats)
+                except Exception as e:
+                    print(f"Error collecting team member stats: {e}")
+            else:
+                print("No reviewers configured - skipping team member statistics")
         else:
-            print("No reviewers configured - skipping team member statistics")
+            print("Reviewer statistics disabled - skipping team member collection")
 
         return report
 

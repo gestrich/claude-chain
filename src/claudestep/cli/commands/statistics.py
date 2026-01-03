@@ -22,6 +22,7 @@ def cmd_statistics(
     days_back: int = 30,
     format_type: str = "slack",
     slack_webhook_url: str = "",
+    show_reviewer_stats: bool = False,
 ) -> int:
     """Orchestrate statistics workflow using Service Layer classes.
 
@@ -37,6 +38,7 @@ def cmd_statistics(
         days_back: Days to look back for statistics (default: 30)
         format_type: Output format - "slack" or "json" (default: "slack")
         slack_webhook_url: Slack webhook URL for posting statistics (default: "")
+        show_reviewer_stats: Whether to show reviewer leaderboard (default: False)
 
     Returns:
         Exit code (0 for success, 1 for failure)
@@ -58,7 +60,9 @@ def cmd_statistics(
 
         # Collect all statistics
         report = statistics_service.collect_all_statistics(
-            config_path=config_path if config_path else None, days_back=days_back
+            config_path=config_path if config_path else None,
+            days_back=days_back,
+            show_reviewer_stats=show_reviewer_stats,
         )
 
         print(f"\n=== Collection Complete ===")
@@ -68,7 +72,7 @@ def cmd_statistics(
 
         # Generate outputs based on format
         if format_type == "slack":
-            slack_text = report.format_for_slack()
+            slack_text = report.format_for_slack(show_reviewer_stats=show_reviewer_stats)
             gh.write_output("slack_message", slack_text)
             gh.write_output("has_statistics", "true")
             gh.write_output("slack_webhook_url", slack_webhook_url)
@@ -87,11 +91,12 @@ def cmd_statistics(
         gh.write_step_summary(f"*Generated: {datetime.now(timezone.utc).isoformat()}*")
         gh.write_step_summary("")
 
-        # Add leaderboard to step summary (show first - most engaging!)
-        leaderboard = report.format_leaderboard()
-        if leaderboard:
-            gh.write_step_summary(leaderboard)
-            gh.write_step_summary("")
+        # Add leaderboard to step summary (only if enabled)
+        if show_reviewer_stats:
+            leaderboard = report.format_leaderboard()
+            if leaderboard:
+                gh.write_step_summary(leaderboard)
+                gh.write_step_summary("")
 
         # Add project summaries to step summary
         if report.project_stats:
@@ -107,22 +112,23 @@ def cmd_statistics(
             gh.write_step_summary("*No projects found*")
             gh.write_step_summary("")
 
-        # Add team member summaries (detailed view)
-        if report.team_stats:
-            gh.write_step_summary("## Team Member Activity (Detailed)")
-            gh.write_step_summary("")
-            # Sort by activity level (merged PRs desc, then username)
-            sorted_members = sorted(
-                report.team_stats.items(), key=lambda x: (-x[1].merged_count, x[0])
-            )
-            for username, stats in sorted_members:
-                gh.write_step_summary(stats.format_summary())
+        # Add team member summaries (detailed view, only if enabled)
+        if show_reviewer_stats:
+            if report.team_stats:
+                gh.write_step_summary("## Team Member Activity (Detailed)")
                 gh.write_step_summary("")
-        else:
-            gh.write_step_summary("## Team Member Activity")
-            gh.write_step_summary("")
-            gh.write_step_summary("*No team member activity found*")
-            gh.write_step_summary("")
+                # Sort by activity level (merged PRs desc, then username)
+                sorted_members = sorted(
+                    report.team_stats.items(), key=lambda x: (-x[1].merged_count, x[0])
+                )
+                for username, stats in sorted_members:
+                    gh.write_step_summary(stats.format_summary())
+                    gh.write_step_summary("")
+            else:
+                gh.write_step_summary("## Team Member Activity")
+                gh.write_step_summary("")
+                gh.write_step_summary("*No team member activity found*")
+                gh.write_step_summary("")
 
         print("✅ Statistics generated successfully")
         return 0
