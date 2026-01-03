@@ -14,6 +14,9 @@ from claudestep.domain.formatters.report_elements import (
     Section,
     ReportElement,
 )
+from claudestep.domain.formatters.report_formatter import ReportFormatter
+from claudestep.domain.formatters.slack_formatter import SlackReportFormatter
+from claudestep.domain.formatters.markdown_formatter import MarkdownReportFormatter
 
 __all__ = [
     "TableFormatter",
@@ -29,4 +32,8 @@ __all__ = [
     "ProgressBar",
     "Section",
     "ReportElement",
+    # Report formatters
+    "ReportFormatter",
+    "SlackReportFormatter",
+    "MarkdownReportFormatter",
 ]

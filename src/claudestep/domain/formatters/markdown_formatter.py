@@ -1,0 +1,123 @@
+"""GitHub-flavored Markdown formatter for report elements.
+
+Formats report elements using standard markdown syntax:
+- Bold: **text**
+- Italic: _text_
+- Links: [text](url)
+- Code: `text`
+- Headers: # ## ### etc.
+"""
+
+from claudestep.domain.formatters.report_elements import (
+    Header,
+    TextBlock,
+    Link,
+    ListItem,
+    Table,
+    ProgressBar,
+)
+from claudestep.domain.formatters.report_formatter import ReportFormatter
+from claudestep.domain.formatters.table_formatter import TableFormatter
+
+
+class MarkdownReportFormatter(ReportFormatter):
+    """Formatter that produces GitHub-flavored Markdown output."""
+
+    def format_header(self, header: Header) -> str:
+        """Format header with appropriate number of # symbols.
+
+        Args:
+            header: Header to format
+
+        Returns:
+            Markdown header string
+        """
+        hashes = "#" * header.level
+        return f"{hashes} {header.text}"
+
+    def format_text_block(self, text_block: TextBlock) -> str:
+        """Format text block with appropriate markdown styling.
+
+        Args:
+            text_block: TextBlock to format
+
+        Returns:
+            Styled text for markdown
+        """
+        text = text_block.text
+        if text_block.style == "bold":
+            return f"**{text}**"
+        elif text_block.style == "italic":
+            return f"_{text}_"
+        elif text_block.style == "code":
+            return f"`{text}`"
+        return text
+
+    def format_link(self, link: Link) -> str:
+        """Format link using markdown syntax.
+
+        Args:
+            link: Link to format
+
+        Returns:
+            Markdown-formatted link
+        """
+        return f"[{link.text}]({link.url})"
+
+    def format_list_item(self, item: ListItem) -> str:
+        """Format a single list item.
+
+        Args:
+            item: ListItem to format
+
+        Returns:
+            Formatted list item
+        """
+        content = item.content
+        if isinstance(content, Link):
+            content = self.format_link(content)
+        elif isinstance(content, TextBlock):
+            content = self.format_text_block(content)
+        return f"{item.bullet} {content}"
+
+    def format_table(self, table: Table) -> str:
+        """Format table using TableFormatter.
+
+        Note: For markdown we don't wrap in code blocks since
+        the TableFormatter produces nice box-drawing tables.
+
+        Args:
+            table: Table to format
+
+        Returns:
+            Formatted table string
+        """
+        # Build table using existing TableFormatter
+        formatter = TableFormatter(
+            headers=[col.header for col in table.columns],
+            align=[col.align for col in table.columns],
+        )
+
+        for row in table.rows:
+            formatter.add_row(list(row.cells))
+
+        return formatter.format()
+
+    def format_progress_bar(self, progress_bar: ProgressBar) -> str:
+        """Format progress bar with filled/empty blocks.
+
+        Args:
+            progress_bar: ProgressBar to format
+
+        Returns:
+            Visual progress bar string
+        """
+        pct = progress_bar.percentage
+        width = progress_bar.width
+        filled = int((pct / 100) * width)
+        # Use full blocks for markdown
+        bar = "█" * filled + "░" * (width - filled)
+
+        if progress_bar.label:
+            return f"{bar} {progress_bar.label}"
+        return f"{bar} {pct:.0f}%"
