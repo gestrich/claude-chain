@@ -16,6 +16,9 @@ DEFAULT_METADATA_BRANCH = "claudestep-metadata"
 # Default statistics lookback period (days)
 DEFAULT_STATS_DAYS_BACK = 30
 
+# Default number of days before a PR is considered stale
+DEFAULT_STALE_PR_DAYS = 7
+
 # Default allowed tools for Claude Code execution
 # Minimal permissions: file operations + git staging/committing (required by ClaudeStep prompt)
 # Users can override via CLAUDE_ALLOWED_TOOLS env var or project's allowedTools config

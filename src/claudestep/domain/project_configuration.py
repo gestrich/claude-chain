@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
+from claudestep.domain.constants import DEFAULT_STALE_PR_DAYS
 from claudestep.domain.project import Project
 
 
@@ -52,6 +53,7 @@ class ProjectConfiguration:
     reviewers: List[Reviewer]
     base_branch: Optional[str] = None  # Optional override for target base branch
     allowed_tools: Optional[str] = None  # Optional override for Claude's allowed tools
+    stale_pr_days: Optional[int] = None  # Days before a PR is considered stale
 
     @classmethod
     def default(cls, project: Project) -> 'ProjectConfiguration':
@@ -72,7 +74,8 @@ class ProjectConfiguration:
             project=project,
             reviewers=[],
             base_branch=None,
-            allowed_tools=None
+            allowed_tools=None,
+            stale_pr_days=None
         )
 
     @classmethod
@@ -93,12 +96,14 @@ class ProjectConfiguration:
         reviewers = [Reviewer.from_dict(r) for r in reviewers_config if "username" in r]
         base_branch = config.get("baseBranch")
         allowed_tools = config.get("allowedTools")
+        stale_pr_days = config.get("stalePRDays")
 
         return cls(
             project=project,
             reviewers=reviewers,
             base_branch=base_branch,
-            allowed_tools=allowed_tools
+            allowed_tools=allowed_tools,
+            stale_pr_days=stale_pr_days
         )
 
     def get_reviewer_usernames(self) -> List[str]:
@@ -146,6 +151,19 @@ class ProjectConfiguration:
             return self.allowed_tools
         return default_allowed_tools
 
+    def get_stale_pr_days(self, default: int = DEFAULT_STALE_PR_DAYS) -> int:
+        """Get the number of days before a PR is considered stale.
+
+        Args:
+            default: Default value if not configured (default: DEFAULT_STALE_PR_DAYS)
+
+        Returns:
+            stalePRDays from config if set, otherwise the default
+        """
+        if self.stale_pr_days is not None:
+            return self.stale_pr_days
+        return default
+
     def to_dict(self) -> dict:
         """Convert to dictionary representation
 
@@ -160,4 +178,6 @@ class ProjectConfiguration:
             result["baseBranch"] = self.base_branch
         if self.allowed_tools:
             result["allowedTools"] = self.allowed_tools
+        if self.stale_pr_days is not None:
+            result["stalePRDays"] = self.stale_pr_days
         return result

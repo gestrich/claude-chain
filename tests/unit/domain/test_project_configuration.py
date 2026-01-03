@@ -2,6 +2,7 @@
 
 import pytest
 
+from claudestep.domain.constants import DEFAULT_STALE_PR_DAYS
 from claudestep.domain.project import Project
 from claudestep.domain.project_configuration import (
     Reviewer,
@@ -785,6 +786,147 @@ allowedTools: Read,Write,Edit,Bash(git add:*),Bash(git commit:*)
 
         # Assert
         assert allowed_tools == "Write,Read,Bash,Edit"
+
+
+class TestProjectConfigurationStalePRDays:
+    """Test suite for ProjectConfiguration stale_pr_days functionality"""
+
+    def test_from_yaml_string_parses_stale_pr_days(self):
+        """Should parse stalePRDays from YAML configuration"""
+        # Arrange
+        project = Project("my-project")
+        yaml_content = """
+reviewers:
+  - username: alice
+    maxOpenPRs: 2
+stalePRDays: 14
+"""
+
+        # Act
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        # Assert
+        assert config.stale_pr_days == 14
+
+    def test_from_yaml_string_stale_pr_days_is_none_when_not_specified(self):
+        """Should have None stale_pr_days when not specified in YAML"""
+        # Arrange
+        project = Project("my-project")
+        yaml_content = """
+reviewers:
+  - username: alice
+    maxOpenPRs: 2
+"""
+
+        # Act
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        # Assert
+        assert config.stale_pr_days is None
+
+    def test_get_stale_pr_days_returns_config_value_when_set(self):
+        """Should return config's stale_pr_days when it is set"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            stale_pr_days=14
+        )
+
+        # Act
+        result = config.get_stale_pr_days()
+
+        # Assert
+        assert result == 14
+
+    def test_get_stale_pr_days_returns_default_when_not_set(self):
+        """Should return default (7 days) when stale_pr_days is not set"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            stale_pr_days=None
+        )
+
+        # Act
+        result = config.get_stale_pr_days()
+
+        # Assert
+        assert result == DEFAULT_STALE_PR_DAYS
+
+    def test_get_stale_pr_days_accepts_custom_default(self):
+        """Should accept custom default value"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            stale_pr_days=None
+        )
+
+        # Act
+        result = config.get_stale_pr_days(default=10)
+
+        # Assert
+        assert result == 10
+
+    def test_to_dict_includes_stale_pr_days_when_set(self):
+        """Should include stalePRDays in dict when stale_pr_days is set"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            stale_pr_days=14
+        )
+
+        # Act
+        result = config.to_dict()
+
+        # Assert
+        assert "stalePRDays" in result
+        assert result["stalePRDays"] == 14
+
+    def test_to_dict_excludes_stale_pr_days_when_not_set(self):
+        """Should not include stalePRDays in dict when stale_pr_days is None"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration(
+            project=project,
+            reviewers=[],
+            stale_pr_days=None
+        )
+
+        # Act
+        result = config.to_dict()
+
+        # Assert
+        assert "stalePRDays" not in result
+
+    def test_default_creates_config_with_no_stale_pr_days(self):
+        """Should create default config with no stale_pr_days override"""
+        # Arrange
+        project = Project("my-project")
+
+        # Act
+        config = ProjectConfiguration.default(project)
+
+        # Assert
+        assert config.stale_pr_days is None
+
+    def test_default_get_stale_pr_days_returns_default_value(self):
+        """Default config should return the default stale_pr_days value"""
+        # Arrange
+        project = Project("my-project")
+        config = ProjectConfiguration.default(project)
+
+        # Act
+        stale_pr_days = config.get_stale_pr_days()
+
+        # Assert
+        assert stale_pr_days == DEFAULT_STALE_PR_DAYS
 
 
 class TestProjectConfigurationIntegration:

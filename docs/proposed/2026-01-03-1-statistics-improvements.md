@@ -48,7 +48,7 @@ def collect_all_statistics(
 ) -> StatisticsReport:
 ```
 
-- [ ] Phase 2: Add `stalePRDays` to project configuration
+- [x] Phase 2: Add `stalePRDays` to project configuration
 
 Add new configuration field to define when PRs are considered stale.
 
