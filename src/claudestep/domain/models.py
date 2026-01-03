@@ -298,10 +298,13 @@ class ReviewerCapacityResult:
         # Final decision
         lines.append("---")
         lines.append("")
-        if self.selected_reviewer:
+        if self.all_at_capacity:
+            lines.append("**Decision:** ⏸️ At capacity - waiting for PRs to be reviewed")
+        elif self.selected_reviewer:
             lines.append(f"**Decision:** ✅ Selected **{self.selected_reviewer}** for next PR")
         else:
-            lines.append(f"**Decision:** ❌ All reviewers at capacity - skipping PR creation")
+            # No reviewer selected but capacity available (no reviewers configured)
+            lines.append("**Decision:** ✅ Capacity available - PR will be created without assignee")
 
         return "\n".join(lines)
 
