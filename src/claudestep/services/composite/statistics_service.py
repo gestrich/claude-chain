@@ -13,7 +13,7 @@ from claudestep.domain.project import Project
 from claudestep.domain.project_configuration import ProjectConfiguration
 from claudestep.infrastructure.repositories.project_repository import ProjectRepository
 from claudestep.services.core.pr_service import PRService
-from claudestep.domain.models import ProjectPRInfo, ProjectStats, StatisticsReport, TeamMemberStats, PRReference
+from claudestep.domain.models import ProjectStats, StatisticsReport, TeamMemberStats, PRReference
 
 
 class StatisticsService:
@@ -205,11 +205,10 @@ class StatisticsService:
             stats.in_progress_tasks = len(open_prs)
             print(f"  In-progress: {stats.in_progress_tasks}")
 
-            # Calculate stale PR info for each open PR
+            # Store open PRs and calculate stale count
             for pr in open_prs:
-                pr_info = ProjectPRInfo.from_github_pr(pr)
-                stats.open_prs.append(pr_info)
-                if pr_info.is_stale(stale_pr_days):
+                stats.open_prs.append(pr)
+                if pr.is_stale(stale_pr_days):
                     stats.stale_pr_count += 1
 
             if stats.stale_pr_count > 0:

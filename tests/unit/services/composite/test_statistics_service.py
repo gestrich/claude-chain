@@ -942,14 +942,13 @@ reviewers:
         assert len(report.project_stats) == 0
 
 
-class TestProjectPRInfo:
-    """Tests for ProjectPRInfo dataclass and stale PR tracking"""
+class TestGitHubPullRequestStaleness:
+    """Tests for GitHubPullRequest days_open and is_stale methods"""
 
-    def test_from_github_pr_creates_info(self):
-        """Should create ProjectPRInfo from GitHubPullRequest"""
+    def test_days_open_for_open_pr(self):
+        """Should calculate days_open from created_at to now for open PRs"""
         from datetime import datetime, timezone, timedelta
         from claudestep.domain.github_models import GitHubPullRequest, GitHubUser
-        from claudestep.domain.models import ProjectPRInfo
 
         # Arrange - PR created 3 days ago
         created_at = datetime.now(timezone.utc) - timedelta(days=3)
@@ -964,23 +963,19 @@ class TestProjectPRInfo:
             head_ref_name="claude-step-test-1a2b3c4d"
         )
 
-        # Act
-        info = ProjectPRInfo.from_github_pr(pr)
-
         # Assert
-        assert info.pr_number == 42
-        assert info.title == "Add new feature"
-        assert info.state == "open"
-        assert info.assignee == "alice"
-        assert info.created_at == created_at
-        assert info.days_open == 3
-        assert info.is_stale(stale_pr_days=7) is False  # 3 < 7 days
+        assert pr.number == 42
+        assert pr.title == "Add new feature"
+        assert pr.state == "open"
+        assert pr.first_assignee == "alice"
+        assert pr.created_at == created_at
+        assert pr.days_open == 3
+        assert pr.is_stale(stale_pr_days=7) is False  # 3 < 7 days
 
-    def test_from_github_pr_identifies_stale_pr(self):
+    def test_is_stale_when_old_enough(self):
         """Should mark PR as stale when days_open >= stale_pr_days"""
         from datetime import datetime, timezone, timedelta
         from claudestep.domain.github_models import GitHubPullRequest, GitHubUser
-        from claudestep.domain.models import ProjectPRInfo
 
         # Arrange - PR created 10 days ago
         created_at = datetime.now(timezone.utc) - timedelta(days=10)
@@ -995,18 +990,14 @@ class TestProjectPRInfo:
             head_ref_name="claude-step-test-5e6f7a8b"
         )
 
-        # Act
-        info = ProjectPRInfo.from_github_pr(pr)
-
         # Assert
-        assert info.days_open == 10
-        assert info.is_stale(stale_pr_days=7) is True
+        assert pr.days_open == 10
+        assert pr.is_stale(stale_pr_days=7) is True
 
-    def test_from_github_pr_with_no_assignee(self):
-        """Should handle PR with no assignees"""
+    def test_first_assignee_with_no_assignees(self):
+        """Should return None when no assignees"""
         from datetime import datetime, timezone
         from claudestep.domain.github_models import GitHubPullRequest
-        from claudestep.domain.models import ProjectPRInfo
 
         # Arrange - PR with no assignees
         pr = GitHubPullRequest(
@@ -1020,17 +1011,13 @@ class TestProjectPRInfo:
             head_ref_name="claude-step-test-9c0d1e2f"
         )
 
-        # Act
-        info = ProjectPRInfo.from_github_pr(pr)
-
         # Assert
-        assert info.assignee is None
+        assert pr.first_assignee is None
 
-    def test_from_github_pr_uses_first_assignee(self):
+    def test_first_assignee_uses_first_when_multiple(self):
         """Should use first assignee when multiple are present"""
         from datetime import datetime, timezone
         from claudestep.domain.github_models import GitHubPullRequest, GitHubUser
-        from claudestep.domain.models import ProjectPRInfo
 
         # Arrange - PR with multiple assignees
         pr = GitHubPullRequest(
@@ -1044,17 +1031,13 @@ class TestProjectPRInfo:
             head_ref_name="claude-step-test-3g4h5i6j"
         )
 
-        # Act
-        info = ProjectPRInfo.from_github_pr(pr)
-
         # Assert
-        assert info.assignee == "alice"
+        assert pr.first_assignee == "alice"
 
     def test_days_open_for_merged_pr(self):
         """Should calculate days_open from created_at to merged_at for merged PRs"""
         from datetime import datetime, timezone, timedelta
         from claudestep.domain.github_models import GitHubPullRequest, GitHubUser
-        from claudestep.domain.models import ProjectPRInfo
 
         # Arrange - PR created 10 days ago, merged 5 days ago
         created_at = datetime.now(timezone.utc) - timedelta(days=10)
@@ -1070,12 +1053,9 @@ class TestProjectPRInfo:
             head_ref_name="claude-step-test-m1n2o3p4"
         )
 
-        # Act
-        info = ProjectPRInfo.from_github_pr(pr)
-
         # Assert - days_open should be 5 (created to merged), not 10 (created to now)
-        assert info.state == "merged"
-        assert info.days_open == 5
+        assert pr.state == "merged"
+        assert pr.days_open == 5
 
 
 class TestStalePRTracking:
@@ -1131,14 +1111,14 @@ class TestStalePRTracking:
         assert stats.stale_pr_count == 1
         assert stats.in_progress_tasks == 2
 
-        # Verify PR info
-        fresh_info = next(p for p in stats.open_prs if p.pr_number == 1)
-        stale_info = next(p for p in stats.open_prs if p.pr_number == 2)
+        # Verify PR info - now directly using GitHubPullRequest
+        fresh_pr = next(p for p in stats.open_prs if p.number == 1)
+        stale_pr = next(p for p in stats.open_prs if p.number == 2)
 
-        assert fresh_info.is_stale(7) is False
-        assert fresh_info.assignee == "alice"
-        assert stale_info.is_stale(7) is True
-        assert stale_info.assignee == "bob"
+        assert fresh_pr.is_stale(7) is False
+        assert fresh_pr.first_assignee == "alice"
+        assert stale_pr.is_stale(7) is True
+        assert stale_pr.first_assignee == "bob"
 
     def test_collect_stats_custom_stale_threshold(self):
         """Should respect custom stale_pr_days threshold"""
@@ -1174,6 +1154,7 @@ class TestStalePRTracking:
         # With 7-day threshold: not stale
         stats_7 = service.collect_project_stats("test-project", "main", "claudestep", stale_pr_days=7)
         assert stats_7.stale_pr_count == 0
+        # GitHubPullRequest.is_stale() uses the threshold passed to it
         assert stats_7.open_prs[0].is_stale(7) is False
 
         # With 3-day threshold: stale

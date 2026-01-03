@@ -1370,6 +1370,44 @@ When working with datetimes:
 - [ ] Never use deprecated `datetime.utcnow()`
 - [ ] Check that domain models validate timezone-aware datetimes in `__post_init__`
 
+## Avoiding Circular Imports
+
+### Principle: Design One-Way Dependency Graphs
+
+Circular imports indicate architectural problems. Fix the dependency structure rather than working around it.
+
+### Anti-Patterns (❌ Avoid)
+
+```python
+# BAD: TYPE_CHECKING guard
+if TYPE_CHECKING:
+    from module_b import SomeClass  # Only imported during type checking
+open_items: List["SomeClass"]  # String annotation workaround
+
+# BAD: Using Any
+open_items: List[Any] = []  # "Any to avoid circular import" ❌
+```
+
+Both approaches hide the architectural issue rather than solving it. `TYPE_CHECKING` means your code works at runtime only because the import is skipped. `Any` throws away type safety entirely.
+
+### Fix: Establish One-Way Dependencies
+
+1. **Identify which module is more foundational** (lower-level)
+2. **Ensure the lower-level module never imports from higher-level ones**
+3. **Verify with grep**: `grep "from higher_module" lower_module.py` should return nothing
+
+```python
+# lower_level.py - No imports from higher_level.py
+class GitHubPullRequest: ...
+
+# higher_level.py - Can import from lower_level.py
+from lower_level import GitHubPullRequest  # ✅ One-way dependency
+class ProjectStats:
+    open_prs: List[GitHubPullRequest]  # ✅ Proper typing
+```
+
+If you have a genuine cycle, either move shared code to a third module or refactor so the lower-level module doesn't need higher-level types.
+
 ## Related Documentation
 
 - See [docs/completed/2025-12-30-reorganize-service-methods.md](../completed/2025-12-30-reorganize-service-methods.md) for the history of applying these principles to the codebase

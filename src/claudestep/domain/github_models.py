@@ -273,6 +273,72 @@ class GitHubPullRequest:
 
         return PRService.parse_branch_name(self.head_ref_name) is not None
 
+    @property
+    def days_open(self) -> int:
+        """Calculate days the PR was/is open.
+
+        For open PRs: created_at through now
+        For closed/merged PRs: created_at through merged_at
+
+        Returns:
+            Number of days the PR has been/was open
+
+        Examples:
+            >>> # Open PR created 5 days ago
+            >>> pr = GitHubPullRequest(state="open", created_at=five_days_ago, ...)
+            >>> pr.days_open
+            5
+            >>> # Merged PR that was open for 3 days
+            >>> pr = GitHubPullRequest(state="merged", created_at=created, merged_at=merged, ...)
+            >>> pr.days_open
+            3
+        """
+        from datetime import datetime, timezone
+
+        if self.state == "open":
+            end_time = datetime.now(timezone.utc)
+        else:
+            end_time = self.merged_at if self.merged_at else datetime.now(timezone.utc)
+        return (end_time - self.created_at).days
+
+    def is_stale(self, stale_pr_days: int) -> bool:
+        """Check if PR is stale based on threshold.
+
+        A PR is considered stale if it has been open for at least
+        stale_pr_days days.
+
+        Args:
+            stale_pr_days: Number of days before a PR is considered stale
+
+        Returns:
+            True if PR has been open >= stale_pr_days
+
+        Examples:
+            >>> pr = GitHubPullRequest(...)  # open for 10 days
+            >>> pr.is_stale(7)
+            True
+            >>> pr.is_stale(14)
+            False
+        """
+        return self.days_open >= stale_pr_days
+
+    @property
+    def first_assignee(self) -> Optional[str]:
+        """Get the login of the first assignee, if any.
+
+        Returns:
+            First assignee's login, or None if no assignees
+
+        Examples:
+            >>> pr = GitHubPullRequest(assignees=[GitHubUser(login="alice")], ...)
+            >>> pr.first_assignee
+            'alice'
+            >>> pr = GitHubPullRequest(assignees=[], ...)
+            >>> pr.first_assignee
+            None
+        """
+        return self.assignees[0].login if self.assignees else None
+
 
 @dataclass
 class GitHubPullRequestList:
