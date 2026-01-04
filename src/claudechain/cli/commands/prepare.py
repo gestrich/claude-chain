@@ -15,7 +15,7 @@ from claudechain.domain.exceptions import ConfigurationError, FileNotFoundError,
 from claudechain.domain.project import Project
 from claudechain.infrastructure.git.operations import run_git_command
 from claudechain.infrastructure.github.actions import GitHubActionsHelper
-from claudechain.infrastructure.github.operations import ensure_label_exists
+from claudechain.infrastructure.github.operations import add_label_to_pr, ensure_label_exists
 from claudechain.infrastructure.repositories.project_repository import ProjectRepository
 from claudechain.services.core.pr_service import PRService
 from claudechain.services.core.project_service import ProjectService
@@ -265,6 +265,12 @@ Instructions: Read the entire spec.md file below to understand both WHAT to do a
 Now complete the task '{task}' following all the details and instructions in the spec.md file above. When you're done, use git add and git commit to commit your changes."""
 
         print(f"✅ Prompt prepared ({len(claude_prompt)} characters)")
+
+        # === Add label to merged PR (Phase 6) ===
+        # This helps statistics discover all ClaudeChain-related PRs
+        if merged_pr_number:
+            if add_label_to_pr(repo, int(merged_pr_number), label):
+                print(f"✅ Added '{label}' label to merged PR #{merged_pr_number}")
 
         # === Write All Outputs ===
         gh.write_output("project_name", detected_project)

@@ -207,6 +207,29 @@ def ensure_label_exists(label: str, gh: GitHubActionsHelper) -> None:
             raise
 
 
+def add_label_to_pr(repo: str, pr_number: int, label: str) -> bool:
+    """Add a label to a pull request.
+
+    Args:
+        repo: GitHub repository in format "owner/repo"
+        pr_number: PR number to add label to
+        label: Label name to add
+
+    Returns:
+        True if label was added successfully, False otherwise
+    """
+    try:
+        run_gh_command([
+            "pr", "edit", str(pr_number),
+            "--repo", repo,
+            "--add-label", label
+        ])
+        return True
+    except GitHubAPIError as e:
+        print(f"Warning: Failed to add label '{label}' to PR #{pr_number}: {e}")
+        return False
+
+
 def get_file_from_branch(repo: str, branch: str, file_path: str) -> Optional[str]:
     """Fetch file content from a specific branch via GitHub API
 

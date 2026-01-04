@@ -12,6 +12,7 @@ import pytest
 
 from claudechain.domain.exceptions import GitHubAPIError
 from claudechain.infrastructure.github.operations import (
+    add_label_to_pr,
     compare_commits,
     detect_project_from_diff,
     download_artifact_json,
@@ -405,6 +406,69 @@ class TestEnsureLabelExists:
         assert "--color" in args
         color_idx = args.index("--color")
         assert "0E8A16" == args[color_idx + 1]
+
+
+class TestAddLabelToPr:
+    """Test suite for add_label_to_pr function"""
+
+    @patch('claudechain.infrastructure.github.operations.run_gh_command')
+    def test_add_label_to_pr_success(self, mock_run_gh):
+        """Should add label to PR and return True"""
+        # Arrange
+        mock_run_gh.return_value = ""
+        repo = "owner/repo"
+        pr_number = 123
+        label = "claudechain"
+
+        # Act
+        result = add_label_to_pr(repo, pr_number, label)
+
+        # Assert
+        assert result is True
+        mock_run_gh.assert_called_once()
+        args = mock_run_gh.call_args[0][0]
+        assert "pr" in args
+        assert "edit" in args
+        assert "123" in args
+        assert "--repo" in args
+        assert "owner/repo" in args
+        assert "--add-label" in args
+        assert "claudechain" in args
+
+    @patch('claudechain.infrastructure.github.operations.run_gh_command')
+    def test_add_label_to_pr_failure(self, mock_run_gh, capsys):
+        """Should return False and print warning on failure"""
+        # Arrange
+        mock_run_gh.side_effect = GitHubAPIError("PR not found")
+        repo = "owner/repo"
+        pr_number = 999
+        label = "claudechain"
+
+        # Act
+        result = add_label_to_pr(repo, pr_number, label)
+
+        # Assert
+        assert result is False
+        captured = capsys.readouterr()
+        assert "Warning" in captured.out
+        assert "claudechain" in captured.out
+        assert "999" in captured.out
+
+    @patch('claudechain.infrastructure.github.operations.run_gh_command')
+    def test_add_label_to_pr_with_different_label(self, mock_run_gh):
+        """Should use the provided label name"""
+        # Arrange
+        mock_run_gh.return_value = ""
+        repo = "owner/repo"
+        pr_number = 456
+        label = "custom-label"
+
+        # Act
+        add_label_to_pr(repo, pr_number, label)
+
+        # Assert
+        args = mock_run_gh.call_args[0][0]
+        assert "custom-label" in args
 
 
 class TestGetFileFromBranch:
