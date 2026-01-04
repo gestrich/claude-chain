@@ -1,23 +1,24 @@
 # ClaudeChain
 
+> **Warning:** This project is in beta (pre-release). APIs and behavior will change.
+
 ## Overview
 
-ClaudeChain runs Claude Code on individual tasks that you define for your project, creating pull requests for each task one at a time. When you merge a PR, it automatically stages the next PR, creating a chain of incremental improvements.
+ClaudeChain is a **GitHub Action** that automates staging pull requests and running Claude Code as a chain. Define your tasks in a spec file, and ClaudeChain creates PRs one at a time—when you merge one, it automatically stages the next.
 
-Built on Claude Code and GitHub Actions, it automates the tedious refactoring work that never gets prioritized—migrations, refactoring, code cleanup, and documentation that would otherwise sit on the backlog forever.
-
-**Key features:**
-- 📋 **Incremental automation** - Write your refactor spec, get automated PRs for each task
-- ⚡ **Manageable review burden** - One PR at a time, small focused changes
-- 🔄 **Continuous flow** - Merge PRs when you have time, next PR stages automatically
-- 💬 **Context for reviewers** - AI-generated summaries explain each change
-- 📊 **Visibility** - Track progress, team stats, cost, and completion rates
-
-## How It Works
-
-ClaudeChain creates a chain of PRs, one task at a time:
+Built for the tedious work that never gets prioritized—migrations, refactoring, code cleanup, documentation—broken into small, reviewable PRs that you merge at your own pace.
 
 ```
+┌──────────────┐    ┌─────────────────┐    ┌────────────┐    ┌───────────────┐
+│ You write    │───▶│ ClaudeChain     │───▶│ PR created │───▶│ You review    │
+│ tasks        │    │ runs Claude Code│    │            │    │ and merge     │
+└──────────────┘    └────────▲────────┘    └────────────┘    └───────┬───────┘
+                             │                                       │
+                             │         ┌────────────────┐            │
+                             └─────────│ Merge triggers │◀───────────┘
+                                       │ next task      │
+                                       └────────────────┘
+
 spec.md tasks          PRs                        Result
 ─────────────          ───                        ──────
 - [ ] Task 1    →    PR #1    → merge →    - [x] Task 1
@@ -25,11 +26,41 @@ spec.md tasks          PRs                        Result
 - [ ] Task 3    →    PR #3    → merge →    - [x] Task 3
 ```
 
-Each task is identified by a hash of its description, so you can freely reorder, insert, and delete tasks without breaking PR tracking.
+**Key features:**
+- 🔗 **Chained automation** - Each merged PR triggers the next task automatically
+- 🤖 **Claude Code integration** - AI implements each task from your spec
+- ⚡ **One PR at a time** - Small, focused changes that are easy to review
+- 💬 **Slack notifications** - Get alerted when PRs are created and ready for review
+- 📊 **Scheduled statistics** - Add a cron trigger to post progress across all projects
 
-→ **[Full guide: How It Works](docs/feature-guides/how-it-works.md)**
+<p align="center">
+  <img src="docs/images/slack-pr-notification.png" alt="Slack PR Notification" height="200">
+  <img src="docs/images/slack-statistics-report.png" alt="Slack Statistics Report" height="200">
+</p>
 
-## Quick Start
+## Project Setup
+
+Minimal convention required. Create a folder per project under `claude-chain/` with a `spec.md` file:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  claude-chain/                                                  │
+│  └── my-refactor/                                               │
+│      ├── spec.md              ← Required                        │
+│      ├── pr-template.md       ← Optional                        │
+│      └── configuration.yml    ← Optional                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| File | Purpose |
+|------|---------|
+| `spec.md` | Tasks and instructions for Claude |
+| `pr-template.md` | Custom PR description template |
+| `configuration.yml` | Assignee, base branch, tool permissions |
+
+→ **[Full guide: Projects](docs/feature-guides/projects.md)**
+
+## Workflow Setup
 
 **Prerequisites:**
 - [Anthropic API key](https://console.anthropic.com) (required)
