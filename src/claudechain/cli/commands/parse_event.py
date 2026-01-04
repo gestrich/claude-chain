@@ -130,26 +130,24 @@ def cmd_parse_event(
             gh.write_output("skip_reason", reason)
             return 0
 
-        # Determine checkout ref and base branch
-        try:
-            checkout_ref = context.get_checkout_ref()
-        except ValueError as e:
-            reason = f"Could not determine checkout ref: {e}"
-            print(f"\n⏭️  Skipping: {reason}")
-            gh.write_output("skip", "true")
-            gh.write_output("skip_reason", reason)
-            return 0
-
-        # Determine base branch:
-        # If user configured default_base_branch, always use it (they know what they want)
-        # Otherwise fall back to deriving from event context
+        # Determine base branch (and checkout ref - they should always match)
+        # If user configured default_base_branch, use it for everything
+        # Otherwise derive from event context
         if default_base_branch:
             base_branch = default_base_branch
         else:
             try:
                 base_branch = context.get_checkout_ref()
-            except ValueError:
-                base_branch = "main"  # Ultimate fallback
+            except ValueError as e:
+                reason = f"Could not determine base branch: {e}"
+                print(f"\n⏭️  Skipping: {reason}")
+                gh.write_output("skip", "true")
+                gh.write_output("skip_reason", reason)
+                return 0
+
+        # Always checkout the base branch - the triggering event is just a trigger,
+        # all actual work should happen on the configured base branch
+        checkout_ref = base_branch
 
         # Output results
         print(f"\n✓ Event parsing complete")

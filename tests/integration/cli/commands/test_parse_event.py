@@ -389,9 +389,9 @@ class TestCmdParseEvent:
         )
 
         assert result == 0
-        # checkout_ref comes from the event (where workflow was triggered)
-        mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
-        # But base_branch should use the configured default, not the trigger branch
+        # Both checkout_ref and base_branch should use the configured default
+        # The trigger branch (main) is just a trigger - all work happens on the configured branch
+        mock_github_helper.write_output.assert_any_call("checkout_ref", "feature-branch")
         mock_github_helper.write_output.assert_any_call("base_branch", "feature-branch")
 
     # =============================================================================
@@ -547,7 +547,7 @@ class TestCmdParseEvent:
         assert result == 0
         mock_github_helper.write_output.assert_any_call("skip", "true")
         mock_github_helper.write_output.assert_any_call(
-            "skip_reason", "Could not determine checkout ref: Workflow dispatch event missing ref"
+            "skip_reason", "Could not determine base branch: Workflow dispatch event missing ref"
         )
 
     # =============================================================================
