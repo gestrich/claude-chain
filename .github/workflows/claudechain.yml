@@ -2,18 +2,19 @@
 #
 # This workflow handles all event types automatically by passing the GitHub
 # event context to the action. The action determines:
-# - Whether to execute or skip (checks for claudechain label and merged state)
+# - Whether to execute or skip (based on merged state and spec.md changes)
 # - Which ref to checkout
-# - The project name (from branch pattern or input)
+# - The project name (from changed files, branch pattern, or input)
 # - The base branch for PR creation (from project config or default)
 #
 # Trigger modes:
 # - workflow_dispatch: Manual trigger with project_name input
-# - pull_request (closed): Continues processing after PR merge
+# - pull_request (closed): Triggers on any PR merge that changes claude-chain/** files
 #
-# Note: Label filtering is done inside the action (not at workflow level) because
-# GitHub Actions pull_request triggers don't support label filters. The action
-# checks that PRs have the 'claudechain' label and were merged before processing.
+# Note: The action detects projects from changed spec.md files and skips label checking
+# when spec files change. This enables automatic triggering for initial spec merges.
+# For ClaudeChain-created PRs (following branch naming convention), label checking
+# still applies as a fallback.
 #
 # Security: workflow_dispatch requires repository write access.
 
@@ -30,9 +31,8 @@ on:
 
   pull_request:
     types: [closed]
-    branches:
-      - main
-      - main-e2e
+    # No branch filter - ClaudeChain validates base branch in prepare.py
+    # This allows projects to use any base branch via configuration.yml baseBranch setting
     paths:
       - 'claude-chain/**'
 

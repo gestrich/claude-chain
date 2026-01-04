@@ -274,6 +274,86 @@ class TestGitHubEventContextShouldSkip:
         assert should_skip is False
         assert reason == ""
 
+    def test_should_not_skip_pr_without_label_when_require_label_false(self):
+        """Should not skip merged PR without label when require_label_for_pr=False."""
+        # Arrange - merged PR with NO claudechain label
+        context = GitHubEventContext(
+            event_name="pull_request",
+            pr_merged=True,
+            pr_labels=["bug"]  # Different label, not claudechain
+        )
+
+        # Act - skip label check (used for changed-files triggering)
+        should_skip, reason = context.should_skip(require_label_for_pr=False)
+
+        # Assert
+        assert should_skip is False
+        assert reason == ""
+
+    def test_should_skip_pr_without_label_when_require_label_true(self):
+        """Should skip merged PR without label when require_label_for_pr=True (default)."""
+        # Arrange - merged PR with NO claudechain label
+        context = GitHubEventContext(
+            event_name="pull_request",
+            pr_merged=True,
+            pr_labels=["bug"]  # Different label, not claudechain
+        )
+
+        # Act - with label check (default behavior)
+        should_skip, reason = context.should_skip(require_label_for_pr=True)
+
+        # Assert
+        assert should_skip is True
+        assert "claudechain" in reason
+
+    def test_should_skip_unmerged_pr_even_when_require_label_false(self):
+        """Should still skip unmerged PR even when require_label_for_pr=False."""
+        # Arrange - closed but not merged PR
+        context = GitHubEventContext(
+            event_name="pull_request",
+            pr_merged=False,  # Not merged
+            pr_labels=[]
+        )
+
+        # Act
+        should_skip, reason = context.should_skip(require_label_for_pr=False)
+
+        # Assert - should still skip because not merged
+        assert should_skip is True
+        assert "not merged" in reason.lower()
+
+    def test_require_label_for_pr_has_no_effect_on_workflow_dispatch(self):
+        """require_label_for_pr should have no effect on workflow_dispatch events."""
+        # Arrange
+        context = GitHubEventContext(
+            event_name="workflow_dispatch",
+            inputs={"project_name": "test"}
+        )
+
+        # Act - both values should give same result
+        result_true = context.should_skip(require_label_for_pr=True)
+        result_false = context.should_skip(require_label_for_pr=False)
+
+        # Assert
+        assert result_true == (False, "")
+        assert result_false == (False, "")
+
+    def test_require_label_for_pr_has_no_effect_on_push(self):
+        """require_label_for_pr should have no effect on push events."""
+        # Arrange
+        context = GitHubEventContext(
+            event_name="push",
+            ref_name="main"
+        )
+
+        # Act - both values should give same result
+        result_true = context.should_skip(require_label_for_pr=True)
+        result_false = context.should_skip(require_label_for_pr=False)
+
+        # Assert
+        assert result_true == (False, "")
+        assert result_false == (False, "")
+
 
 class TestGitHubEventContextCheckoutRef:
     """Tests for get_checkout_ref method."""

@@ -145,7 +145,11 @@ class GitHubEventContext:
         else:
             self.ref_name = ref
 
-    def should_skip(self, required_label: str = "claudechain") -> Tuple[bool, str]:
+    def should_skip(
+        self,
+        required_label: str = "claudechain",
+        require_label_for_pr: bool = True
+    ) -> Tuple[bool, str]:
         """Determine if ClaudeChain should skip this event.
 
         Checks various conditions to determine if ClaudeChain should not
@@ -153,6 +157,9 @@ class GitHubEventContext:
 
         Args:
             required_label: Label required on PR for processing (default: "claudechain")
+            require_label_for_pr: If True, PRs must have the required_label to be processed.
+                If False, label check is skipped (useful for changed-files triggering model
+                where we trigger on spec.md changes regardless of labels).
 
         Returns:
             Tuple of (should_skip: bool, reason: str)
@@ -167,14 +174,19 @@ class GitHubEventContext:
             >>> context = GitHubEventContext(event_name="pull_request", pr_merged=True, pr_labels=["claudechain"])
             >>> context.should_skip()
             (False, '')
+
+            >>> # Skip label check when using changed-files triggering
+            >>> context = GitHubEventContext(event_name="pull_request", pr_merged=True, pr_labels=[])
+            >>> context.should_skip(require_label_for_pr=False)
+            (False, '')
         """
         if self.event_name == "pull_request":
             # Skip if PR was not merged
             if not self.pr_merged:
                 return (True, "PR was closed but not merged")
 
-            # Skip if missing required label
-            if required_label and required_label not in self.pr_labels:
+            # Skip if missing required label (only when label checking is enabled)
+            if require_label_for_pr and required_label and required_label not in self.pr_labels:
                 return (True, f"PR does not have required label '{required_label}'")
 
         # workflow_dispatch and push events don't have skip conditions
