@@ -1,6 +1,6 @@
-# Validate README Against Feature Guides
+# Generate README Against Feature Guides
 
-Validate that README.md is an accurate derivative of the feature guides.
+Validate then generated that README.md is an accurate derivative of the feature guides.
 
 ## Instructions
 
