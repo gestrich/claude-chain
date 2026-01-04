@@ -11,6 +11,7 @@ import os
 from typing import List, Optional
 
 from claudechain.domain.project import Project
+from claudechain.domain.models import BranchInfo
 
 from claudechain.domain.github_event import GitHubEventContext
 from claudechain.infrastructure.github.actions import GitHubActionsHelper
@@ -102,8 +103,14 @@ def cmd_parse_event(
                 detected_projects = _detect_projects_from_changed_files(context, repo)
                 resolved_project = _select_project_and_output_all(gh, detected_projects)
 
+            # Fallback: detect project from branch name for ClaudeChain PRs
+            # This handles the case where a ClaudeChain PR is merged and the
+            # compare API returns 0 files (because head is now part of base)
+            if not resolved_project and context.head_ref:
+                resolved_project = _detect_project_from_branch_name(context.head_ref)
+
             if not resolved_project:
-                reason = "No spec.md changes detected"
+                reason = "No spec.md changes detected and branch name is not a ClaudeChain branch"
                 print(f"\n⏭️  Skipping: {reason}")
                 gh.write_output("skip", "true")
                 gh.write_output("skip_reason", reason)
@@ -294,3 +301,25 @@ def _detect_projects_from_changed_files(
         print(f"  Could not detect from changed files: {e}")
 
     return []
+
+
+def _detect_project_from_branch_name(head_ref: str) -> Optional[str]:
+    """Detect project from ClaudeChain branch name pattern.
+
+    This is a fallback for when the compare API returns 0 changed files,
+    which happens when a ClaudeChain PR is merged (the head branch commits
+    are now part of the base branch, so the diff is empty).
+
+    ClaudeChain branches follow the pattern: claude-chain-{project}-{hash}
+
+    Args:
+        head_ref: The head branch name from the PR
+
+    Returns:
+        Project name if the branch matches the ClaudeChain pattern, None otherwise
+    """
+    branch_info = BranchInfo.from_branch_name(head_ref)
+    if branch_info:
+        print(f"  Detected project from branch name: {branch_info.project_name}")
+        return branch_info.project_name
+    return None

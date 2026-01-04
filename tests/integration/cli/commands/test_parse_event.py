@@ -155,10 +155,10 @@ class TestCmdParseEvent:
         assert "Skipping" in captured.out
 
     @patch("claudechain.cli.commands.parse_event.compare_commits")
-    def test_pull_request_no_spec_changes_skips(
+    def test_pull_request_no_spec_changes_and_non_claudechain_branch_skips(
         self, mock_compare, mock_github_helper, capsys
     ):
-        """Should skip PR when no spec.md files were changed"""
+        """Should skip PR when no spec.md files changed and branch is not ClaudeChain"""
         mock_compare.return_value = ["src/code.py", "README.md"]
 
         event = json.dumps({
@@ -183,7 +183,82 @@ class TestCmdParseEvent:
 
         assert result == 0
         mock_github_helper.write_output.assert_any_call("skip", "true")
-        mock_github_helper.write_output.assert_any_call("skip_reason", "No spec.md changes detected")
+        mock_github_helper.write_output.assert_any_call(
+            "skip_reason", "No spec.md changes detected and branch name is not a ClaudeChain branch"
+        )
+
+    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    def test_pull_request_no_spec_changes_but_claudechain_branch_detects_project(
+        self, mock_compare, mock_github_helper, capsys
+    ):
+        """Should detect project from ClaudeChain branch when compare API returns 0 files.
+
+        This is the key fallback behavior: when a ClaudeChain PR is merged, the
+        compare API may return 0 files (because the head is now part of base).
+        The fallback detects the project from the branch name pattern.
+        """
+        # Compare API returns 0 files (simulating post-merge state)
+        mock_compare.return_value = []
+
+        event = json.dumps({
+            "action": "closed",
+            "pull_request": {
+                "number": 123,
+                "merged": True,
+                "labels": [{"name": "claudechain"}],
+                "base": {"ref": "main"},
+                "head": {"ref": "claude-chain-my-project-a1b2c3d4"}
+            }
+        })
+
+        result = cmd_parse_event(
+            gh=mock_github_helper,
+            event_name="pull_request",
+            event_json=event,
+            project_name=None,
+            default_base_branch="main",
+            repo="owner/repo"
+        )
+
+        assert result == 0
+        mock_github_helper.write_output.assert_any_call("skip", "false")
+        mock_github_helper.write_output.assert_any_call("project_name", "my-project")
+        mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
+
+        captured = capsys.readouterr()
+        assert "Detected project from branch name: my-project" in captured.out
+
+    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    def test_pull_request_branch_fallback_with_hyphenated_project_name(
+        self, mock_compare, mock_github_helper, capsys
+    ):
+        """Should correctly parse project names with hyphens from branch fallback"""
+        mock_compare.return_value = []
+
+        event = json.dumps({
+            "action": "closed",
+            "pull_request": {
+                "number": 9,
+                "merged": True,
+                "labels": [{"name": "claudechain"}],
+                "base": {"ref": "source-clean-up"},
+                "head": {"ref": "claude-chain-cleanup-7b6f699f"}
+            }
+        })
+
+        result = cmd_parse_event(
+            gh=mock_github_helper,
+            event_name="pull_request",
+            event_json=event,
+            project_name=None,
+            default_base_branch="source-clean-up",
+            repo="owner/repo"
+        )
+
+        assert result == 0
+        mock_github_helper.write_output.assert_any_call("skip", "false")
+        mock_github_helper.write_output.assert_any_call("project_name", "cleanup")
+        mock_github_helper.write_output.assert_any_call("checkout_ref", "source-clean-up")
 
     @patch("claudechain.cli.commands.parse_event.compare_commits")
     def test_pull_request_multiple_projects_processes_first(
