@@ -28,6 +28,11 @@ on:
         required: true
         type: string
         default: 'e2e-test-project'
+      base_branch:
+        description: 'Base branch where spec file lives (must match project config if set)'
+        required: true
+        type: string
+        default: 'main'
 
   pull_request:
     types: [closed]
@@ -53,5 +58,6 @@ jobs:
           github_event: ${{ toJson(github.event) }}
           event_name: ${{ github.event_name }}
           project_name: ${{ github.event.inputs.project_name || '' }}
+          default_base_branch: ${{ github.event.inputs.base_branch || '' }}
           claude_model: 'claude-3-haiku-20240307'
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -7,6 +7,7 @@ does not implement business logic directly.
 
 import argparse
 import os
+from typing import Optional
 
 from claudechain.domain.config import validate_spec_format_from_string
 from claudechain.domain.constants import DEFAULT_BASE_BRANCH
@@ -99,17 +100,22 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper, default_allow
         else:
             print(f"Base branch: {base_branch}")
 
-        # Validate base branch matches merge target (for PR merge events)
-        # This ensures we don't process PRs merged to the wrong branch
+        # Validate base branch matches expected target
         merge_target_branch = os.environ.get("MERGE_TARGET_BRANCH", "")
-        if merge_target_branch and merge_target_branch != base_branch:
-            skip_msg = f"Skipping: Project '{detected_project}' expects base branch '{base_branch}' but PR merged into '{merge_target_branch}'"
-            print(f"\n⏭️  {skip_msg}")
-            gh.set_notice(skip_msg)
-            gh.write_output("has_capacity", "false")
-            gh.write_output("has_task", "false")
-            gh.write_output("base_branch_mismatch", "true")
-            return 0  # Not an error, just skip this project
+        if merge_target_branch:
+            # PR merge event
+            result = _validate_base_branch_for_pr_merge(
+                gh, detected_project, base_branch, merge_target_branch
+            )
+            if result is not None:
+                return result
+        else:
+            # workflow_dispatch event
+            result = _validate_base_branch_for_workflow_dispatch(
+                gh, detected_project, config.base_branch, default_base_branch
+            )
+            if result is not None:
+                return result
 
         # Resolve allowed tools (config override or default)
         allowed_tools = config.get_allowed_tools(default_allowed_tools)
@@ -289,3 +295,75 @@ Now complete the task '{task}' following all the details and instructions in the
         import traceback
         traceback.print_exc()
         return 1
+
+
+# --- Private helper functions ---
+
+
+def _validate_base_branch_for_pr_merge(
+    gh: GitHubActionsHelper,
+    project_name: str,
+    expected_base_branch: str,
+    merge_target_branch: str,
+) -> Optional[int]:
+    """Validate base branch for PR merge events.
+
+    For PR merges, we SKIP (not error) if the merge target doesn't match
+    the expected base branch. This is normal - the PR just merged to a
+    different branch than this project uses.
+
+    Args:
+        gh: GitHub Actions helper for outputs
+        project_name: Name of the project being processed
+        expected_base_branch: Base branch from project config (or default)
+        merge_target_branch: Branch the PR was merged INTO
+
+    Returns:
+        0 to skip processing, None to continue
+    """
+    if merge_target_branch != expected_base_branch:
+        skip_msg = (
+            f"Skipping: Project '{project_name}' expects base branch "
+            f"'{expected_base_branch}' but PR merged into '{merge_target_branch}'"
+        )
+        print(f"\n⏭️  {skip_msg}")
+        gh.set_notice(skip_msg)
+        gh.write_output("has_capacity", "false")
+        gh.write_output("has_task", "false")
+        gh.write_output("base_branch_mismatch", "true")
+        return 0  # Skip, not error
+
+    return None  # Continue processing
+
+
+def _validate_base_branch_for_workflow_dispatch(
+    gh: GitHubActionsHelper,
+    project_name: str,
+    config_base_branch: Optional[str],
+    provided_base_branch: str,
+) -> Optional[int]:
+    """Validate base branch for workflow_dispatch events.
+
+    For manual triggers, we ERROR (not skip) if the provided base branch
+    doesn't match the project's configured baseBranch. This catches user
+    errors where they selected the wrong branch in the GitHub UI.
+
+    Args:
+        gh: GitHub Actions helper for errors
+        project_name: Name of the project being processed
+        config_base_branch: baseBranch from project config (None if not set)
+        provided_base_branch: base_branch input from workflow_dispatch
+
+    Returns:
+        1 to error, None to continue
+    """
+    if config_base_branch and config_base_branch != provided_base_branch:
+        error_msg = (
+            f"Base branch mismatch: project '{project_name}' expects "
+            f"'{config_base_branch}' but workflow was triggered with '{provided_base_branch}'"
+        )
+        print(f"\n❌ {error_msg}")
+        gh.set_error(error_msg)
+        return 1  # Error, not skip
+
+    return None  # Continue processing

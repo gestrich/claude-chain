@@ -254,7 +254,7 @@ def detect_projects_from_merge(changed_files: List[str]) -> List[Project]:
 
 ---
 
-- [ ] Phase 4: Support multiple projects in single PR
+- [x] Phase 4: Support multiple projects in single PR
 
 **Goal**: When a PR modifies specs for multiple projects, the action should process each project sequentially.
 
@@ -355,7 +355,7 @@ jobs:
 
 ---
 
-- [ ] Phase 5: Add base_branch input for workflow_dispatch
+- [x] Phase 5: Add base_branch input for workflow_dispatch
 
 **Goal**: For manual workflow triggers, require both `project_name` AND `base_branch` inputs, with strict validation.
 
