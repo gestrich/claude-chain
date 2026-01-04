@@ -161,7 +161,12 @@ def cmd_parse_event(
         gh.write_output("checkout_ref", checkout_ref)
         gh.write_output("base_branch", base_branch)
 
-        # For pull_request events, also output the PR number
+        # For pull_request events, output the merge target branch and PR number
+        # The merge target is the branch the PR was merged INTO (base_ref)
+        if context.event_name == "pull_request" and context.base_ref:
+            print(f"  Merge target branch: {context.base_ref}")
+            gh.write_output("merge_target_branch", context.base_ref)
+
         if context.pr_number:
             print(f"  Merged PR number: {context.pr_number}")
             gh.write_output("merged_pr_number", str(context.pr_number))

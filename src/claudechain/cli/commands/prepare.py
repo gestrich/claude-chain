@@ -99,6 +99,18 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper, default_allow
         else:
             print(f"Base branch: {base_branch}")
 
+        # Validate base branch matches merge target (for PR merge events)
+        # This ensures we don't process PRs merged to the wrong branch
+        merge_target_branch = os.environ.get("MERGE_TARGET_BRANCH", "")
+        if merge_target_branch and merge_target_branch != base_branch:
+            skip_msg = f"Skipping: Project '{detected_project}' expects base branch '{base_branch}' but PR merged into '{merge_target_branch}'"
+            print(f"\n⏭️  {skip_msg}")
+            gh.set_notice(skip_msg)
+            gh.write_output("has_capacity", "false")
+            gh.write_output("has_task", "false")
+            gh.write_output("base_branch_mismatch", "true")
+            return 0  # Not an error, just skip this project
+
         # Resolve allowed tools (config override or default)
         allowed_tools = config.get_allowed_tools(default_allowed_tools)
         if allowed_tools != default_allowed_tools:

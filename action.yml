@@ -156,6 +156,8 @@ runs:
         MERGED_PR_NUMBER: ${{ steps.parse.outputs.merged_pr_number || inputs.merged_pr_number }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         BASE_BRANCH: ${{ steps.parse.outputs.base_branch || inputs.default_base_branch }}
+        # For PR merge events, this is the branch the PR was merged INTO (for validation)
+        MERGE_TARGET_BRANCH: ${{ steps.parse.outputs.merge_target_branch }}
         ACTION_PATH: ${{ github.action_path }}
         SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
         PR_LABEL: ${{ inputs.pr_label }}
