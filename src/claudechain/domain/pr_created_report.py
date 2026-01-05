@@ -182,8 +182,8 @@ class PullRequestCreatedReport:
                 TableColumn("Cost (USD)", align="right"),
             ),
             rows=(
-                TableRow(("Main refactoring task", format_usd(self.cost_breakdown.main_cost))),
-                TableRow(("PR summary generation", format_usd(self.cost_breakdown.summary_cost))),
+                TableRow(("Task Completion", format_usd(self.cost_breakdown.main_cost))),
+                TableRow(("Summary Generation", format_usd(self.cost_breakdown.summary_cost))),
                 TableRow((f"**Total**", f"**{format_usd(self.cost_breakdown.total_cost)}**")),
             ),
         )
