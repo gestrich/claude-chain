@@ -22,7 +22,7 @@ Do NOT just output the summary as text. The summary MUST be written to a file us
 4. **USE THE `Write` TOOL** to write the summary to `{SUMMARY_FILE_PATH}` in this exact format:
 
 ```markdown
-## AI-Generated Summary
+## ClaudeChain Summary
 
 [Your summary here - be specific about what was changed and why]
 

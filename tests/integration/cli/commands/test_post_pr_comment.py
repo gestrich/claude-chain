@@ -66,7 +66,7 @@ class TestCmdPostPrComment:
         """Should post unified comment when summary file exists"""
         # Arrange
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
-            f.write("## AI-Generated Summary\n\nTest summary content")
+            f.write("## ClaudeChain Summary\n\nTest summary content")
             summary_file = f.name
 
         try:
@@ -110,7 +110,7 @@ class TestCmdPostPrComment:
         """Should write properly formatted markdown with summary and cost"""
         # Arrange
         with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
-            f.write("## AI-Generated Summary\n\nTest summary")
+            f.write("## ClaudeChain Summary\n\nTest summary")
             summary_file = f.name
 
         written_content = []
@@ -145,7 +145,7 @@ class TestCmdPostPrComment:
             # Assert
             assert len(written_content) == 1
             content = written_content[0]
-            assert "## AI-Generated Summary" in content
+            assert "## ClaudeChain Summary" in content
             assert "Test summary" in content
             assert "## 💰 Cost Breakdown" in content
             assert "$0.12" in content
@@ -187,7 +187,7 @@ class TestCmdPostPrComment:
         # Assert
         assert result == 0
         content = written_content[0]
-        assert "## AI-Generated Summary" not in content
+        assert "## ClaudeChain Summary" not in content
         assert "## 💰 Cost Breakdown" in content
         assert content.startswith("## 💰 Cost Breakdown")
 
@@ -229,7 +229,7 @@ class TestCmdPostPrComment:
             # Assert
             assert result == 0
             content = written_content[0]
-            assert "## AI-Generated Summary" not in content
+            assert "## ClaudeChain Summary" not in content
             assert "## 💰 Cost Breakdown" in content
         finally:
             os.unlink(summary_file)
@@ -517,7 +517,7 @@ class TestCmdPostPrComment:
         # Assert
         assert result == 0
         content = written_content[0]
-        assert "## AI-Generated Summary" not in content
+        assert "## ClaudeChain Summary" not in content
         assert "## 💰 Cost Breakdown" in content
 
     def test_cmd_post_pr_comment_strips_whitespace_from_pr_number(self, mock_gh_actions, create_execution_file, tmp_path):

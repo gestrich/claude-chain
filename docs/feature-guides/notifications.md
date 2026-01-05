@@ -92,7 +92,7 @@ The summary comment contains:
 
 Example:
 ```markdown
-## AI-Generated Summary
+## ClaudeChain Summary
 
 Added JWT token generation to the login endpoint. Modified `src/auth/login.ts`
 to generate a signed JWT on successful authentication, replacing the previous

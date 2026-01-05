@@ -57,7 +57,7 @@ ClaudeChain includes an optional feature to automatically post AI-generated summ
 ### Summary Comment Format
 
 ```markdown
-## AI-Generated Summary
+## ClaudeChain Summary
 
 [Detailed summary of changes - specific about files and functions modified]
 

@@ -111,11 +111,11 @@ def test_auto_start_workflow(
 
     # Verify PR has a combined comment with both summary and cost breakdown
     has_combined_comment = any(
-        "## AI-Generated Summary" in body and "## 💰 Cost Breakdown" in body
+        "## ClaudeChain Summary" in body and "## 💰 Cost Breakdown" in body
         for body in comment_bodies
     )
     assert has_combined_comment, \
-        f"PR #{pr.number} should have a combined comment with both '## AI-Generated Summary' and '## 💰 Cost Breakdown' headers. " \
+        f"PR #{pr.number} should have a combined comment with both '## ClaudeChain Summary' and '## 💰 Cost Breakdown' headers. " \
         f"Found {len(comments)} comment(s). PR URL: {pr_url}"
 
 
