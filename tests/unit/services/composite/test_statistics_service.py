@@ -879,7 +879,7 @@ class TestLeaderboard:
         # Leaderboard should appear before project progress
         assert "🏆 Leaderboard" in slack_msg
         leaderboard_pos = slack_msg.find("🏆 Leaderboard")
-        project_pos = slack_msg.find("📊 Project Progress")
+        project_pos = slack_msg.find("Project Progress")
 
         # Leaderboard should come first (most engaging)
         assert leaderboard_pos < project_pos

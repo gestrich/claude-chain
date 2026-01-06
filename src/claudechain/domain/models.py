@@ -430,10 +430,14 @@ class ProjectStats:
         if self.total_tasks == 0:
             return "░" * width + " 0%"
 
-        filled = int((self.completion_percentage / 100) * width)
+        pct = self.completion_percentage
+        filled = int((pct / 100) * width)
+        # Show at least 1 filled block if there's any progress
+        if pct > 0 and filled == 0:
+            filled = 1
         empty = width - filled
         bar = "█" * filled + "░" * empty
-        return f"{bar} {self.completion_percentage:.0f}%"
+        return f"{bar} {pct:.0f}%"
 
     def to_summary_section(self) -> Section:
         """Build summary section for this project.
@@ -587,7 +591,7 @@ class StatisticsReport:
         Returns:
             Section containing the project progress table
         """
-        section = Section(header=Header("📊 Project Progress", level=2))
+        section = Section(header=Header("Project Progress", level=2))
 
         if not self.project_stats:
             section.add(TextBlock("No projects found", style="italic"))
@@ -611,6 +615,9 @@ class StatisticsReport:
             pct = stats.completion_percentage
             bar_width = 10
             filled = int((pct / 100) * bar_width)
+            # Show at least 1 filled block if there's any progress
+            if pct > 0 and filled == 0:
+                filled = 1
             bar = "█" * filled + "░" * (bar_width - filled)
             progress_display = f"{bar} {pct:>3.0f}%"
 
