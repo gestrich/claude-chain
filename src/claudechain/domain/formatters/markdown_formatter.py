@@ -126,7 +126,7 @@ class MarkdownReportFormatter(ReportFormatter):
         """
         pct = progress_bar.percentage
         width = progress_bar.width
-        filled = int((pct / 100) * width)
+        filled = round((pct / 100) * width)
         # Use full blocks for markdown
         bar = "█" * filled + "░" * (width - filled)
 

@@ -115,7 +115,7 @@ class SlackReportFormatter(ReportFormatter):
         """
         pct = progress_bar.percentage
         width = progress_bar.width
-        filled = int((pct / 100) * width)
+        filled = round((pct / 100) * width)
         # Use lighter blocks for Slack
         bar = "▓" * filled + "░" * (width - filled)
 
