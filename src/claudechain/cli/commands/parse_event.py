@@ -159,22 +159,15 @@ def cmd_parse_event(
                 gh.write_output("skip_reason", reason)
                 return 0
 
-        # base_branch is used for PR creation target
-        # Use default_base_branch if provided, otherwise same as checkout_ref
-        # Note: Project config may override this (checked in prepare.py after checkout)
-        base_branch = default_base_branch if default_base_branch else checkout_ref
-
         # Output results
         print(f"\n✓ Event parsing complete")
         print(f"  Skip: false")
         print(f"  Project: {resolved_project}")
         print(f"  Checkout ref: {checkout_ref}")
-        print(f"  Base branch: {base_branch}")
 
         gh.write_output("skip", "false")
         gh.write_output("project_name", resolved_project)
         gh.write_output("checkout_ref", checkout_ref)
-        gh.write_output("base_branch", base_branch)
 
         # For pull_request events, output the merge target branch and PR number
         # The merge target is the branch the PR was merged INTO (base_ref)

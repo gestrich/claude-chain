@@ -103,7 +103,6 @@ class TestCmdParseEvent:
         mock_github_helper.write_output.assert_any_call("skip", "false")
         mock_github_helper.write_output.assert_any_call("project_name", "my-project")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
-        mock_github_helper.write_output.assert_any_call("base_branch", "main")
         mock_github_helper.write_output.assert_any_call("merged_pr_number", "42")
 
         captured = capsys.readouterr()
@@ -129,7 +128,6 @@ class TestCmdParseEvent:
         mock_github_helper.write_output.assert_any_call("skip", "false")
         mock_github_helper.write_output.assert_any_call("project_name", "my-project")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
-        mock_github_helper.write_output.assert_any_call("base_branch", "main")
         mock_github_helper.write_output.assert_any_call("merged_pr_number", "42")
 
         captured = capsys.readouterr()
@@ -354,7 +352,6 @@ class TestCmdParseEvent:
         mock_github_helper.write_output.assert_any_call("skip", "false")
         mock_github_helper.write_output.assert_any_call("project_name", "explicit-project")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
-        mock_github_helper.write_output.assert_any_call("base_branch", "main")
 
     def test_workflow_dispatch_without_project_name_fails(
         self, mock_github_helper, workflow_dispatch_event, capsys
@@ -392,7 +389,6 @@ class TestCmdParseEvent:
 
         assert result == 0
         mock_github_helper.write_output.assert_any_call("checkout_ref", "develop")
-        mock_github_helper.write_output.assert_any_call("base_branch", "develop")
 
     def test_workflow_dispatch_uses_configured_base_branch_for_checkout(
         self, mock_github_helper, capsys
@@ -422,9 +418,8 @@ class TestCmdParseEvent:
         )
 
         assert result == 0
-        # Both checkout_ref and base_branch should use the configured branch
+        # checkout_ref should use the configured branch
         mock_github_helper.write_output.assert_any_call("checkout_ref", "feature-branch")
-        mock_github_helper.write_output.assert_any_call("base_branch", "feature-branch")
 
     # =============================================================================
     # Tests for push events with project detection from changed files
@@ -592,7 +587,6 @@ class TestCmdParseEvent:
         assert result == 0
         mock_github_helper.write_output.assert_any_call("skip", "false")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
-        mock_github_helper.write_output.assert_any_call("base_branch", "main")
 
     # =============================================================================
     # Tests for output consistency
@@ -635,7 +629,6 @@ class TestCmdParseEvent:
         assert "skip" in output_calls
         assert "project_name" in output_calls
         assert "checkout_ref" in output_calls
-        assert "base_branch" in output_calls
 
     def test_outputs_all_required_fields_on_skip(
         self, mock_github_helper, pull_request_not_merged_event
@@ -758,7 +751,6 @@ class TestCmdParseEventEdgeCases:
 
         assert result == 0
         mock_github_helper.write_output.assert_any_call("project_name", "test")
-        mock_github_helper.write_output.assert_any_call("base_branch", "develop")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "develop")
 
     def test_project_name_override_takes_precedence(self, mock_github_helper):

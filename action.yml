@@ -78,7 +78,7 @@ outputs:
     value: ${{ steps.parse.outputs.project_name || steps.prepare.outputs.project_name }}
   base_branch:
     description: 'Resolved base branch'
-    value: ${{ steps.prepare.outputs.base_branch || steps.parse.outputs.base_branch || inputs.default_base_branch }}
+    value: ${{ steps.prepare.outputs.base_branch || inputs.default_base_branch }}
 
   # PR outputs
   pr_number:
@@ -160,7 +160,7 @@ runs:
         PROJECT_NAME: ${{ steps.parse.outputs.project_name || inputs.project_name }}
         MERGED_PR_NUMBER: ${{ steps.parse.outputs.merged_pr_number || inputs.merged_pr_number }}
         GITHUB_REPOSITORY: ${{ github.repository }}
-        BASE_BRANCH: ${{ steps.parse.outputs.base_branch || inputs.default_base_branch }}
+        BASE_BRANCH: ${{ inputs.default_base_branch }}
         # For PR merge events, this is the branch the PR was merged INTO (for validation)
         MERGE_TARGET_BRANCH: ${{ steps.parse.outputs.merge_target_branch }}
         ACTION_PATH: ${{ github.action_path }}
@@ -224,7 +224,7 @@ runs:
         PR_TEMPLATE_PATH: ${{ steps.prepare.outputs.pr_template_path }}
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}
-        BASE_BRANCH: ${{ steps.prepare.outputs.base_branch || steps.parse.outputs.base_branch || inputs.default_base_branch }}
+        BASE_BRANCH: ${{ steps.prepare.outputs.base_branch || inputs.default_base_branch }}
         HAS_CAPACITY: ${{ steps.prepare.outputs.has_capacity }}
         HAS_TASK: ${{ steps.prepare.outputs.has_task }}
         ACTION_PATH: ${{ github.action_path }}
@@ -246,7 +246,7 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         ACTION_PATH: ${{ github.action_path }}
-        BASE_BRANCH: ${{ steps.prepare.outputs.base_branch || steps.parse.outputs.base_branch || inputs.default_base_branch }}
+        BASE_BRANCH: ${{ steps.prepare.outputs.base_branch || inputs.default_base_branch }}
       run: |
         export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
         python3 -m claudechain prepare-summary
