@@ -15,7 +15,7 @@ from claudechain.domain.models import BranchInfo
 
 from claudechain.domain.github_event import GitHubEventContext
 from claudechain.infrastructure.github.actions import GitHubActionsHelper
-from claudechain.infrastructure.github.operations import compare_commits
+from claudechain.infrastructure.github.operations import compare_commits, get_pull_request_files
 from claudechain.services.core.project_service import ProjectService
 
 
@@ -98,14 +98,12 @@ def cmd_parse_event(
                 gh.write_output("skip_reason", reason)
                 return 0
 
-            # Detect projects from changed spec.md files
-            if repo:
-                detected_projects = _detect_projects_from_changed_files(context, repo)
+            # Detect projects from PR files (more reliable than branch comparison)
+            if repo and context.pr_number:
+                detected_projects = _detect_projects_from_pr_files(context.pr_number, repo)
                 resolved_project = _select_project_and_output_all(gh, detected_projects)
 
             # Fallback: detect project from branch name for ClaudeChain PRs
-            # This handles the case where a ClaudeChain PR is merged and the
-            # compare API returns 0 files (because head is now part of base)
             if not resolved_project and context.head_ref:
                 resolved_project = _detect_project_from_branch_name(context.head_ref)
 
@@ -319,9 +317,8 @@ def _detect_projects_from_changed_files(
 def _detect_project_from_branch_name(head_ref: str) -> Optional[str]:
     """Detect project from ClaudeChain branch name pattern.
 
-    This is a fallback for when the compare API returns 0 changed files,
-    which happens when a ClaudeChain PR is merged (the head branch commits
-    are now part of the base branch, so the diff is empty).
+    This is a fallback for when the PR files API returns no spec.md changes,
+    which can happen for ClaudeChain PRs that only modify task files.
 
     ClaudeChain branches follow the pattern: claude-chain-{project}-{hash}
 
@@ -336,3 +333,38 @@ def _detect_project_from_branch_name(head_ref: str) -> Optional[str]:
         print(f"  Detected project from branch name: {branch_info.project_name}")
         return branch_info.project_name
     return None
+
+
+def _detect_projects_from_pr_files(
+    pr_number: int,
+    repo: str,
+) -> List[Project]:
+    """Detect projects from files changed in a pull request.
+
+    Uses the GitHub PR Files API which is more reliable than branch comparison
+    for merged PRs because:
+    - Works regardless of merge strategy (merge, squash, rebase)
+    - Returns the actual files changed by the PR, not a branch comparison
+    - Avoids timing issues where branches point to same commit post-merge
+
+    Args:
+        pr_number: Pull request number
+        repo: GitHub repository (owner/name) for API calls
+
+    Returns:
+        List of Project objects for projects with changed spec.md files.
+        Empty list if no spec files were changed or detection failed.
+    """
+    print(f"\n  Detecting project from PR #{pr_number} files...")
+
+    try:
+        changed_files = get_pull_request_files(repo, pr_number)
+        print(f"  Found {len(changed_files)} changed files")
+        projects = ProjectService.detect_projects_from_merge(changed_files)
+        if projects:
+            print(f"  Detected {len(projects)} project(s) from spec.md changes: {[p.name for p in projects]}")
+        return projects
+    except Exception as e:
+        print(f"  Could not detect from PR files: {e}")
+
+    return []

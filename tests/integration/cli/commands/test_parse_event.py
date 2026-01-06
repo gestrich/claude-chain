@@ -71,12 +71,12 @@ class TestCmdParseEvent:
     # Tests for pull_request events with project detection from changed files
     # =============================================================================
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_merged_detects_project_from_spec_changes(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
         """Should detect project from changed spec.md files in merged PR"""
-        mock_compare.return_value = ["claude-chain/my-project/spec.md", "README.md"]
+        mock_get_pr_files.return_value = ["claude-chain/my-project/spec.md", "README.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -99,7 +99,7 @@ class TestCmdParseEvent:
         )
 
         assert result == 0
-        mock_compare.assert_called_once_with("owner/repo", "main", "feature/some-branch")
+        mock_get_pr_files.assert_called_once_with("owner/repo", 42)
         mock_github_helper.write_output.assert_any_call("skip", "false")
         mock_github_helper.write_output.assert_any_call("project_name", "my-project")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "main")
@@ -109,12 +109,12 @@ class TestCmdParseEvent:
         captured = capsys.readouterr()
         assert "Event parsing complete" in captured.out
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_merged_with_claudechain_branch_detects_project(
-        self, mock_compare, mock_github_helper, pull_request_merged_event, capsys
+        self, mock_get_pr_files, mock_github_helper, pull_request_merged_event, capsys
     ):
         """Should detect project from ClaudeChain branch name in changed spec.md"""
-        mock_compare.return_value = ["claude-chain/my-project/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/my-project/spec.md"]
 
         result = cmd_parse_event(
             gh=mock_github_helper,
@@ -154,12 +154,12 @@ class TestCmdParseEvent:
         captured = capsys.readouterr()
         assert "Skipping" in captured.out
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_no_spec_changes_and_non_claudechain_branch_skips(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
         """Should skip PR when no spec.md files changed and branch is not ClaudeChain"""
-        mock_compare.return_value = ["src/code.py", "README.md"]
+        mock_get_pr_files.return_value = ["src/code.py", "README.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -187,18 +187,17 @@ class TestCmdParseEvent:
             "skip_reason", "No spec.md changes detected and branch name is not a ClaudeChain branch"
         )
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_no_spec_changes_but_claudechain_branch_detects_project(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
-        """Should detect project from ClaudeChain branch when compare API returns 0 files.
+        """Should detect project from ClaudeChain branch when PR files API returns no spec.md.
 
-        This is the key fallback behavior: when a ClaudeChain PR is merged, the
-        compare API may return 0 files (because the head is now part of base).
-        The fallback detects the project from the branch name pattern.
+        This is the fallback behavior: when a ClaudeChain PR doesn't modify spec.md
+        (e.g., only modifies task files), detect the project from the branch name pattern.
         """
-        # Compare API returns 0 files (simulating post-merge state)
-        mock_compare.return_value = []
+        # PR files API returns files but no spec.md
+        mock_get_pr_files.return_value = []
 
         event = json.dumps({
             "action": "closed",
@@ -228,12 +227,12 @@ class TestCmdParseEvent:
         captured = capsys.readouterr()
         assert "Detected project from branch name: my-project" in captured.out
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_branch_fallback_with_hyphenated_project_name(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
         """Should correctly parse project names with hyphens from branch fallback"""
-        mock_compare.return_value = []
+        mock_get_pr_files.return_value = []
 
         event = json.dumps({
             "action": "closed",
@@ -260,12 +259,12 @@ class TestCmdParseEvent:
         mock_github_helper.write_output.assert_any_call("project_name", "cleanup")
         mock_github_helper.write_output.assert_any_call("checkout_ref", "source-clean-up")
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_multiple_projects_processes_first(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
         """Should process first project when multiple projects have spec.md changes"""
-        mock_compare.return_value = [
+        mock_get_pr_files.return_value = [
             "claude-chain/project-a/spec.md",
             "claude-chain/project-b/spec.md"
         ]
@@ -307,12 +306,12 @@ class TestCmdParseEvent:
         captured = capsys.readouterr()
         assert "Multiple projects detected" in captured.out
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_pull_request_detects_project_from_complex_path(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
         """Should detect project name from spec.md path with complex name"""
-        mock_compare.return_value = ["claude-chain/my-very-long-project-name/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/my-very-long-project-name/spec.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -599,12 +598,12 @@ class TestCmdParseEvent:
     # Tests for output consistency
     # =============================================================================
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_outputs_all_required_fields_on_success(
-        self, mock_compare, mock_github_helper
+        self, mock_get_pr_files, mock_github_helper
     ):
         """Should output all required fields on success"""
-        mock_compare.return_value = ["claude-chain/my-project/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/my-project/spec.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -660,12 +659,12 @@ class TestCmdParseEvent:
         assert output_calls.get("skip") == "true"
         assert "skip_reason" in output_calls
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_console_output_includes_context(
-        self, mock_compare, mock_github_helper, capsys
+        self, mock_get_pr_files, mock_github_helper, capsys
     ):
         """Should include helpful context in console output"""
-        mock_compare.return_value = ["claude-chain/my-project/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/my-project/spec.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -702,12 +701,12 @@ class TestCmdParseEventEdgeCases:
         mock.set_error = Mock()
         return mock
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_project_name_with_multiple_hyphens(
-        self, mock_compare, mock_github_helper
+        self, mock_get_pr_files, mock_github_helper
     ):
         """Should handle project names with multiple hyphens"""
-        mock_compare.return_value = ["claude-chain/my-very-long-project-name/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/my-very-long-project-name/spec.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -732,12 +731,12 @@ class TestCmdParseEventEdgeCases:
             "project_name", "my-very-long-project-name"
         )
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_different_base_branches(
-        self, mock_compare, mock_github_helper
+        self, mock_get_pr_files, mock_github_helper
     ):
         """Should respect different base branches from event"""
-        mock_compare.return_value = ["claude-chain/test/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/test/spec.md"]
 
         event = json.dumps({
             "action": "closed",
@@ -780,12 +779,12 @@ class TestCmdParseEventEdgeCases:
         assert result == 0
         mock_github_helper.write_output.assert_any_call("project_name", "override-project")
 
-    @patch("claudechain.cli.commands.parse_event.compare_commits")
+    @patch("claudechain.cli.commands.parse_event.get_pull_request_files")
     def test_empty_labels_list_still_processes_with_spec_changes(
-        self, mock_compare, mock_github_helper
+        self, mock_get_pr_files, mock_github_helper
     ):
         """Should process PR with no labels when spec.md changes detected"""
-        mock_compare.return_value = ["claude-chain/test/spec.md"]
+        mock_get_pr_files.return_value = ["claude-chain/test/spec.md"]
 
         event = json.dumps({
             "action": "closed",

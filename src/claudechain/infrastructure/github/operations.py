@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 import zipfile
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from claudechain.domain.exceptions import GitHubAPIError
 from claudechain.domain.github_models import GitHubPullRequest, PRComment, WorkflowRun
@@ -84,6 +84,42 @@ def compare_commits(repo: str, base: str, head: str) -> List[str]:
 
     files = response.get("files", [])
     return [f["filename"] for f in files]
+
+
+def get_pull_request_files(repo: str, pr_number: int) -> List[str]:
+    """Get list of files changed by a pull request via GitHub API.
+
+    Uses the PR Files API: GET /repos/{owner}/{repo}/pulls/{pr_number}/files
+
+    This is more reliable than compare_commits for merged PRs because:
+    - Works regardless of merge strategy (merge, squash, rebase)
+    - Returns the actual files changed by the PR, not a branch comparison
+    - Avoids timing issues where branches point to same commit post-merge
+
+    Args:
+        repo: GitHub repository (owner/name)
+        pr_number: Pull request number
+
+    Returns:
+        List of file paths that were added, modified, or removed by the PR
+
+    Raises:
+        GitHubAPIError: If API call fails
+
+    Example:
+        >>> # Get files changed by PR #123
+        >>> changed_files = get_pull_request_files("owner/repo", 123)
+        >>> for file_path in changed_files:
+        ...     print(f"Changed: {file_path}")
+    """
+    endpoint = f"/repos/{repo}/pulls/{pr_number}/files"
+    response = gh_api_call(endpoint, method="GET")
+
+    # Response is a list of file objects, not wrapped in a dict
+    if isinstance(response, list):
+        files = cast(List[Dict[str, Any]], response)
+        return [f["filename"] for f in files]
+    return []
 
 
 def detect_project_from_diff(changed_files: List[str]) -> Optional[str]:
