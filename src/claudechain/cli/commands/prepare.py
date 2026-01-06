@@ -60,20 +60,25 @@ def cmd_prepare(args: argparse.Namespace, gh: GitHubActionsHelper, default_allow
 
         detected_project = None
 
-        # If merged PR number provided, detect project from PR labels
-        if merged_pr_number:
+        # Prefer project_name if already provided (e.g., from parse_event detection)
+        if project_name:
+            detected_project = project_name
+            if merged_pr_number:
+                print(f"Processing merged PR #{merged_pr_number} for project '{detected_project}'")
+                print("Proceeding to prepare next task...")
+            else:
+                print(f"Using provided project name: {detected_project}")
+
+        # Fallback: detect project from PR if no project name provided
+        elif merged_pr_number:
             detected_project = project_service.detect_project_from_pr(merged_pr_number)
             if not detected_project:
                 gh.set_error(f"No refactor project found with matching label for PR #{merged_pr_number}")
                 return 1
 
-            # No need to update metadata - PR state is tracked via GitHub API
             print(f"Processing merged PR #{merged_pr_number} for project '{detected_project}'")
             print("Proceeding to prepare next task...")
 
-        elif project_name:
-            detected_project = project_name
-            print(f"Using provided project name: {detected_project}")
         else:
             gh.set_error("project_name must be provided (use discovery action to find projects)")
             return 1
