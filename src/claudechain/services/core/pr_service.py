@@ -200,16 +200,21 @@ class PRService:
             {'my-refactor': 'main', 'swift-migration': 'develop', 'api-cleanup': 'main'}
         """
         all_prs = self.get_all_prs(label=label)
-        projects: Dict[str, str] = {}
 
-        for pr in all_prs:
+        # Sort by created_at descending so we process newest PRs first
+        all_prs_sorted = sorted(all_prs, key=lambda pr: pr.created_at, reverse=True)
+
+        projects: Dict[str, str] = {}
+        for pr in all_prs_sorted:
             if pr.head_ref_name and pr.base_ref_name:
                 parsed = self.parse_branch_name(pr.head_ref_name)
                 if parsed:
-                    # Use the base branch from the PR
-                    # If multiple PRs for same project, use the most recent one
-                    # (PRs are returned in order, so later ones overwrite)
-                    projects[parsed.project_name] = pr.base_ref_name
+                    project_name = parsed.project_name
+                    # Keep the newest PR's base branch for each project.
+                    # Old PRs may have targeted different branches before the project
+                    # was moved to its current base branch.
+                    if project_name not in projects:
+                        projects[project_name] = pr.base_ref_name
 
         return projects
 
