@@ -780,6 +780,12 @@ class StatisticsReport:
                     orphan_items.append(ListItem(f"PR #{pr.number} ({state}) - Task removed from spec"))
 
                 project_section.add(Header("Orphaned PRs", level=3))
+                project_section.add(TextBlock(
+                    "> **Note:** Orphaned PRs are pull requests whose associated tasks have been "
+                    "removed from the spec file.\n"
+                    "> These may need manual review to determine if they should be closed or "
+                    "if the task should be restored."
+                ))
                 project_section.add(ListBlock(tuple(orphan_items)))
 
             section.add(project_section)

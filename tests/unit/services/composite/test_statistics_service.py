@@ -2183,6 +2183,8 @@ class TestFormatProjectDetails:
 
         # Check orphaned PRs section
         assert "### Orphaned PRs" in result
+        assert "> **Note:** Orphaned PRs are pull requests" in result
+        assert "may need manual review" in result
         assert "PR #25 (Merged)" in result
         assert "Task removed from spec" in result
         assert "PR #28 (Open" in result
