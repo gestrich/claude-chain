@@ -62,7 +62,7 @@ Update the repository's own workflow to use the simplified interface:
 1. Remove the `github_event` and `event_name` input lines
 2. Keep `project_name` input for workflow_dispatch (or also remove if we read it internally)
 
-- [ ] Phase 4: Update documentation
+- [x] Phase 4: Update documentation
 
 Update any documentation that shows how to configure the action:
 
