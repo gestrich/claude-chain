@@ -92,19 +92,9 @@ The final Slack message structure:
 
 Tested both Table Block and Section Fields approaches. Both work with incoming webhooks. Chose Section Fields for richer formatting support.
 
-- [ ] Phase 2: Create Block Kit message builder
+- [x] Phase 2: Create Block Kit message builder
 
-Create a new `SlackBlockKitFormatter` class that outputs Slack Block Kit JSON structures.
-
-Files to create:
-- `src/claudechain/domain/formatters/slack_block_kit_formatter.py`
-
-The formatter should support:
-- Header blocks for titles
-- Context blocks for metadata (date, branch, stats)
-- Section blocks for project info and PR lists
-- Divider blocks between projects
-- Section fields for leaderboard (2-column layout)
+Created `SlackBlockKitFormatter` class in `src/claudechain/domain/formatters/slack_block_kit_formatter.py` with support for header, context, section, divider blocks, and section fields for leaderboard.
 
 - [ ] Phase 3: Implement project progress blocks
 
