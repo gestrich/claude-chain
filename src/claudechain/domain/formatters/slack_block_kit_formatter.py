@@ -117,20 +117,26 @@ class SlackBlockKitFormatter:
 
         percent_complete = (merged / total * 100) if total > 0 else 0
         is_complete = merged == total and total > 0
+        has_open_prs = bool(open_prs)
+
+        # Determine status indicator
+        if is_complete:
+            status = "✅"
+        elif has_open_prs:
+            status = "🔄"
+        else:
+            status = "⚠️"
 
         name = f"*{project_name}*"
-        if is_complete:
-            name += " ✅"
-
         progress_bar = _generate_progress_bar(percent_complete)
 
         blocks.append(section_block(f"{name}\n{progress_bar}"))
 
         cost_str = format_usd(cost_usd) if cost_usd > 0 else "$0.00"
-        blocks.append(context_block(f"{merged}/{total} merged  •  💰 {cost_str}"))
+        blocks.append(context_block(f"{status}  {merged}/{total} merged  •  💰 {cost_str}"))
 
         if open_prs:
-            pr_lines = ["🔄 *Open:*"]
+            pr_lines = []
             for pr in open_prs:
                 url = pr.get("url")
                 if not url and self.repo:

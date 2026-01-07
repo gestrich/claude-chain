@@ -170,7 +170,7 @@ class TestProjectBlocks:
         return SlackBlockKitFormatter(repo="owner/repo")
 
     def test_project_shows_checkmark_when_complete(self, formatter):
-        """100% complete projects show ✅"""
+        """100% complete projects show ✅ in stats line"""
         result = formatter.format_project_blocks(
             project_name="test-project",
             merged=10,
@@ -178,12 +178,26 @@ class TestProjectBlocks:
             cost_usd=5.00
         )
 
-        section_text = result[0]["text"]["text"]
-        assert "✅" in section_text
-        assert "*test-project*" in section_text
+        # Checkmark is in the context/stats line, not the project name
+        context_text = result[1]["elements"][0]["text"]
+        assert "✅" in context_text
+        assert "*test-project*" in result[0]["text"]["text"]
 
-    def test_project_no_checkmark_when_incomplete(self, formatter):
-        """Incomplete projects don't show ✅"""
+    def test_project_shows_spinner_when_has_open_prs(self, formatter):
+        """Projects with open PRs show 🔄 in stats line"""
+        result = formatter.format_project_blocks(
+            project_name="test-project",
+            merged=5,
+            total=10,
+            cost_usd=5.00,
+            open_prs=[{"number": 1, "title": "Test PR", "age_days": 0}]
+        )
+
+        context_text = result[1]["elements"][0]["text"]
+        assert "🔄" in context_text
+
+    def test_project_shows_warning_when_stalled(self, formatter):
+        """Projects with tasks remaining but no open PRs show ⚠️ in stats line"""
         result = formatter.format_project_blocks(
             project_name="test-project",
             merged=5,
@@ -191,8 +205,8 @@ class TestProjectBlocks:
             cost_usd=5.00
         )
 
-        section_text = result[0]["text"]["text"]
-        assert "✅" not in section_text
+        context_text = result[1]["elements"][0]["text"]
+        assert "⚠️" in context_text
 
     def test_project_shows_progress_bar(self, formatter):
         """Project blocks include progress bar"""
