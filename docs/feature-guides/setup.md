@@ -65,8 +65,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          github_event: ${{ toJson(github.event) }}
-          event_name: ${{ github.event_name }}
           project_name: ${{ github.event.inputs.project_name || '' }}
           default_base_branch: ${{ github.event.inputs.base_branch || 'main' }}
           claude_allowed_tools: 'Read,Write,Edit,Bash(git add:*),Bash(git commit:*)'  # Configure as needed
@@ -77,7 +75,6 @@ jobs:
 - `workflow_dispatch` - Allows manual triggering with project name and base branch inputs
 - `pull_request: types: [closed]` - Triggers when PRs are merged (for auto-continuation)
 - `paths: ['claude-chain/**']` - Only triggers when files under claude-chain/ change
-- `github_event` / `event_name` - Passes event context so the action can detect projects automatically
 - `project_name` - Used for manual triggers; auto-detected for PR events from changed spec.md files
 - `default_base_branch` - The branch PRs will target; validated against project config if set
 - `claude_allowed_tools` - Controls which tools Claude can use (see [Tool Permissions](#tool-permissions))
@@ -221,9 +218,7 @@ After triggering:
 |-------|----------|---------|-------------|
 | `anthropic_api_key` | Yes | - | Anthropic API key for Claude Code |
 | `github_token` | Yes | `${{ github.token }}` | GitHub token for PR operations |
-| `project_name` | Conditional | - | Project folder name. Required unless using simplified workflow with `github_event` |
-| `github_event` | No | - | GitHub event payload (pass `${{ toJson(github.event) }}`) |
-| `event_name` | No | - | GitHub event name (pass `${{ github.event_name }}`) |
+| `project_name` | No | - | Project folder name. Auto-detected from changed spec.md files or workflow_dispatch input |
 | `claude_model` | No | `claude-sonnet-4-5` | Claude model to use |
 | `claude_allowed_tools` | No | `Read,Write,Edit,Bash(git add:*),Bash(git commit:*)` | Tools Claude can use (can be overridden per-project) |
 | `base_branch` | No | (inferred) | Base branch for PRs |

@@ -105,13 +105,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          github_event: ${{ toJson(github.event) }}
-          event_name: ${{ github.event_name }}
           project_name: ${{ github.event.inputs.project_name || '' }}
-          # Default branch PRs target - shoudl be same as 
-          # base_branch.default above
-          default_base_branch: ${{ github.event.inputs.base_branch || 'main' }}  # Per-project override in configuration.yml
-          # Configure cladue tools as needed
+          default_base_branch: ${{ github.event.inputs.base_branch || 'main' }}
           claude_allowed_tools: 'Read,Write,Edit,Bash(git add:*),Bash(git commit:*)'
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
