@@ -96,90 +96,13 @@ Tested both Table Block and Section Fields approaches. Both work with incoming w
 
 Created `SlackBlockKitFormatter` class in `src/claudechain/domain/formatters/slack_block_kit_formatter.py` with support for header, context, section, divider blocks, and section fields for leaderboard.
 
-- [ ] Phase 3: Implement project progress blocks
+- [x] Phase 3: Implement project progress blocks
 
-Generate blocks for each project following the target format:
+Implemented `format_project_blocks` method with project name + ✅, progress bar, stats context, and open PRs list with ⚠️ for stale.
 
-```python
-def format_project_blocks(project: ProjectStats) -> list[dict]:
-    """Generate Block Kit blocks for a single project."""
-    blocks = []
+- [x] Phase 4: Implement leaderboard blocks
 
-    # Project name with optional checkmark
-    name = f"*{project.name}*"
-    if project.is_complete:
-        name += " ✅"
-
-    # Progress bar
-    progress_bar = generate_progress_bar(project.percent_complete)
-
-    blocks.append({
-        "type": "section",
-        "text": {"type": "mrkdwn", "text": f"{name}\n{progress_bar}"}
-    })
-
-    # Stats context
-    blocks.append({
-        "type": "context",
-        "elements": [{
-            "type": "mrkdwn",
-            "text": f"{project.merged}/{project.total} merged  •  💰 ${project.cost:.2f}"
-        }]
-    })
-
-    # Open PRs list (if any)
-    if project.open_prs:
-        pr_lines = []
-        for pr in project.open_prs:
-            line = f"• <{pr.url}|#{pr.number} {pr.title}> ({pr.age_days}d)"
-            if pr.age_days >= 5:
-                line += " ⚠️"
-            pr_lines.append(line)
-
-        blocks.append({
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": "\n".join(pr_lines)}
-        })
-
-    blocks.append({"type": "divider"})
-    return blocks
-```
-
-Files to modify:
-- `src/claudechain/domain/formatters/slack_block_kit_formatter.py`
-
-- [ ] Phase 4: Implement leaderboard blocks
-
-Generate leaderboard using Section fields for 2-column layout:
-
-```python
-def format_leaderboard_blocks(leaderboard: list[LeaderboardEntry]) -> list[dict]:
-    """Generate Block Kit blocks for leaderboard."""
-    medals = ["🥇", "🥈", "🥉"]
-
-    blocks = [{
-        "type": "section",
-        "text": {"type": "mrkdwn", "text": "*🏆 Leaderboard*"}
-    }]
-
-    fields = []
-    for i, entry in enumerate(leaderboard[:6]):  # Max 6 to stay under 10 fields
-        medal = medals[i] if i < 3 else f"{i+1}."
-        fields.append({
-            "type": "mrkdwn",
-            "text": f"{medal} *{entry.username}*\n{entry.merged} merged"
-        })
-
-    blocks.append({
-        "type": "section",
-        "fields": fields
-    })
-
-    return blocks
-```
-
-Files to modify:
-- `src/claudechain/domain/formatters/slack_block_kit_formatter.py`
+Implemented `format_leaderboard_blocks` method with medal emojis and 2-column section fields layout.
 
 - [ ] Phase 5: Update format_for_slack to output Block Kit JSON
 
