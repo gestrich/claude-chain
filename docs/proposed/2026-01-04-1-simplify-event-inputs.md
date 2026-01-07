@@ -20,7 +20,7 @@ This is redundant because GitHub Actions provides these values through the `gith
 
 ## Phases
 
-- [ ] Phase 1: Update action.yml to use github context directly
+- [x] Phase 1: Update action.yml to use github context directly
 
 Remove the `github_event` and `event_name` inputs from action.yml. Update the parse-event step to read from the github context instead of inputs:
 
@@ -38,7 +38,7 @@ Remove the `github_event` and `event_name` inputs from action.yml. Update the pa
 
 **Important consideration:** The current design uses `inputs.github_event != ''` to detect "simplified workflow mode" vs "direct mode" where users call prepare/finalize themselves. We need to determine if this distinction is still needed or if we can always run the parse-event step.
 
-- [ ] Phase 2: Determine new approach for simplified vs direct mode
+- [x] Phase 2: Determine new approach for simplified vs direct mode
 
 Currently, the action supports two modes:
 1. **Simplified mode** (github_event is provided): Runs parse-event step, handles checkout internally
