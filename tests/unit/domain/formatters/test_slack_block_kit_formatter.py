@@ -138,28 +138,20 @@ class TestSlackBlockKitFormatter:
         assert result["blocks"] == blocks
 
     def test_format_header_blocks_includes_required_elements(self, formatter):
-        """Header blocks include title, context, and divider"""
-        test_date = datetime(2024, 1, 15, 10, 30, tzinfo=timezone.utc)
-        result = formatter.format_header_blocks(
-            title="Test Report",
-            generated_at=test_date,
-            branch="main"
-        )
+        """Header blocks include title and divider"""
+        result = formatter.format_header_blocks(title="Test Report")
 
-        assert len(result) == 3
+        assert len(result) == 2
         assert result[0]["type"] == "header"
         assert result[0]["text"]["text"] == "Test Report"
-        assert result[1]["type"] == "context"
-        assert "2024-01-15" in result[1]["elements"][0]["text"]
-        assert "main" in result[1]["elements"][0]["text"]
-        assert result[2]["type"] == "divider"
+        assert result[1]["type"] == "divider"
 
-    def test_format_header_blocks_defaults_to_now(self, formatter):
-        """Header uses current time when generated_at not provided"""
-        result = formatter.format_header_blocks(title="Test")
+    def test_format_header_blocks_uses_default_title(self, formatter):
+        """Header uses default title when not provided"""
+        result = formatter.format_header_blocks()
 
-        assert len(result) == 3
-        assert result[1]["type"] == "context"
+        assert len(result) == 2
+        assert result[0]["text"]["text"] == "ClaudeChain Statistics"
 
 
 class TestProjectBlocks:
@@ -236,7 +228,7 @@ class TestProjectBlocks:
         assert "$15.50" in context_text
 
     def test_project_shows_open_prs_with_links(self, formatter):
-        """Open PRs are shown as clickable links"""
+        """Open PRs are shown as clickable links with Open prefix"""
         result = formatter.format_project_blocks(
             project_name="test-project",
             merged=5,
@@ -251,7 +243,7 @@ class TestProjectBlocks:
         assert len(result) == 4
         pr_section_text = result[2]["text"]["text"]
         assert "<https://github.com/owner/repo/pull/42|#42 Fix bug>" in pr_section_text
-        assert "(3d)" in pr_section_text
+        assert "(Open 3d)" in pr_section_text
 
     def test_project_shows_warning_for_stale_prs(self, formatter):
         """PRs older than 5 days show ⚠️"""

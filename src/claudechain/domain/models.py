@@ -945,7 +945,6 @@ class StatisticsReport:
         # Header blocks
         blocks.extend(formatter.format_header_blocks(
             title="ClaudeChain Statistics",
-            generated_at=self.generated_at,
         ))
 
         # Leaderboard blocks (only if enabled)
@@ -1011,15 +1010,13 @@ class StatisticsReport:
 
         blocks.extend(formatter.format_warnings_blocks(warnings_data))
 
-        # Generation time in context block
-        if self.generation_time_seconds is not None:
-            from claudechain.domain.formatters.slack_block_kit_formatter import context_block
-            blocks.append(context_block(f"_Elapsed time: {self.generation_time_seconds:.1f}s_"))
-
-        # Footer with link to GitHub Actions run
+        # Footer with link to GitHub Actions run (and elapsed time if available)
         if run_url:
             from claudechain.domain.formatters.slack_block_kit_formatter import context_block
-            blocks.append(context_block(f"_See details in <{run_url}|GitHub Actions>_"))
+            if self.generation_time_seconds is not None:
+                blocks.append(context_block(f"_<{run_url}|See details in GitHub Actions> ({self.generation_time_seconds:.1f}s)_"))
+            else:
+                blocks.append(context_block(f"_<{run_url}|See details in GitHub Actions>_"))
 
         return formatter.build_message(blocks, fallback_text="ClaudeChain Statistics")
 

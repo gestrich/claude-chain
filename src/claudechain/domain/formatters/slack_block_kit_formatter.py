@@ -59,34 +59,18 @@ class SlackBlockKitFormatter:
     def format_header_blocks(
         self,
         title: str = "ClaudeChain Statistics",
-        generated_at: datetime | None = None,
-        branch: str | None = None,
     ) -> list[dict[str, Any]]:
         """Generate header blocks for the report.
 
         Args:
             title: Report title
-            generated_at: Report generation timestamp (defaults to now UTC)
-            branch: Optional branch name to display
 
         Returns:
             List of Block Kit blocks for the header
         """
         blocks: list[dict[str, Any]] = []
-
         blocks.append(header_block(title))
-
-        if generated_at is None:
-            generated_at = datetime.now(timezone.utc)
-
-        date_str = generated_at.strftime("%Y-%m-%d")
-        context_parts = [f"📅 {date_str}"]
-        if branch:
-            context_parts.append(f"Branch: {branch}")
-
-        blocks.append(context_block("  •  ".join(context_parts)))
         blocks.append(divider_block())
-
         return blocks
 
     # ============================================================
@@ -148,9 +132,9 @@ class SlackBlockKitFormatter:
                 age_formatted = pr.get("age_formatted", f"{age_days}d")
 
                 if url:
-                    line = f"• <{url}|#{pr['number']} {title}> ({age_formatted})"
+                    line = f"• <{url}|#{pr['number']} {title}> (Open {age_formatted})"
                 else:
-                    line = f"• #{pr['number']} {title} ({age_formatted})"
+                    line = f"• #{pr['number']} {title} (Open {age_formatted})"
 
                 if age_days >= 5:
                     line += " ⚠️"
