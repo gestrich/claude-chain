@@ -923,7 +923,6 @@ class StatisticsReport:
     def format_for_slack_blocks(
         self,
         show_assignee_stats: bool = False,
-        stale_pr_days: int = 7,
         run_url: Optional[str] = None,
     ) -> Dict:
         """Complete report as Slack Block Kit JSON structure.
@@ -933,7 +932,6 @@ class StatisticsReport:
 
         Args:
             show_assignee_stats: Whether to include the assignee leaderboard (default: False)
-            stale_pr_days: Threshold for stale PR warnings (default: 7 days)
             run_url: Optional URL to GitHub Actions run for "See details" footer
 
         Returns:
@@ -982,33 +980,6 @@ class StatisticsReport:
                 cost_usd=stats.total_cost_usd,
                 open_prs=open_prs if open_prs else None,
             ))
-
-        # Warnings blocks
-        warnings_data = []
-        for stats in self.projects_needing_attention():
-            items = []
-
-            # Stale PRs
-            for pr in stats.open_prs:
-                if pr.is_stale(stale_pr_days):
-                    items.append(f"#{pr.number} ({pr.days_open}d, stale)")
-
-            # Open orphaned PRs
-            for pr in stats.orphaned_prs:
-                if pr.is_open():
-                    items.append(f"#{pr.number} ({pr.days_open}d, orphaned)")
-
-            # No open PRs but tasks remain
-            if stats.has_remaining_tasks:
-                items.append(f"No open PRs ({stats.pending_tasks} tasks remaining)")
-
-            if items:
-                warnings_data.append({
-                    "project_name": stats.project_name,
-                    "items": items,
-                })
-
-        blocks.extend(formatter.format_warnings_blocks(warnings_data))
 
         # Footer with link to GitHub Actions run (and elapsed time if available)
         if run_url:
