@@ -111,7 +111,7 @@ jobs:
           slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
 
-**Statistics workflow** (`.github/workflows/claudechain-statistics.yml`) - optional, for weekly progress reports:
+**Statistics workflow** (`.github/workflows/claudechain-statistics.yml`) - optional, for scheduled progress reports:
 
 ```yaml
 name: ClaudeChain Statistics
@@ -168,7 +168,7 @@ Tasks can be organized however you like—grouped under headings, separated by b
 
 ### 4. Start ClaudeChain
 
-Push your project to main, then either:
+Push your project to your base branch where PRs should be merged, then either:
 - Create a PR that adds/modifies your spec.md and merge it (triggers automatically), or
 - Manual trigger: Actions → ClaudeChain → Run workflow (requires project name and base branch)
 
