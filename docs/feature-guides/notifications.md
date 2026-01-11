@@ -40,11 +40,9 @@ Pass the webhook URL to the action:
 - uses: gestrich/claude-chain@main
   with:
     anthropic_api_key: ${{ secrets.CLAUDE_CHAIN_ANTHROPIC_API_KEY }}
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    github_event: ${{ toJson(github.event) }}
-    event_name: ${{ github.event_name }}
+    github_token: ${{ github.token }}
     project_name: ${{ github.event.inputs.project_name || '' }}
-    slack_webhook_url: ${{ secrets.CLAUDE_CHAIN_SLACK_WEBHOOK_URL }}  # Enable notifications
+    slack_webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
 
 **Important:** You must pass `slack_webhook_url` as an action input. Simply setting the secret without passing it to the action won't enable notifications.
@@ -78,7 +76,7 @@ PR summaries are **enabled by default**. To disable:
 - uses: gestrich/claude-chain@main
   with:
     anthropic_api_key: ${{ secrets.CLAUDE_CHAIN_ANTHROPIC_API_KEY }}
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+    github_token: ${{ github.token }}
     add_pr_summary: 'false'  # Disable summaries
 ```
 
@@ -141,7 +139,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: gestrich/claude-chain/statistics@main
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ github.token }}
           days_back: 7
           slack_webhook_url: ${{ secrets.CLAUDE_CHAIN_SLACK_WEBHOOK_URL }}
 ```
@@ -150,7 +148,7 @@ jobs:
 
 | Input | Required | Default | Description |
 |-------|----------|---------|-------------|
-| `github_token` | Yes | - | GitHub token for API access |
+| `github_token` | Yes | `${{ github.token }}` | GitHub token for API access |
 | `days_back` | No | `30` | Days to look back for statistics |
 | `base_branch` | No | `main` | Branch to fetch project specs from |
 | `slack_webhook_url` | No | - | Slack webhook for posting reports |
@@ -203,7 +201,7 @@ To enable the leaderboard, add `show_reviewer_stats: true` to your workflow:
 ```yaml
 - uses: gestrich/claude-chain/statistics@main
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+    github_token: ${{ github.token }}
     show_reviewer_stats: true  # Enable reviewer leaderboard
 ```
 

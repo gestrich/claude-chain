@@ -55,7 +55,7 @@ claude-refactor-chain/
 ```yaml
 - uses: gestrich/claude-chain/statistics@v1
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+    github_token: ${{ github.token }}
     days_back: 7
 ```
 

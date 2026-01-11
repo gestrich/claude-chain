@@ -104,7 +104,7 @@ jobs:
       - uses: gestrich/claude-chain@main
         with:
           anthropic_api_key: ${{ secrets.CLAUDE_CHAIN_ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ github.token }}
           project_name: ${{ github.event.inputs.project_name || '' }}
           default_base_branch: ${{ github.event.inputs.base_branch || 'main' }}
           claude_allowed_tools: 'Read,Write,Edit,Bash(git add:*),Bash(git commit:*)'
@@ -133,7 +133,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: gestrich/claude-chain/statistics@main
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ github.token }}
           slack_webhook_url: ${{ secrets.CLAUDE_CHAIN_SLACK_WEBHOOK_URL }}
 ```
 
