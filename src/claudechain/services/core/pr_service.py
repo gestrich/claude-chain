@@ -83,11 +83,15 @@ class PRService:
             print(f"Warning: Failed to list PRs: {e}")
             return []
 
-        # Filter to only PRs whose branch names match the project pattern
-        project_prefix = f"claude-chain-{project_name}-"
+        # Filter to only PRs whose branch names match the exact project name.
+        # We parse each branch name to extract the project name precisely,
+        # avoiding false matches when one project name is a prefix of another
+        # (e.g., "auth" should not match "auth-api" branches).
         project_prs = [
             pr for pr in all_prs
-            if pr.head_ref_name and pr.head_ref_name.startswith(project_prefix)
+            if pr.head_ref_name
+            and (parsed := BranchInfo.from_branch_name(pr.head_ref_name))
+            and parsed.project_name == project_name
         ]
 
         print(
