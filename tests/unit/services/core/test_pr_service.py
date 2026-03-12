@@ -195,6 +195,46 @@ class TestGetProjectPrs:
         )
 
     @patch("claudechain.services.core.pr_service.list_pull_requests")
+    def test_get_project_prs_prefix_collision(self, mock_list_prs):
+        """Should not match project 'auth' against branches for 'auth-api'"""
+        mock_prs = [
+            GitHubPullRequest(
+                number=1,
+                state="open",
+                head_ref_name="claude-chain-auth-a3f2b891",
+                title="Auth task",
+                labels=[],
+                assignees=[],
+                created_at=datetime.now(timezone.utc),
+                merged_at=None,
+            ),
+            GitHubPullRequest(
+                number=2,
+                state="open",
+                head_ref_name="claude-chain-auth-api-f7c4d3e2",
+                title="Auth API task",
+                labels=[],
+                assignees=[],
+                created_at=datetime.now(timezone.utc),
+                merged_at=None,
+            ),
+        ]
+        mock_list_prs.return_value = mock_prs
+
+        service = PRService("owner/repo")
+
+        # Searching for "auth" should only return the "auth" PR, not "auth-api"
+        result = service.get_project_prs("auth", state="open")
+        assert len(result) == 1
+        assert result[0].number == 1
+
+        # Searching for "auth-api" should only return the "auth-api" PR
+        mock_list_prs.return_value = mock_prs
+        result = service.get_project_prs("auth-api", state="open")
+        assert len(result) == 1
+        assert result[0].number == 2
+
+    @patch("claudechain.services.core.pr_service.list_pull_requests")
     def test_get_all_prs(self, mock_list_prs):
         """Should fetch all PRs regardless of state"""
         mock_prs = [
