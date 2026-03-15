@@ -26,6 +26,7 @@ def cmd_statistics(
     format_type: str = "slack",
     slack_webhook_url: str = "",
     show_assignee_stats: bool = False,
+    show_completed_projects: bool = True,
     run_url: str = "",
 ) -> int:
     """Orchestrate statistics workflow using Service Layer classes.
@@ -44,6 +45,7 @@ def cmd_statistics(
         format_type: Output format - "slack" or "json" (default: "slack")
         slack_webhook_url: Slack webhook URL for posting statistics (default: "")
         show_assignee_stats: Whether to show assignee leaderboard (default: False)
+        show_completed_projects: Whether to include completed projects in Slack output (default: True)
         run_url: GitHub Actions run URL for "See details" footer (default: "")
 
     Returns:
@@ -87,6 +89,7 @@ def cmd_statistics(
             slack_payload = report.format_for_slack_blocks(
                 show_assignee_stats=show_assignee_stats,
                 run_url=run_url or None,
+                show_completed_projects=show_completed_projects,
             )
 
             slack_json = json.dumps(slack_payload)

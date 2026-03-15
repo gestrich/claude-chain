@@ -82,6 +82,11 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",  # Flag presence = True, absence = False
         help="Show assignee leaderboard statistics (default: hidden)"
     )
+    parser_statistics.add_argument(
+        "--hide-completed-projects",
+        action="store_true",  # Flag presence = True, absence = False
+        help="Hide fully completed projects from Slack output (default: shown)"
+    )
     parser_auto_start = subparsers.add_parser(
         "auto-start",
         help="Detect new projects and trigger workflows"
