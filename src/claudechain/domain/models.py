@@ -971,6 +971,7 @@ class StatisticsReport:
         self,
         show_assignee_stats: bool = False,
         run_url: Optional[str] = None,
+        hide_completed_projects: bool = False,
     ) -> Dict:
         """Complete report as Slack Block Kit JSON structure.
 
@@ -980,6 +981,7 @@ class StatisticsReport:
         Args:
             show_assignee_stats: Whether to include the assignee leaderboard (default: False)
             run_url: Optional URL to GitHub Actions run for "See details" footer
+            hide_completed_projects: Whether to exclude fully completed projects (default: False)
 
         Returns:
             Dict with 'text' and 'blocks' keys for Slack webhook payload
@@ -990,9 +992,19 @@ class StatisticsReport:
         # Chains section header (matches leaderboard style)
         blocks.extend(formatter.format_header_blocks())
 
-        # Project progress blocks
+        # Project progress blocks (skip fully completed projects)
         for project_name in sorted(self.project_stats.keys()):
             stats = self.project_stats[project_name]
+
+            # Optionally skip completed projects (all tasks merged, no open PRs)
+            if hide_completed_projects:
+                is_completed = (
+                    stats.completed_tasks == stats.total_tasks
+                    and stats.total_tasks > 0
+                    and not stats.open_prs
+                )
+                if is_completed:
+                    continue
 
             # Build open PRs list with age
             open_prs = []
@@ -1031,6 +1043,19 @@ class StatisticsReport:
             from claudechain.domain.formatters.slack_block_kit_formatter import context_block, format_footer_text
             footer_text = format_footer_text(run_url, self.generation_time_seconds)
             blocks.append(context_block(footer_text))
+
+        # Truncate to Slack's 50-block limit
+        max_blocks = 50
+        if len(blocks) > max_blocks:
+            import sys
+            original_count = len(blocks)
+            # Keep max_blocks - 1 blocks + 1 truncation indicator = exactly max_blocks
+            truncated_count = original_count - (max_blocks - 1)
+            print(f"WARNING: Slack block count ({original_count}) exceeds {max_blocks}-block limit. "
+                  f"{truncated_count} blocks truncated.", file=sys.stderr)
+            from claudechain.domain.formatters.slack_block_kit_formatter import context_block
+            blocks = blocks[:max_blocks - 1]
+            blocks.append(context_block(f"⚠️ {truncated_count} blocks truncated due to Slack limit"))
 
         return formatter.build_message(blocks, fallback_text="ClaudeChain Stats")
 

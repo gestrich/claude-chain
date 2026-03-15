@@ -121,6 +121,7 @@ def main():
             format_type=args.format or os.environ.get("STATS_FORMAT", "slack"),
             slack_webhook_url=os.environ.get("SLACK_WEBHOOK_URL", ""),
             show_assignee_stats=args.show_assignee_stats or os.environ.get("SHOW_ASSIGNEE_STATS", "").lower() == "true",
+            hide_completed_projects=args.hide_completed_projects or os.environ.get("HIDE_COMPLETED_PROJECTS", "").lower() == "true",
             run_url=os.environ.get("GITHUB_RUN_URL", ""),
         )
     elif args.command == "auto-start":

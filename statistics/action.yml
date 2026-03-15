@@ -38,6 +38,10 @@ inputs:
     description: 'Show assignee leaderboard statistics (default: false)'
     required: false
     default: 'false'
+  hide_completed_projects:
+    description: 'Hide fully completed projects from Slack output (default: false)'
+    required: false
+    default: 'false'
 
 outputs:
   slack_message:
@@ -80,6 +84,7 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
         SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
         SHOW_ASSIGNEE_STATS: ${{ inputs.show_assignee_stats }}
+        HIDE_COMPLETED_PROJECTS: ${{ inputs.hide_completed_projects }}
         GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         # ACTION_PATH points to statistics/ subdir, need parent for src/
