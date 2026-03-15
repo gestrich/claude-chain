@@ -32,7 +32,7 @@ class TestCompletedProjectsDefault:
         report.add_project(_make_project("done-project", total=5, completed=5))
         report.add_project(_make_project("active-project", total=5, completed=2))
 
-        result = report.format_for_slack_blocks(show_completed_projects=False)
+        result = report.format_for_slack_blocks(hide_completed_projects=True)
         blocks_text = str(result["blocks"])
 
         assert "active-project" in blocks_text
@@ -43,7 +43,7 @@ class TestCompletedProjectsDefault:
         report.add_project(_make_project("done1", total=3, completed=3))
         report.add_project(_make_project("done2", total=2, completed=2))
 
-        result = report.format_for_slack_blocks(show_completed_projects=False)
+        result = report.format_for_slack_blocks(hide_completed_projects=True)
         # Should still return a valid payload (header at minimum)
         assert "blocks" in result
 
@@ -51,7 +51,7 @@ class TestCompletedProjectsDefault:
         report = StatisticsReport(repo="owner/repo")
         report.add_project(_make_project("partial", total=5, completed=4))
 
-        result = report.format_for_slack_blocks(show_completed_projects=False)
+        result = report.format_for_slack_blocks(hide_completed_projects=True)
         blocks_text = str(result["blocks"])
         assert "partial" in blocks_text
 

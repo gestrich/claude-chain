@@ -971,7 +971,7 @@ class StatisticsReport:
         self,
         show_assignee_stats: bool = False,
         run_url: Optional[str] = None,
-        show_completed_projects: bool = True,
+        hide_completed_projects: bool = False,
     ) -> Dict:
         """Complete report as Slack Block Kit JSON structure.
 
@@ -981,7 +981,7 @@ class StatisticsReport:
         Args:
             show_assignee_stats: Whether to include the assignee leaderboard (default: False)
             run_url: Optional URL to GitHub Actions run for "See details" footer
-            show_completed_projects: Whether to include fully completed projects (default: True)
+            hide_completed_projects: Whether to exclude fully completed projects (default: False)
 
         Returns:
             Dict with 'text' and 'blocks' keys for Slack webhook payload
@@ -997,7 +997,7 @@ class StatisticsReport:
             stats = self.project_stats[project_name]
 
             # Optionally skip completed projects (all tasks merged, no open PRs)
-            if not show_completed_projects:
+            if hide_completed_projects:
                 is_completed = (
                     stats.completed_tasks == stats.total_tasks
                     and stats.total_tasks > 0
