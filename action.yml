@@ -398,6 +398,10 @@ runs:
         ACTION_PATH: ${{ github.action_path }}
         START_TIME: ${{ steps.start_time.outputs.timestamp }}
         ASSIGNEE: ${{ steps.prepare.outputs.assignee }}
+        TASKS_COMPLETED: ${{ steps.prepare.outputs.tasks_completed }}
+        TASKS_TOTAL: ${{ steps.prepare.outputs.tasks_total }}
+        MAX_OPEN_PRS: ${{ steps.prepare.outputs.max_open_prs }}
+        OPEN_PR_COUNT: ${{ steps.prepare.outputs.open_pr_count }}
       run: |
         export PYTHONPATH="$ACTION_PATH/src:$PYTHONPATH"
         python3 -m claudechain format-slack-notification

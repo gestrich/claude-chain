@@ -268,3 +268,84 @@ class TestModelBreakdown:
         model_section = sections[0]
         headers = [e for e in model_section.elements if isinstance(e, Header)]
         assert any("Model" in h.text for h in headers)
+
+
+class TestProgressLine:
+    """Tests for progress line in notifications."""
+
+    def test_no_progress_info(self, mock_cost_breakdown):
+        """Should not include progress line when no progress info."""
+        report = PullRequestCreatedReport(
+            pr_number="123",
+            pr_url="https://github.com/owner/repo/pull/123",
+            project_name="my-project",
+            task="Fix bug",
+            cost_breakdown=mock_cost_breakdown,
+            repo="owner/repo",
+            run_id="456789",
+        )
+        result = report.build_notification_elements()
+        assert "Progress" not in result
+
+    def test_progress_line_single_slot(self, mock_cost_breakdown):
+        """Should show merged count but not slots when maxOpenPRs is 1."""
+        report = PullRequestCreatedReport(
+            pr_number="123",
+            pr_url="https://github.com/owner/repo/pull/123",
+            project_name="my-project",
+            task="Fix bug",
+            cost_breakdown=mock_cost_breakdown,
+            repo="owner/repo",
+            run_id="456789",
+            progress_info={
+                "tasks_completed": 5,
+                "tasks_total": 26,
+                "max_open_prs": 1,
+                "open_pr_count": 0,
+            },
+        )
+        result = report.build_notification_elements()
+        assert "5/26 merged" in result
+        assert "async slots" not in result
+
+    def test_progress_line_multiple_slots(self, mock_cost_breakdown):
+        """Should show merged count and async slots when maxOpenPRs > 1."""
+        report = PullRequestCreatedReport(
+            pr_number="123",
+            pr_url="https://github.com/owner/repo/pull/123",
+            project_name="my-project",
+            task="Fix bug",
+            cost_breakdown=mock_cost_breakdown,
+            repo="owner/repo",
+            run_id="456789",
+            progress_info={
+                "tasks_completed": 5,
+                "tasks_total": 26,
+                "max_open_prs": 3,
+                "open_pr_count": 1,
+            },
+        )
+        result = report.build_notification_elements()
+        assert "5/26 merged" in result
+        assert "2 of 3 async slots in use" in result
+
+    def test_progress_line_accounts_for_new_pr(self, mock_cost_breakdown):
+        """Should add 1 to open_pr_count since this PR was just created."""
+        report = PullRequestCreatedReport(
+            pr_number="123",
+            pr_url="https://github.com/owner/repo/pull/123",
+            project_name="my-project",
+            task="Fix bug",
+            cost_breakdown=mock_cost_breakdown,
+            repo="owner/repo",
+            run_id="456789",
+            progress_info={
+                "tasks_completed": 0,
+                "tasks_total": 10,
+                "max_open_prs": 3,
+                "open_pr_count": 0,
+            },
+        )
+        result = report.build_notification_elements()
+        # open_pr_count=0 but this PR was just created, so should show 1
+        assert "1 of 3 async slots in use" in result

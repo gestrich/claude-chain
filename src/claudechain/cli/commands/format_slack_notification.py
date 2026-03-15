@@ -16,6 +16,10 @@ def cmd_format_slack_notification(
     cost_breakdown_json: str,
     repo: str,
     assignee: str = "",
+    tasks_completed: str = "",
+    tasks_total: str = "",
+    max_open_prs: str = "",
+    open_pr_count: str = "",
 ) -> int:
     """
     Format Slack notification message for a created PR.
@@ -31,6 +35,10 @@ def cmd_format_slack_notification(
         cost_breakdown_json: JSON string with complete cost breakdown (from CostBreakdown.to_json())
         repo: Repository in format owner/repo
         assignee: Optional assignee username
+        tasks_completed: Number of completed tasks in spec
+        tasks_total: Total number of tasks in spec
+        max_open_prs: Maximum concurrent open PRs allowed
+        open_pr_count: Number of currently open PRs (before this PR)
 
     Outputs:
         slack_message: Formatted Slack message in mrkdwn format
@@ -57,6 +65,19 @@ def cmd_format_slack_notification(
         # Parse cost breakdown from structured JSON
         cost_breakdown = CostBreakdown.from_json(cost_breakdown_json)
 
+        # Parse progress info (optional, may not be present)
+        progress_info = None
+        if tasks_completed and tasks_total:
+            try:
+                progress_info = {
+                    "tasks_completed": int(tasks_completed),
+                    "tasks_total": int(tasks_total),
+                    "max_open_prs": int(max_open_prs) if max_open_prs else 1,
+                    "open_pr_count": int(open_pr_count) if open_pr_count else 0,
+                }
+            except (ValueError, TypeError):
+                pass  # Ignore malformed progress data
+
         # Format the Slack message using domain model
         message = format_pr_notification(
             pr_number=pr_number,
@@ -66,6 +87,7 @@ def cmd_format_slack_notification(
             cost_breakdown=cost_breakdown,
             repo=repo,
             assignee=assignee if assignee else None,
+            progress_info=progress_info,
         )
 
         # Output for Slack
@@ -92,6 +114,7 @@ def format_pr_notification(
     cost_breakdown: CostBreakdown,
     repo: str,
     assignee: str = None,
+    progress_info: dict = None,
 ) -> str:
     """
     Format PR notification for Slack in mrkdwn format.
@@ -104,6 +127,7 @@ def format_pr_notification(
         cost_breakdown: CostBreakdown with costs and per-model data
         repo: Repository name (used for workflow URL generation)
         assignee: Optional assignee username
+        progress_info: Optional dict with tasks_completed, tasks_total, max_open_prs, open_pr_count
 
     Returns:
         Formatted Slack message in mrkdwn
@@ -119,6 +143,7 @@ def format_pr_notification(
         repo=repo,
         run_id="",  # Not used for Slack notification
         assignee=assignee,
+        progress_info=progress_info,
     )
 
     return report.build_notification_elements()
