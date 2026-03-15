@@ -21,6 +21,7 @@ class ProjectConfiguration:
     allowed_tools: Optional[str] = None  # Optional override for Claude's allowed tools
     stale_pr_days: Optional[int] = None  # Days before a PR is considered stale
     labels: Optional[str] = None  # Optional comma-separated labels to apply to PRs
+    max_open_prs: Optional[int] = None  # Max concurrent open PRs per project
 
     @classmethod
     def default(cls, project: Project) -> 'ProjectConfiguration':
@@ -44,7 +45,8 @@ class ProjectConfiguration:
             base_branch=None,
             allowed_tools=None,
             stale_pr_days=None,
-            labels=None
+            labels=None,
+            max_open_prs=None
         )
 
     @classmethod
@@ -66,6 +68,7 @@ class ProjectConfiguration:
         allowed_tools = config.get("allowedTools")
         stale_pr_days = config.get("stalePRDays")
         labels = config.get("labels")
+        max_open_prs = config.get("maxOpenPRs")
 
         return cls(
             project=project,
@@ -73,7 +76,8 @@ class ProjectConfiguration:
             base_branch=base_branch,
             allowed_tools=allowed_tools,
             stale_pr_days=stale_pr_days,
-            labels=labels
+            labels=labels,
+            max_open_prs=max_open_prs
         )
 
     def get_base_branch(self, default_base_branch: str) -> str:
@@ -115,6 +119,19 @@ class ProjectConfiguration:
             return self.stale_pr_days
         return default
 
+    def get_max_open_prs(self, default: int = 1) -> int:
+        """Get the maximum number of concurrent open PRs allowed.
+
+        Args:
+            default: Default value if not configured (default: 1)
+
+        Returns:
+            maxOpenPRs from config if set, otherwise the default
+        """
+        if self.max_open_prs is not None:
+            return self.max_open_prs
+        return default
+
     def get_labels(self, default_labels: str) -> str:
         """Resolve labels from project config or fall back to default.
 
@@ -147,4 +164,6 @@ class ProjectConfiguration:
             result["stalePRDays"] = self.stale_pr_days
         if self.labels:
             result["labels"] = self.labels
+        if self.max_open_prs is not None:
+            result["maxOpenPRs"] = self.max_open_prs
         return result

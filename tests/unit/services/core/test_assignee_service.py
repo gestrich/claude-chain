@@ -187,6 +187,82 @@ class TestCheckCapacity:
         assert result.project_name == "test-project"
 
 
+class TestCheckCapacityWithMaxOpenPRs:
+    """Test suite for check_capacity with maxOpenPRs configuration"""
+
+    @pytest.fixture
+    def mock_env(self):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo"}):
+            yield
+
+    @pytest.fixture
+    def mock_pr_service(self):
+        return Mock(spec=PRService)
+
+    @pytest.fixture
+    def assignee_service(self, mock_env, mock_pr_service):
+        return AssigneeService("owner/repo", mock_pr_service)
+
+    def test_has_capacity_with_max_open_prs_3_and_2_open(
+        self, assignee_service, mock_pr_service
+    ):
+        """Should have capacity when open PRs < maxOpenPRs"""
+        # Arrange
+        project = Project("test-project")
+        config = ProjectConfiguration(project=project, assignee="alice", max_open_prs=3)
+        mock_pr_service.get_open_prs_for_project.return_value = [
+            create_github_pr(101, "00000001"),
+            create_github_pr(102, "00000002"),
+        ]
+
+        # Act
+        result = assignee_service.check_capacity(config, "claudechain", "test-project")
+
+        # Assert
+        assert result.has_capacity is True
+        assert result.max_open_prs == 3
+        assert result.open_count == 2
+
+    def test_no_capacity_with_max_open_prs_3_and_3_open(
+        self, assignee_service, mock_pr_service
+    ):
+        """Should be at capacity when open PRs == maxOpenPRs"""
+        # Arrange
+        project = Project("test-project")
+        config = ProjectConfiguration(project=project, assignee="alice", max_open_prs=3)
+        mock_pr_service.get_open_prs_for_project.return_value = [
+            create_github_pr(101, "00000001"),
+            create_github_pr(102, "00000002"),
+            create_github_pr(103, "00000003"),
+        ]
+
+        # Act
+        result = assignee_service.check_capacity(config, "claudechain", "test-project")
+
+        # Assert
+        assert result.has_capacity is False
+        assert result.max_open_prs == 3
+        assert result.open_count == 3
+
+    def test_default_max_open_prs_is_1(
+        self, assignee_service, mock_pr_service
+    ):
+        """Should default to max 1 when maxOpenPRs not configured"""
+        # Arrange
+        project = Project("test-project")
+        config = ProjectConfiguration.default(project)
+        mock_pr_service.get_open_prs_for_project.return_value = [
+            create_github_pr(101, "00000001"),
+        ]
+
+        # Act
+        result = assignee_service.check_capacity(config, "claudechain", "test-project")
+
+        # Assert
+        assert result.has_capacity is False
+        assert result.max_open_prs == 1
+
+
 class TestCapacityResultFormatSummary:
     """Test suite for CapacityResult.format_summary()"""
 
