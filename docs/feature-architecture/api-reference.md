@@ -45,6 +45,7 @@ python -m claudechain statistics \
   --days-back 30 \                           # Days to look back for statistics (default: 30)
   --format slack \                           # Output format: slack or json (default: slack)
   --show-reviewer-stats                      # Include reviewer leaderboard (default: off)
+  --hide-completed-projects                  # Hide fully completed projects (default: off)
 ```
 
 ### Parameters
@@ -69,6 +70,10 @@ python -m claudechain statistics \
 - `--show-reviewer-stats`: Include reviewer leaderboard in output (default: off)
   - When enabled, shows a table ranking reviewers by merged PR count
 
+- `--hide-completed-projects`: Hide fully completed projects from Slack output (default: off)
+  - Projects where all tasks are merged and no PRs are open are excluded
+  - Helps stay within Slack's 50-block limit for repositories with many projects
+
 ### Output
 
 The command generates:
@@ -87,6 +92,8 @@ The command generates:
 3. **GitHub Step Summary** (Markdown):
    - Written to `GITHUB_STEP_SUMMARY` if running in GitHub Actions
    - Contains detailed breakdown of all statistics
+
+**Note:** Slack messages are limited to 50 blocks. If the report exceeds this limit, blocks are automatically truncated with a warning indicator and a message is printed to stderr.
 
 ### Example Output
 

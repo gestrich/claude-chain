@@ -157,6 +157,7 @@ jobs:
 | `config_path` | No | - | Path to specific project config (omit for all projects) |
 | `format` | No | `slack` | Output format: `slack` or `json` |
 | `show_reviewer_stats` | No | `false` | Show reviewer leaderboard in output |
+| `hide_completed_projects` | No | `false` | Hide fully completed projects from Slack output |
 
 ### What Reports Include
 
@@ -197,6 +198,22 @@ The **Status** column shows warnings for projects needing attention:
 │ 🥈   │ bob      │    2 │      3 │
 └──────┴──────────┴──────┴────────┘
 ```
+
+**Hiding Completed Projects:**
+
+To reduce clutter, you can hide projects where all tasks are merged and no PRs are open:
+
+```yaml
+- uses: gestrich/claude-chain/statistics@main
+  with:
+    workflow_file: 'claudechain.yml'
+    github_token: ${{ github.token }}
+    hide_completed_projects: true  # Hide fully completed projects
+```
+
+**Block Limits:**
+
+Slack imposes a 50-block limit per message. If the report exceeds this limit, blocks are automatically truncated with a warning indicator. Hiding completed projects can help stay within the limit for repositories with many projects.
 
 To enable the leaderboard, add `show_reviewer_stats: true` to your workflow:
 
