@@ -250,13 +250,14 @@ def parse_iso_timestamp(timestamp_str: str) -> datetime:
 class CapacityResult:
     """Result of project capacity check.
 
-    ClaudeChain allows only 1 open PR per project at a time.
+    Capacity is determined by the project's maxOpenPRs setting (default: 1).
     """
 
     has_capacity: bool
     assignee: Optional[str]
     open_prs: List[Dict]
     project_name: str
+    max_open_prs: int = 1
 
     @property
     def open_count(self) -> int:
@@ -273,8 +274,8 @@ class CapacityResult:
         lines.append("")
 
         # Capacity info
-        lines.append(f"**Max PRs Allowed:** 1")
-        lines.append(f"**Currently Open:** {self.open_count}/1")
+        lines.append(f"**Max PRs Allowed:** {self.max_open_prs}")
+        lines.append(f"**Currently Open:** {self.open_count}/{self.max_open_prs}")
         lines.append("")
 
         # List open PRs with details

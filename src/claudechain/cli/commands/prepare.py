@@ -163,7 +163,7 @@ Please ensure your spec.md file exists and the checkout was successful."""
         if not capacity_result.has_capacity:
             gh.write_output("has_capacity", "false")
             gh.write_output("assignee", "")
-            gh.set_notice("Project at capacity (1 open PR limit), skipping PR creation")
+            gh.set_notice(f"Project at capacity ({capacity_result.max_open_prs} open PR limit), skipping PR creation")
             return 0  # Not an error, just no capacity
 
         gh.write_output("has_capacity", "true")
@@ -289,6 +289,10 @@ Now complete the task '{task}' following all the details and instructions in the
         gh.write_output("branch_name", branch_name)
         gh.write_output("claude_prompt", claude_prompt)
         gh.write_output("json_schema", get_main_task_schema_json())
+        gh.write_output("tasks_completed", str(spec.completed_tasks))
+        gh.write_output("tasks_total", str(spec.total_tasks))
+        gh.write_output("max_open_prs", str(capacity_result.max_open_prs))
+        gh.write_output("open_pr_count", str(capacity_result.open_count))
 
         print("\n✅ Preparation complete - ready to run Claude Code")
         return 0

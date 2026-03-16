@@ -54,6 +54,7 @@ class PullRequestCreatedReport:
     run_id: str
     summary_content: Optional[str] = None
     assignee: Optional[str] = None
+    progress_info: Optional[dict] = None  # {tasks_completed, tasks_total, max_open_prs, open_pr_count}
 
     @property
     def workflow_url(self) -> str:
@@ -94,6 +95,12 @@ class PullRequestCreatedReport:
             formatter.format_labeled_value(LabeledValue("Task", self.task)),
             formatter.format_labeled_value(LabeledValue("Cost", format_usd(self.cost_breakdown.total_cost))),
         ])
+
+        # Add progress line if available
+        if self.progress_info:
+            progress_line = self._format_progress_line()
+            if progress_line:
+                lines.append(progress_line)
 
         return "\n".join(lines)
 
@@ -170,6 +177,29 @@ class PullRequestCreatedReport:
     # ============================================================
     # Private Helper Methods
     # ============================================================
+
+    def _format_progress_line(self) -> Optional[str]:
+        """Build a compact progress line for Slack notification.
+
+        Example: "📊 Progress: 5/26 merged · 2 of 3 async slots in use"
+
+        Returns:
+            Formatted progress string, or None if no progress info.
+        """
+        if not self.progress_info:
+            return None
+
+        completed = self.progress_info.get("tasks_completed", 0)
+        total = self.progress_info.get("tasks_total", 0)
+        max_prs = self.progress_info.get("max_open_prs", 1)
+        # open_pr_count is before this PR was created, so add 1
+        open_count = self.progress_info.get("open_pr_count", 0) + 1
+
+        parts = [f"📊 *Progress:* {completed}/{total} merged"]
+        if max_prs > 1:
+            parts.append(f"{open_count} of {max_prs} async slots in use")
+
+        return " · ".join(parts)
 
     def _build_cost_summary_table(self) -> Table:
         """Build the cost summary table.

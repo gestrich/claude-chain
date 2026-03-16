@@ -101,6 +101,10 @@ def main():
             cost_breakdown_json=os.environ.get("COST_BREAKDOWN", ""),
             repo=os.environ.get("GITHUB_REPOSITORY", ""),
             assignee=os.environ.get("ASSIGNEE", ""),
+            tasks_completed=os.environ.get("TASKS_COMPLETED", ""),
+            tasks_total=os.environ.get("TASKS_TOTAL", ""),
+            max_open_prs=os.environ.get("MAX_OPEN_PRS", ""),
+            open_pr_count=os.environ.get("OPEN_PR_COUNT", ""),
         )
     elif args.command == "statistics":
         # Read workflow_file - required for artifact discovery

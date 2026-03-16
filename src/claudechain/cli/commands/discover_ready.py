@@ -71,13 +71,13 @@ def check_project_ready(project_name: str, repo: str) -> bool:
         assignee_service = AssigneeService(repo, pr_service)
         task_service = TaskService(repo, pr_service)
 
-        # Check capacity (only 1 open PR per project allowed)
+        # Check capacity against project's maxOpenPRs setting
         capacity_result = assignee_service.check_capacity(
             project_config, label, project_name
         )
 
         if not capacity_result.has_capacity:
-            print(f"  ⏭️  Project at capacity (1 open PR limit)")
+            print(f"  ⏭️  Project at capacity ({capacity_result.max_open_prs} open PR limit)")
             return False
 
         # Load spec and check for available tasks

@@ -226,7 +226,7 @@ To resolve:
 
 | Concept | Key Point |
 |---------|-----------|
-| **PR Chain** | One task → one PR → merge → next task |
+| **PR Chain** | One task → one PR → merge → next task (or multiple concurrent with `maxOpenPRs`) |
 | **Task Identification** | Hash of description, not position |
 | **Branch Naming** | `claude-chain-{project}-{hash}` |
 | **Auto-Continuation** | Triggered by spec.md changes + merge + base branch match |

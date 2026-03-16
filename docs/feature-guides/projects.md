@@ -156,7 +156,7 @@ Only the checkbox line (`- [ ] Add user authentication`) is hashed. The indented
 
 The configuration file is **optional**. Without it, ClaudeChain uses these defaults:
 - PRs created without an assignee
-- Maximum 1 open PR per project
+- Maximum 1 open PR per project (configurable via `maxOpenPRs`)
 
 ### Basic Structure
 
@@ -181,6 +181,9 @@ stalePRDays: 7
 
 # Optional: Additional labels to apply to PRs (comma-separated)
 labels: team-backend,needs-review
+
+# Optional: Maximum concurrent open PRs per project (default: 1)
+maxOpenPRs: 3
 ```
 
 ### Field Reference
@@ -192,6 +195,7 @@ labels: team-backend,needs-review
 | `allowedTools` | string | No | Override allowed tools (defaults to workflow input) |
 | `stalePRDays` | number | No | Days before a PR is considered stale (default: 7) |
 | `labels` | string | No | Additional labels for PRs (comma-separated, overrides workflow input) |
+| `maxOpenPRs` | number | No | Maximum concurrent open PRs per project (default: 1) |
 
 ### Stale PR Tracking
 

@@ -234,7 +234,7 @@ Review and merge the open PR to allow the next task to proceed.
 2. Search for PRs with the `claudechain` label
 3. Find the PR for this project and review it
 
-This is working as designed—one PR at a time keeps changes focused and avoids merge conflicts.
+This is working as designed—by default, only one PR at a time keeps changes focused and avoids merge conflicts. To allow multiple concurrent PRs, set `maxOpenPRs` in your project's `configuration.yml`.
 
 ---
 
