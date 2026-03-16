@@ -296,7 +296,7 @@ runs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "*Project:* ${{ steps.prepare.outputs.project_name || 'Unknown' }}\n*Task:* ${{ steps.prepare.outputs.task_description || 'Unknown' }}"
+                  "text": ${{ toJSON(format('*Project:* {0}\n*Task:* {1}', steps.prepare.outputs.project_name || 'Unknown', steps.prepare.outputs.task_description || 'Unknown')) }}
                 }
               },
               {
