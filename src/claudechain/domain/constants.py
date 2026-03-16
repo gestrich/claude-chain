@@ -25,4 +25,4 @@ DEFAULT_STALE_PR_DAYS = 7
 DEFAULT_ALLOWED_TOOLS = "Read,Write,Edit,Bash(git add:*),Bash(git commit:*)"
 
 # PR Summary file path (used by action.yml and commands)
-PR_SUMMARY_FILE_PATH = "/tmp/pr-summary.md"
+PR_SUMMARY_FILE_PATH = ".claudechain-pr-summary.md"
