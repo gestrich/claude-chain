@@ -46,7 +46,7 @@ class TestPrepareMergeTargetValidation:
         """Fixture providing config with baseBranch set to develop"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             base_branch="develop"
         )
 
@@ -55,7 +55,7 @@ class TestPrepareMergeTargetValidation:
         """Fixture providing config without baseBranch override (uses default main)"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             base_branch=None
         )
 
@@ -144,7 +144,8 @@ class TestPrepareMergeTargetValidation:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -202,7 +203,8 @@ class TestPrepareMergeTargetValidation:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -283,7 +285,7 @@ class TestPrepareBaseBranchResolution:
         """Fixture providing config with baseBranch override"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             base_branch="develop"
         )
 
@@ -292,7 +294,7 @@ class TestPrepareBaseBranchResolution:
         """Fixture providing config without baseBranch"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             base_branch=None
         )
 
@@ -338,7 +340,8 @@ class TestPrepareBaseBranchResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -395,7 +398,8 @@ class TestPrepareBaseBranchResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -453,7 +457,8 @@ class TestPrepareBaseBranchResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -511,7 +516,8 @@ class TestPrepareBaseBranchResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -563,7 +569,7 @@ class TestPrepareAllowedToolsResolution:
         """Fixture providing config with allowedTools override"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             allowed_tools="Read,Write,Edit,Bash(npm test:*)"
         )
 
@@ -572,7 +578,7 @@ class TestPrepareAllowedToolsResolution:
         """Fixture providing config without allowedTools"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             allowed_tools=None
         )
 
@@ -616,7 +622,8 @@ class TestPrepareAllowedToolsResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -673,7 +680,8 @@ class TestPrepareAllowedToolsResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -728,7 +736,7 @@ class TestPreparePRLabelsResolution:
         """Fixture providing config with labels override"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             labels="team-backend,needs-review"
         )
 
@@ -737,7 +745,7 @@ class TestPreparePRLabelsResolution:
         """Fixture providing config without labels"""
         return ProjectConfiguration(
             project=Project("test-project"),
-            assignee="reviewer1",
+            assignees=["reviewer1"],
             labels=None
         )
 
@@ -781,7 +789,8 @@ class TestPreparePRLabelsResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -838,7 +847,8 @@ class TestPreparePRLabelsResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 
@@ -896,7 +906,8 @@ class TestPreparePRLabelsResolution:
             mock_capacity_result = Mock()
             mock_capacity_result.format_summary.return_value = "## Capacity Check\n✅ test-project (0/1)"
             mock_capacity_result.has_capacity = True
-            mock_capacity_result.assignee = "reviewer1"
+            mock_capacity_result.assignees = ["reviewer1"]
+            mock_capacity_result.reviewers = []
             mock_assignee_service.check_capacity.return_value = mock_capacity_result
             mock_assignee_service_class.return_value = mock_assignee_service
 

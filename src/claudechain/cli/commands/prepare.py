@@ -145,10 +145,7 @@ Please ensure your spec.md file exists and the checkout was successful."""
 
         validate_spec_format_from_string(spec.content, project.spec_path)
 
-        if config.assignee:
-            print(f"✅ Configuration loaded: label={label}, assignee={config.assignee}")
-        else:
-            print(f"✅ Configuration loaded: label={label}, no assignee configured")
+        print(f"✅ Configuration loaded: label={label}")
 
         # === STEP 3: Check Capacity ===
         print("\n=== Step 3/6: Checking capacity ===")
@@ -163,13 +160,17 @@ Please ensure your spec.md file exists and the checkout was successful."""
         if not capacity_result.has_capacity:
             gh.write_output("has_capacity", "false")
             gh.write_output("assignee", "")
+            gh.write_output("assignees", "")
+            gh.write_output("reviewers", "")
             gh.set_notice(f"Project at capacity ({capacity_result.max_open_prs} open PR limit), skipping PR creation")
             return 0  # Not an error, just no capacity
 
         gh.write_output("has_capacity", "true")
-        gh.write_output("assignee", capacity_result.assignee or "")  # Empty string if no assignee
-        if capacity_result.assignee:
-            print(f"✅ Capacity available - assignee: {capacity_result.assignee}")
+        gh.write_output("assignee", capacity_result.assignees[0] if capacity_result.assignees else "")  # backward compat
+        gh.write_output("assignees", ",".join(capacity_result.assignees))
+        gh.write_output("reviewers", ",".join(capacity_result.reviewers))
+        if capacity_result.assignees:
+            print(f"✅ Capacity available - assignees: {', '.join(capacity_result.assignees)}")
         else:
             print("✅ Capacity available (no assignee configured)")
 

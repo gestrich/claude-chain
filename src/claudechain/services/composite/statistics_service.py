@@ -85,8 +85,7 @@ class StatisticsService:
         for project_name, spec_branch in projects:
             try:
                 config = self._load_project_config(project_name, spec_branch)
-                if config.assignee:
-                    all_assignees.add(config.assignee)
+                all_assignees.update(config.assignees)
                 project_configs.append((config, spec_branch))
             except Exception as e:
                 print(f"Warning: Failed to load project {project_name}: {e}")
