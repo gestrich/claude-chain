@@ -56,19 +56,13 @@ class TestCheckCapacity:
     def config_with_assignee(self):
         """Fixture providing configuration with assignee"""
         project = Project("test-project")
-        return ProjectConfiguration(
-            project=project,
-            assignee="alice"
-        )
+        return ProjectConfiguration(project=project, assignees=["alice"])
 
     @pytest.fixture
     def config_without_assignee(self):
         """Fixture providing configuration without assignee"""
         project = Project("test-project")
-        return ProjectConfiguration(
-            project=project,
-            assignee=None
-        )
+        return ProjectConfiguration(project=project)
 
     def test_check_capacity_returns_true_when_no_open_prs(
         self, config_with_assignee, assignee_service, mock_pr_service
@@ -84,7 +78,7 @@ class TestCheckCapacity:
 
         # Assert
         assert result.has_capacity is True
-        assert result.assignee == "alice"
+        assert result.assignees == ["alice"]
         assert result.open_count == 0
 
     def test_check_capacity_returns_false_when_one_open_pr(
@@ -105,10 +99,10 @@ class TestCheckCapacity:
         assert result.has_capacity is False
         assert result.open_count == 1
 
-    def test_check_capacity_returns_assignee_from_config(
+    def test_check_capacity_returns_assignees_from_config(
         self, config_with_assignee, assignee_service, mock_pr_service
     ):
-        """Should return assignee from configuration"""
+        """Should return assignees from configuration"""
         # Arrange
         mock_pr_service.get_open_prs_for_project.return_value = []
 
@@ -118,12 +112,12 @@ class TestCheckCapacity:
         )
 
         # Assert
-        assert result.assignee == "alice"
+        assert result.assignees == ["alice"]
 
-    def test_check_capacity_returns_none_assignee_when_not_configured(
+    def test_check_capacity_returns_empty_assignees_when_not_configured(
         self, config_without_assignee, assignee_service, mock_pr_service
     ):
-        """Should return None assignee when not configured"""
+        """Should return empty assignees when not configured"""
         # Arrange
         mock_pr_service.get_open_prs_for_project.return_value = []
 
@@ -133,7 +127,7 @@ class TestCheckCapacity:
         )
 
         # Assert
-        assert result.assignee is None
+        assert result.assignees == []
         assert result.has_capacity is True  # Still has capacity
 
     def test_check_capacity_includes_open_pr_info(
@@ -209,7 +203,7 @@ class TestCheckCapacityWithMaxOpenPRs:
         """Should have capacity when open PRs < maxOpenPRs"""
         # Arrange
         project = Project("test-project")
-        config = ProjectConfiguration(project=project, assignee="alice", max_open_prs=3)
+        config = ProjectConfiguration(project=project, assignees=["alice"], max_open_prs=3)
         mock_pr_service.get_open_prs_for_project.return_value = [
             create_github_pr(101, "00000001"),
             create_github_pr(102, "00000002"),
@@ -229,7 +223,7 @@ class TestCheckCapacityWithMaxOpenPRs:
         """Should be at capacity when open PRs == maxOpenPRs"""
         # Arrange
         project = Project("test-project")
-        config = ProjectConfiguration(project=project, assignee="alice", max_open_prs=3)
+        config = ProjectConfiguration(project=project, assignees=["alice"], max_open_prs=3)
         mock_pr_service.get_open_prs_for_project.return_value = [
             create_github_pr(101, "00000001"),
             create_github_pr(102, "00000002"),
@@ -272,9 +266,9 @@ class TestCapacityResultFormatSummary:
 
         result = CapacityResult(
             has_capacity=True,
-            assignee="alice",
             open_prs=[],
-            project_name="test-project"
+            project_name="test-project",
+            assignees=["alice"],
         )
 
         summary = result.format_summary()
@@ -290,9 +284,8 @@ class TestCapacityResultFormatSummary:
 
         result = CapacityResult(
             has_capacity=False,
-            assignee="alice",
             open_prs=[{"pr_number": 123, "task_description": "Some task"}],
-            project_name="test-project"
+            project_name="test-project",
         )
 
         summary = result.format_summary()
@@ -307,11 +300,86 @@ class TestCapacityResultFormatSummary:
 
         result = CapacityResult(
             has_capacity=True,
-            assignee=None,
             open_prs=[],
-            project_name="test-project"
+            project_name="test-project",
         )
 
         summary = result.format_summary()
 
         assert "without assignee" in summary
+
+
+class TestCheckCapacityWithMultipleAssignees:
+    """Test suite for multiple assignees and reviewers in check_capacity"""
+
+    @pytest.fixture
+    def mock_pr_service(self):
+        return Mock(spec=PRService)
+
+    @pytest.fixture
+    def assignee_service(self, mock_pr_service):
+        with patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo"}):
+            service = AssigneeService("owner/repo", mock_pr_service)
+        return service
+
+    def test_check_capacity_returns_multiple_assignees(self, assignee_service, mock_pr_service):
+        """Should return all assignees from config"""
+        project = Project("test-project")
+        config = ProjectConfiguration(project=project, assignees=["alice", "bob"])
+        mock_pr_service.get_open_prs_for_project.return_value = []
+
+        result = assignee_service.check_capacity(config, "claudechain", "test-project")
+
+        assert result.assignees == ["alice", "bob"]
+
+    def test_check_capacity_returns_reviewers_from_config(self, assignee_service, mock_pr_service):
+        """Should return reviewers from config"""
+        project = Project("test-project")
+        config = ProjectConfiguration(project=project, reviewers=["charlie", "dave"])
+        mock_pr_service.get_open_prs_for_project.return_value = []
+
+        result = assignee_service.check_capacity(config, "claudechain", "test-project")
+
+        assert result.reviewers == ["charlie", "dave"]
+
+    def test_check_capacity_no_assignees_when_none_configured(self, assignee_service, mock_pr_service):
+        """Should return empty assignees when none configured"""
+        project = Project("test-project")
+        config = ProjectConfiguration.default(project)
+        mock_pr_service.get_open_prs_for_project.return_value = []
+
+        result = assignee_service.check_capacity(config, "claudechain", "test-project")
+
+        assert result.assignees == []
+        assert result.reviewers == []
+
+    def test_format_summary_shows_multiple_assignees(self):
+        """format_summary should list all assignees"""
+        from claudechain.domain.models import CapacityResult
+
+        result = CapacityResult(
+            has_capacity=True,
+            open_prs=[],
+            project_name="test-project",
+            assignees=["alice", "bob"],
+        )
+
+        summary = result.format_summary()
+
+        assert "alice" in summary
+        assert "bob" in summary
+
+    def test_format_summary_shows_reviewers(self):
+        """format_summary should list explicit reviewers"""
+        from claudechain.domain.models import CapacityResult
+
+        result = CapacityResult(
+            has_capacity=True,
+            open_prs=[],
+            project_name="test-project",
+            reviewers=["charlie"],
+        )
+
+        summary = result.format_summary()
+
+        assert "charlie" in summary

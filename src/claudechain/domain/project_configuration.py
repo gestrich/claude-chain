@@ -1,7 +1,7 @@
 """Domain models for project configuration"""
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import List, Optional
 
 from claudechain.domain.constants import DEFAULT_STALE_PR_DAYS
 from claudechain.domain.project import Project
@@ -11,17 +11,19 @@ from claudechain.domain.project import Project
 class ProjectConfiguration:
     """Domain model for parsed project configuration
 
-    ClaudeChain enforces a single open PR per project. The optional assignee
-    is assigned to PRs when created.
+    ClaudeChain enforces a single open PR per project. The optional assignees
+    are assigned to PRs when created. Use the `reviewers` list for people who
+    review but should not be assigned.
     """
 
     project: Project
-    assignee: Optional[str] = None  # Optional GitHub username to assign PRs to
     base_branch: Optional[str] = None  # Optional override for target base branch
     allowed_tools: Optional[str] = None  # Optional override for Claude's allowed tools
     stale_pr_days: Optional[int] = None  # Days before a PR is considered stale
     labels: Optional[str] = None  # Optional comma-separated labels to apply to PRs
     max_open_prs: Optional[int] = None  # Max concurrent open PRs per project
+    assignees: List[str] = field(default_factory=list)
+    reviewers: List[str] = field(default_factory=list)
 
     @classmethod
     def default(cls, project: Project) -> 'ProjectConfiguration':
@@ -41,12 +43,11 @@ class ProjectConfiguration:
         """
         return cls(
             project=project,
-            assignee=None,
             base_branch=None,
             allowed_tools=None,
             stale_pr_days=None,
             labels=None,
-            max_open_prs=None
+            max_open_prs=None,
         )
 
     @classmethod
@@ -63,21 +64,33 @@ class ProjectConfiguration:
         from claudechain.domain.config import load_config_from_string
 
         config = load_config_from_string(yaml_content, project.config_path)
-        assignee = config.get("assignee")
         base_branch = config.get("baseBranch")
         allowed_tools = config.get("allowedTools")
         stale_pr_days = config.get("stalePRDays")
         labels = config.get("labels")
         max_open_prs = config.get("maxOpenPRs")
 
+        # `assignees` list takes precedence; legacy `assignee` is folded in here at parse time
+        yaml_assignees = config.get("assignees")
+        if yaml_assignees is not None:
+            assignees = [str(a) for a in yaml_assignees]
+        elif config.get("assignee"):
+            assignees = [config["assignee"]]
+        else:
+            assignees = []
+
+        yaml_reviewers = config.get("reviewers")
+        reviewers = [str(r) for r in yaml_reviewers] if yaml_reviewers is not None else []
+
         return cls(
             project=project,
-            assignee=assignee,
             base_branch=base_branch,
             allowed_tools=allowed_tools,
             stale_pr_days=stale_pr_days,
             labels=labels,
-            max_open_prs=max_open_prs
+            max_open_prs=max_open_prs,
+            assignees=assignees,
+            reviewers=reviewers,
         )
 
     def get_base_branch(self, default_base_branch: str) -> str:
@@ -154,8 +167,10 @@ class ProjectConfiguration:
         result = {
             "project": self.project.name,
         }
-        if self.assignee:
-            result["assignee"] = self.assignee
+        if self.assignees:
+            result["assignees"] = self.assignees
+        if self.reviewers:
+            result["reviewers"] = self.reviewers
         if self.base_branch:
             result["baseBranch"] = self.base_branch
         if self.allowed_tools:
