@@ -42,7 +42,8 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         branch_name = os.environ.get("BRANCH_NAME", "")
         task = os.environ.get("TASK_DESCRIPTION", "")
         task_index = os.environ.get("TASK_INDEX", "")
-        assignee = os.environ.get("ASSIGNEE", "")
+        assignees = [a.strip() for a in os.environ.get("ASSIGNEES", "").split(",") if a.strip()]
+        reviewers = [r.strip() for r in os.environ.get("REVIEWERS", "").split(",") if r.strip()]
         project = os.environ.get("PROJECT", "")
         spec_path = os.environ.get("SPEC_PATH", "")
         pr_template_path = os.environ.get("PR_TEMPLATE_PATH", "")
@@ -214,9 +215,11 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
                 "--head", branch_name,
                 "--base", base_branch
             ]
-            if assignee:
-                pr_create_args.extend(["--assignee", assignee])
-                pr_create_args.extend(["--reviewer", assignee])
+            for a in assignees:
+                pr_create_args.extend(["--assignee", a])
+            # Explicit reviewers (not assignees)
+            for r in reviewers:
+                pr_create_args.extend(["--reviewer", r])
 
             # Add additional PR labels (comma-separated)
             pr_labels = [l.strip() for l in pr_labels_str.split(",") if l.strip()]
@@ -252,10 +255,12 @@ def cmd_finalize(args: argparse.Namespace, gh: GitHubActionsHelper) -> int:
         gh.write_step_summary("✅ **Status**: PR created successfully")
         gh.write_step_summary("")
         gh.write_step_summary(f"- **PR**: #{pr_number}")
-        if assignee:
-            gh.write_step_summary(f"- **Assignee**: {assignee}")
+        if assignees:
+            gh.write_step_summary(f"- **Assignees**: {', '.join(assignees)}")
         else:
-            gh.write_step_summary("- **Assignee**: (none)")
+            gh.write_step_summary("- **Assignees**: (none)")
+        if reviewers:
+            gh.write_step_summary(f"- **Reviewers**: {', '.join(reviewers)}")
         gh.write_step_summary(f"- **Task**: {task}")
 
         print("\n✅ Finalization complete")

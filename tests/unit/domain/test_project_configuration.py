@@ -11,7 +11,7 @@ class TestProjectConfigurationDefault:
     """Test suite for ProjectConfiguration.default factory method"""
 
     def test_default_creates_config_with_no_assignee(self):
-        """Should create config with no assignee"""
+        """Should create config with no assignees"""
         # Arrange
         project = Project("my-project")
 
@@ -19,7 +19,7 @@ class TestProjectConfigurationDefault:
         config = ProjectConfiguration.default(project)
 
         # Assert
-        assert config.assignee is None
+        assert config.assignees == []
 
     def test_default_creates_config_with_no_base_branch(self):
         """Should create config with no base branch override"""
@@ -70,14 +70,14 @@ class TestProjectConfigurationDefault:
             "project": "my-project",
         }
         assert "baseBranch" not in result
-        assert "assignee" not in result
+        assert "assignees" not in result
 
 
 class TestProjectConfigurationFromYamlString:
     """Test suite for ProjectConfiguration.from_yaml_string factory method"""
 
     def test_from_yaml_string_with_assignee(self):
-        """Should parse assignee from YAML configuration"""
+        """Legacy singular assignee in YAML should be folded into assignees list"""
         # Arrange
         project = Project("my-project")
         yaml_content = """
@@ -89,10 +89,10 @@ assignee: alice
 
         # Assert
         assert config.project == project
-        assert config.assignee == "alice"
+        assert config.assignees == ["alice"]
 
     def test_from_yaml_string_without_assignee(self):
-        """Should have None assignee when not specified"""
+        """Should have empty assignees when not specified"""
         # Arrange
         project = Project("my-project")
         yaml_content = """
@@ -103,45 +103,37 @@ other_setting: value
         config = ProjectConfiguration.from_yaml_string(project, yaml_content)
 
         # Assert
-        assert config.assignee is None
+        assert config.assignees == []
 
 
 class TestProjectConfigurationToDict:
     """Test suite for ProjectConfiguration.to_dict method"""
 
-    def test_to_dict_with_assignee(self):
-        """Should include assignee in dict when set"""
+    def test_to_dict_with_assignees(self):
+        """Should include assignees in dict when set"""
         # Arrange
         project = Project("my-project")
-        config = ProjectConfiguration(
-            project=project,
-            assignee="alice"
-        )
+        config = ProjectConfiguration(project=project, assignees=["alice"])
 
         # Act
         result = config.to_dict()
 
         # Assert
         assert result["project"] == "my-project"
-        assert result["assignee"] == "alice"
+        assert result["assignees"] == ["alice"]
 
-    def test_to_dict_without_assignee(self):
-        """Should not include assignee in dict when not set"""
+    def test_to_dict_without_assignees(self):
+        """Should not include assignees in dict when empty"""
         # Arrange
         project = Project("my-project")
-        config = ProjectConfiguration(
-            project=project,
-            assignee=None
-        )
+        config = ProjectConfiguration(project=project)
 
         # Act
         result = config.to_dict()
 
         # Assert
-        assert result == {
-            "project": "my-project",
-        }
-        assert "assignee" not in result
+        assert result == {"project": "my-project"}
+        assert "assignees" not in result
 
 
 class TestProjectConfigurationBaseBranch:
@@ -708,7 +700,7 @@ labels: team-backend,needs-review
 
         # Assert
         assert config.project.name == "full-config-test"
-        assert config.assignee == "alice"
+        assert config.assignees == ["alice"]
         assert config.base_branch == "develop"
         assert config.allowed_tools == "Read,Write,Edit,Bash(npm test:*)"
         assert config.stale_pr_days == 14
@@ -722,8 +714,91 @@ labels: team-backend,needs-review
 
         # Verify to_dict includes all fields
         result = config.to_dict()
-        assert result["assignee"] == "alice"
+        assert result["assignees"] == ["alice"]
         assert result["baseBranch"] == "develop"
         assert result["allowedTools"] == "Read,Write,Edit,Bash(npm test:*)"
         assert result["stalePRDays"] == 14
         assert result["labels"] == "team-backend,needs-review"
+
+
+class TestProjectConfigurationAssignees:
+    """Test suite for multiple assignees and reviewers support"""
+
+    def test_assignees_list_from_yaml(self):
+        """Should parse assignees list from YAML"""
+        project = Project("my-project")
+        yaml_content = """
+assignees:
+  - alice
+  - bob
+"""
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        assert config.assignees == ["alice", "bob"]
+
+    def test_assignee_singular_backward_compat(self):
+        """Legacy singular assignee in YAML should be folded into assignees list"""
+        project = Project("my-project")
+        yaml_content = """
+assignee: alice
+"""
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        assert config.assignees == ["alice"]
+
+    def test_assignees_overrides_singular_assignee(self):
+        """assignees list takes precedence over legacy assignee field"""
+        project = Project("my-project")
+        yaml_content = """
+assignee: alice
+assignees:
+  - bob
+  - carol
+"""
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        assert config.assignees == ["bob", "carol"]
+
+    def test_reviewers_list_from_yaml(self):
+        """Should parse reviewers list from YAML"""
+        project = Project("my-project")
+        yaml_content = """
+reviewers:
+  - charlie
+  - dave
+"""
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        assert config.reviewers == ["charlie", "dave"]
+
+    def test_no_assignees_returns_empty_list(self):
+        """Should return [] when no assignee configured"""
+        project = Project("my-project")
+        config = ProjectConfiguration.default(project)
+
+        assert config.assignees == []
+
+    def test_no_reviewers_returns_empty_list(self):
+        """Should return [] when no reviewers configured"""
+        project = Project("my-project")
+        config = ProjectConfiguration.default(project)
+
+        assert config.reviewers == []
+
+    def test_to_dict_includes_assignees(self):
+        """to_dict() should include assignees when set"""
+        project = Project("my-project")
+        config = ProjectConfiguration(project=project, assignees=["alice", "bob"])
+
+        result = config.to_dict()
+
+        assert result["assignees"] == ["alice", "bob"]
+
+    def test_to_dict_includes_reviewers(self):
+        """to_dict() should include reviewers when set"""
+        project = Project("my-project")
+        config = ProjectConfiguration(project=project, reviewers=["charlie"])
+
+        result = config.to_dict()
+
+        assert result["reviewers"] == ["charlie"]

@@ -4,7 +4,7 @@ Follows Service Layer pattern (Fowler, PoEAA) - encapsulates business logic
 for checking project capacity and providing assignee information.
 """
 
-from typing import List, Optional
+from typing import List
 
 from claudechain.services.core.pr_service import PRService
 from claudechain.domain.models import CapacityResult
@@ -59,8 +59,8 @@ class AssigneeService:
         print(f"Project {project}: {open_count} open PR(s) (max: {max_open_prs})")
 
         if has_capacity:
-            if config.assignee:
-                print(f"Capacity available - assignee: {config.assignee}")
+            if config.assignees:
+                print(f"Capacity available - assignees: {', '.join(config.assignees)}")
             else:
                 print("Capacity available (no assignee configured)")
         else:
@@ -68,8 +68,9 @@ class AssigneeService:
 
         return CapacityResult(
             has_capacity=has_capacity,
-            assignee=config.assignee,
             open_prs=pr_info_list,
             project_name=project,
-            max_open_prs=max_open_prs
+            max_open_prs=max_open_prs,
+            assignees=config.assignees,
+            reviewers=config.reviewers,
         )

@@ -1,7 +1,7 @@
 """Data models for ClaudeChain operations"""
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Literal, Optional
@@ -254,10 +254,11 @@ class CapacityResult:
     """
 
     has_capacity: bool
-    assignee: Optional[str]
     open_prs: List[Dict]
     project_name: str
     max_open_prs: int = 1
+    assignees: List[str] = field(default_factory=list)
+    reviewers: List[str] = field(default_factory=list)
 
     @property
     def open_count(self) -> int:
@@ -295,10 +296,13 @@ class CapacityResult:
         lines.append("")
         if not self.has_capacity:
             lines.append("**Decision:** ⏸️ At capacity - waiting for PR to be reviewed")
-        elif self.assignee:
-            lines.append(f"**Decision:** ✅ Capacity available - assignee: **{self.assignee}**")
         else:
-            lines.append("**Decision:** ✅ Capacity available - PR will be created without assignee")
+            if self.assignees:
+                lines.append(f"**Decision:** ✅ Capacity available - assignees: **{', '.join(self.assignees)}**")
+            else:
+                lines.append("**Decision:** ✅ Capacity available - PR will be created without assignee")
+            if self.reviewers:
+                lines.append(f"**Reviewers:** {', '.join(self.reviewers)}")
 
         return "\n".join(lines)
 

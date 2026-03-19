@@ -75,7 +75,6 @@ class TestCapacityResultMaxOpenPRs:
         """Should default max_open_prs to 1"""
         result = CapacityResult(
             has_capacity=True,
-            assignee=None,
             open_prs=[],
             project_name="test"
         )
@@ -85,10 +84,10 @@ class TestCapacityResultMaxOpenPRs:
         """Should display configured max in summary"""
         result = CapacityResult(
             has_capacity=True,
-            assignee="alice",
             open_prs=[{"pr_number": 1, "task_description": "task"}],
             project_name="test",
-            max_open_prs=3
+            max_open_prs=3,
+            assignees=["alice"],
         )
         summary = result.format_summary()
         assert "**Max PRs Allowed:** 3" in summary
@@ -98,7 +97,6 @@ class TestCapacityResultMaxOpenPRs:
         """Should display default max of 1 in summary"""
         result = CapacityResult(
             has_capacity=False,
-            assignee=None,
             open_prs=[{"pr_number": 1, "task_description": "task"}],
             project_name="test"
         )

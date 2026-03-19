@@ -43,7 +43,7 @@ baseBranch: develop
         assert config is not None
         assert isinstance(config, ProjectConfiguration)
         assert config.project == project
-        assert config.assignee == "alice"
+        assert config.assignees == ["alice"]
         assert config.base_branch == "develop"
         mock_get_file.assert_called_once_with(
             "owner/repo",
@@ -65,7 +65,7 @@ baseBranch: develop
         # Assert - returns default config, not None
         assert config is not None
         assert config.project == project
-        assert config.assignee is None
+        assert config.assignees == []
         assert config.base_branch is None
         mock_get_file.assert_called_once_with(
             "owner/repo",
@@ -127,7 +127,7 @@ baseBranch: develop
 
         # Assert
         assert config is not None
-        assert config.assignee is None
+        assert config.assignees == []
 
 
 class TestProjectRepositoryLoadConfigurationIfExists:
@@ -149,7 +149,7 @@ assignee: alice
 
         # Assert
         assert config is not None
-        assert config.assignee == "alice"
+        assert config.assignees == ["alice"]
 
     @patch('claudechain.infrastructure.github.operations.get_file_from_branch')
     def test_load_configuration_if_exists_returns_none_when_not_found(self, mock_get_file):
@@ -323,7 +323,7 @@ class TestProjectRepositoryLoadProjectFull:
         assert project.name == "my-project"
 
         assert isinstance(config, ProjectConfiguration)
-        assert config.assignee == "alice"
+        assert config.assignees == ["alice"]
 
         assert isinstance(spec, SpecContent)
         assert spec.total_tasks == 2
@@ -351,7 +351,7 @@ class TestProjectRepositoryLoadProjectFull:
         project, config, spec = result
 
         assert project.name == "my-project"
-        assert config.assignee is None  # Default config has no assignee
+        assert config.assignees == []  # Default config has no assignee
         assert config.base_branch is None
         assert spec.total_tasks == 2
 
@@ -481,7 +481,7 @@ Ensure backward compatibility with existing sessions.
         assert project.config_path == "claude-chain/auth-refactor/configuration.yml"
 
         # Config assertions
-        assert config.assignee == "dev1"
+        assert config.assignees == ["dev1"]
         assert config.base_branch == "develop"
         assert config.allowed_tools == "Read,Write,Edit,Bash"
         assert config.stale_pr_days == 14
@@ -527,13 +527,13 @@ Ensure backward compatibility with existing sessions.
         assert result_a is not None
         project_a, config_a, spec_a = result_a
         assert project_a.name == "project-a"
-        assert config_a.assignee == "alice"
+        assert config_a.assignees == ["alice"]
         assert spec_a.total_tasks == 1
 
         assert result_b is not None
         project_b, config_b, spec_b = result_b
         assert project_b.name == "project-b"
-        assert config_b.assignee == "bob"
+        assert config_b.assignees == ["bob"]
         assert spec_b.total_tasks == 2
 
 
@@ -565,7 +565,7 @@ allowedTools: Read,Write,Edit
         assert config is not None
         assert isinstance(config, ProjectConfiguration)
         assert config.project == project
-        assert config.assignee == "alice"
+        assert config.assignees == ["alice"]
         assert config.base_branch == "develop"
         assert config.allowed_tools == "Read,Write,Edit"
 
@@ -585,7 +585,7 @@ allowedTools: Read,Write,Edit
         # Assert - returns default config, not None
         assert config is not None
         assert config.project == project
-        assert config.assignee is None
+        assert config.assignees == []
         assert config.base_branch is None
         assert config.allowed_tools is None
 
@@ -607,7 +607,7 @@ allowedTools: Read,Write,Edit
 
         # Assert
         assert config is not None
-        assert config.assignee is None
+        assert config.assignees == []
         assert config.base_branch == "main"
 
     def test_load_local_configuration_with_stale_pr_days(self, tmp_path):
@@ -773,7 +773,7 @@ Ensure backward compatibility with existing sessions.
         assert spec is not None
 
         # Config assertions
-        assert config.assignee == "dev1"
+        assert config.assignees == ["dev1"]
         assert config.base_branch == "develop"
         assert config.allowed_tools == "Read,Write,Edit,Bash"
         assert config.stale_pr_days == 14
@@ -809,7 +809,7 @@ Ensure backward compatibility with existing sessions.
 
         # Assert
         assert config is not None
-        assert config.assignee is None  # Default config
+        assert config.assignees == []  # Default config
         assert config.base_branch is None
 
         assert spec is not None
