@@ -90,7 +90,7 @@ Claude Chain creates draft PRs. Human review remains essential.
 
 ### The Assignee Owns the Code
 
-The assignee is responsible for every PR in their chain. If the assignee doesn't understand the code, the PR should not move out of draft. Claude is helping stage the PR, but the human is responsible for validating what was done.
+The assignees are responsible for every PR in their chain. If the assignees don't understand the code, the PR should not move out of draft. Claude is helping stage the PR, but the humans assigned are responsible for validating what was done.
 
 ### Set Clear Expectations
 

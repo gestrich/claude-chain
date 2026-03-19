@@ -164,7 +164,10 @@ Error: Base branch mismatch for project 'my-project': config expects 'develop' b
 ```yaml
 # claude-chain/my-project/configuration.yml
 baseBranch: develop  # PRs must target 'develop'
-assignee: alice
+assignees:
+  - alice
+reviewers:
+  - bob
 ```
 
 ## Label Management

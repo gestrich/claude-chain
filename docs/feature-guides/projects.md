@@ -63,7 +63,9 @@ Include:
 ## Tasks
 
 - [ ] First task to complete
+
 - [ ] Second task to complete
+
 - [ ] Third task to complete
 ```
 
@@ -81,6 +83,7 @@ Tasks use Markdown checkbox syntax:
 - Only lines matching `- [ ]` or `- [x]` are treated as tasks
 - The description text is used to generate the task hash
 - When a PR merges, ClaudeChain automatically marks the task `- [x]`
+- Add a blank line between each task to prevent merge conflicts when multiple PRs merge concurrently (see [Concurrency](./setup.md#concurrency))
 
 **Flexible organization:** Tasks can be organized however you like—grouped under headings, separated by blank lines, or interspersed with other text. Just ensure each task starts with `- [ ]` so ClaudeChain can find it.
 
@@ -129,7 +132,9 @@ Follow the patterns in `src/auth/jwt-example.ts`.
 ## Tasks
 
 - [ ] Add JWT token generation to login endpoint
+
 - [ ] Add JWT verification middleware
+
 - [ ] Update protected routes to use new middleware
 ```
 
@@ -155,20 +160,31 @@ Only the checkbox line (`- [ ] Add user authentication`) is hashed. The indented
 ## configuration.yml Format
 
 The configuration file is **optional**. Without it, ClaudeChain uses these defaults:
-- PRs created without an assignee
+- PRs created without assignees or reviewers
 - Maximum 1 open PR per project (configurable via `maxOpenPRs`)
 
 ### Basic Structure
 
 ```yaml
-assignee: alice
+assignees:
+  - alice
+  - bob
+reviewers:
+  - carol
 ```
 
 ### Full Schema
 
 ```yaml
-# Optional: GitHub username to assign PRs to
-assignee: alice
+# Optional: GitHub usernames to assign PRs to (list)
+assignees:
+  - alice
+  - bob
+
+# Optional: GitHub usernames to request reviews from (list)
+# Reviewers receive review requests but are not assigned to the PR.
+reviewers:
+  - carol
 
 # Optional: Override base branch for this project
 baseBranch: develop
@@ -190,12 +206,38 @@ maxOpenPRs: 3
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `assignee` | string | No | GitHub username to assign PRs to |
+| `assignees` | list | No | GitHub usernames to assign PRs to |
+| `reviewers` | list | No | GitHub usernames to request reviews from (not assigned to the PR) |
 | `baseBranch` | string | No | Override base branch (defaults to workflow context) |
 | `allowedTools` | string | No | Override allowed tools (defaults to workflow input) |
 | `stalePRDays` | number | No | Days before a PR is considered stale (default: 7) |
 | `labels` | string | No | Additional labels for PRs (comma-separated, overrides workflow input) |
 | `maxOpenPRs` | number | No | Maximum concurrent open PRs per project (default: 1) |
+
+### Assignees vs Reviewers
+
+**Assignees** are the people responsible for the PR. They appear in the "Assignees" section on GitHub and are expected to own the code changes, move the PR out of draft, and merge it.
+
+**Reviewers** receive a review request notification and are expected to provide feedback, but are not assigned ownership. Use reviewers when you want someone to review but not own the PR.
+
+You can use both together:
+
+```yaml
+# Alice and Bob own the PR; Carol reviews it
+assignees:
+  - alice
+  - bob
+reviewers:
+  - carol
+```
+
+Or use just one:
+
+```yaml
+# No assignees, but Carol gets a review request
+reviewers:
+  - carol
+```
 
 ### Stale PR Tracking
 
@@ -204,12 +246,13 @@ The `stalePRDays` setting controls when PRs are flagged as stale in statistics r
 ```yaml
 # Flag PRs as stale after 14 days (default is 7)
 stalePRDays: 14
-assignee: alice
+assignees:
+  - alice
 ```
 
 Stale PRs appear in statistics reports with warnings:
 - The project's **Status** column shows `⚠️ N stale`
-- The **Projects Needing Attention** section lists specific stale PRs with assignee info
+- The **Projects Needing Attention** section lists specific stale PRs with assignees
 
 This helps identify PRs that may be stuck or need attention.
 
@@ -229,7 +272,8 @@ Use `baseBranch` when a project targets a different branch:
 ```yaml
 # This project targets 'develop' instead of 'main'
 baseBranch: develop
-assignee: alice
+assignees:
+  - alice
 ```
 
 ### Tool Permissions
@@ -250,7 +294,8 @@ If your tasks require running tests, builds, or other shell commands, add them t
 ```yaml
 # Full Bash access for this project
 allowedTools: Read,Write,Edit,Bash
-assignee: alice
+assignees:
+  - alice
 ```
 
 **Granular Bash permissions:**
@@ -537,6 +582,7 @@ claude-chain/quick-fix/
 Fix the typos in error messages.
 
 - [ ] Fix typo in login error message
+
 - [ ] Fix typo in signup error message
 ```
 
@@ -565,16 +611,24 @@ See `docs/auth-rfc.md` for the full design.
 ## Tasks
 
 - [ ] Add JWT utility functions to `src/auth/jwt.ts`
+
 - [ ] Update login endpoint to return JWT
+
 - [ ] Add JWT verification middleware
+
 - [ ] Update protected routes to use new middleware
+
 - [ ] Remove session-related code
+
 - [ ] Update tests
 ```
 
 **configuration.yml:**
 ```yaml
-assignee: alice
+assignees:
+  - alice
+reviewers:
+  - bob
 ```
 
 **pr-template.md:**

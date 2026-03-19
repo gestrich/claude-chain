@@ -41,6 +41,10 @@ on:
     paths:
       - 'claude-chain/**'
 
+concurrency:
+  group: claude-chain
+  cancel-in-progress: false
+
 permissions:
   contents: write       # Commit and push changes
   pull-requests: write  # Create PRs

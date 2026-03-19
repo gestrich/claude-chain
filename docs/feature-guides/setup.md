@@ -6,6 +6,7 @@ This guide walks you through the one-time setup to get ClaudeChain running in yo
 
 - [Prerequisites](#prerequisites)
 - [Create the Workflow File](#create-the-workflow-file)
+  - [Concurrency](#concurrency)
 - [Configure GitHub Settings](#configure-github-settings)
 - [Start ClaudeChain](#start-claudechain)
 - [Action Reference](#action-reference)
@@ -52,6 +53,10 @@ on:
     paths:
       - 'claude-chain/**'
 
+concurrency:
+  group: claude-chain
+  cancel-in-progress: false
+
 permissions:
   contents: write
   pull-requests: write
@@ -78,6 +83,7 @@ jobs:
 - `project_name` - Used for manual triggers; auto-detected for PR events from changed spec.md files
 - `default_base_branch` - The branch PRs will target; validated against project config if set
 - `claude_allowed_tools` - Controls which tools Claude can use (see [Tool Permissions](#tool-permissions))
+- `concurrency` - Serializes workflow runs (see [Concurrency](#concurrency) below)
 
 ### Standard Workflow (Alternative)
 
@@ -92,6 +98,10 @@ on:
     paths:
       - 'claude-chain/**'
   workflow_dispatch:
+
+concurrency:
+  group: claude-chain
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -126,6 +136,29 @@ jobs:
 **Note:** ClaudeChain automatically detects projects from changed spec.md files. When you merge a PR that adds or modifies a spec.md file, ClaudeChain triggers automatically. No labels are required for initial triggering—just merge your spec PR and the first task starts.
 
 **Base branch validation:** ClaudeChain validates that the merge target matches the project's configured `baseBranch` (in configuration.yml). If your project uses a non-main base branch, set it in configuration.yml to ensure PRs only process when merged to the correct branch.
+
+### Concurrency
+
+The `concurrency` block in the workflow examples above serializes ClaudeChain runs. This matters when using `maxOpenPRs > 1`, which allows multiple PRs to be open and merge concurrently. Without serialization, two problems can occur:
+
+**Duplicate PR creation.** When two PRs merge at nearly the same time, both trigger a workflow run. Both runs see the same next available task and race to create the same PR — one succeeds and the other fails or creates a duplicate.
+
+**Spec merge conflicts.** Each merge marks a task complete in `spec.md`. If two runs push spec updates simultaneously, one push will be rejected.
+
+The concurrency group ensures runs execute one at a time. The second run waits for the first to finish, sees the updated task list, and picks the correct next task.
+
+```yaml
+concurrency:
+  group: claude-chain
+  cancel-in-progress: false
+```
+
+- `cancel-in-progress: false` ensures queued runs **wait** rather than being cancelled.
+- The `group` name can be anything. Use the same group across all ClaudeChain workflows in the repo.
+
+If your project uses the default `maxOpenPRs: 1`, the concurrency block is not strictly necessary but is still a safe default.
+
+**Tip:** When using `maxOpenPRs > 1`, also add blank lines between tasks in your `spec.md` so each task gets its own git diff hunk. This prevents merge conflicts when adjacent tasks are marked complete by different PRs. See the [Projects Guide](./projects.md) for examples.
 
 ---
 
@@ -239,10 +272,11 @@ After triggering:
 | `base_branch` | Resolved base branch |
 | `pr_number` | Number of created PR |
 | `pr_url` | URL of created PR |
-| `reviewer` | Assigned reviewer username |
-| `step_completed` | Task description completed |
-| `has_capacity` | Whether reviewer had capacity |
-| `all_steps_done` | Whether all tasks are complete |
+| `assignees` | Comma-separated list of assigned GitHub usernames |
+| `reviewers` | Comma-separated list of reviewer GitHub usernames |
+| `task_completed` | Task description that was completed |
+| `has_capacity` | Whether project has capacity for a new PR |
+| `all_tasks_done` | Whether all tasks are complete |
 
 ### Model Options
 
