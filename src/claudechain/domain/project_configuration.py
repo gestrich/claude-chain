@@ -73,14 +73,14 @@ class ProjectConfiguration:
         # `assignees` list takes precedence; legacy `assignee` is folded in here at parse time
         yaml_assignees = config.get("assignees")
         if yaml_assignees is not None:
-            assignees = [str(a) for a in yaml_assignees]
+            assignees = _normalize_string_or_list(yaml_assignees)
         elif config.get("assignee"):
             assignees = [config["assignee"]]
         else:
             assignees = []
 
         yaml_reviewers = config.get("reviewers")
-        reviewers = [str(r) for r in yaml_reviewers] if yaml_reviewers is not None else []
+        reviewers = _normalize_string_or_list(yaml_reviewers) if yaml_reviewers is not None else []
 
         return cls(
             project=project,
@@ -182,3 +182,15 @@ class ProjectConfiguration:
         if self.max_open_prs is not None:
             result["maxOpenPRs"] = self.max_open_prs
         return result
+
+
+def _normalize_string_or_list(value) -> List[str]:
+    """Normalize a YAML value that may be a string or list into a list of strings.
+
+    YAML parses `reviewers: alice` as a string and `reviewers: [alice]` or
+    the block form as a list. This handles both so users don't need to worry
+    about the distinction.
+    """
+    if isinstance(value, str):
+        return [value]
+    return [str(item) for item in value]

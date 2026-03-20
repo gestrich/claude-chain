@@ -771,6 +771,26 @@ reviewers:
 
         assert config.reviewers == ["charlie", "dave"]
 
+    def test_reviewers_string_from_yaml(self):
+        """Should handle reviewers as a plain string (not a list)"""
+        project = Project("my-project")
+        yaml_content = """
+reviewers: smorris_jepp
+"""
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        assert config.reviewers == ["smorris_jepp"]
+
+    def test_assignees_string_from_yaml(self):
+        """Should handle assignees as a plain string (not a list)"""
+        project = Project("my-project")
+        yaml_content = """
+assignees: alice
+"""
+        config = ProjectConfiguration.from_yaml_string(project, yaml_content)
+
+        assert config.assignees == ["alice"]
+
     def test_no_assignees_returns_empty_list(self):
         """Should return [] when no assignee configured"""
         project = Project("my-project")
