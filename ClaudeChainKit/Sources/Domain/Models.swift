@@ -539,25 +539,313 @@ public class StatisticsReport {
         }
         return needingAttention.sorted { $0.projectName < $1.projectName }
     }
+    
+    /// Build PR URL from repo and PR number
+    private func buildPRURL(prNumber: Int) -> String? {
+        guard let repo = repo else { return nil }
+        return "https://github.com/\(repo)/pull/\(prNumber)"
+    }
+    
+    /// Format how long a PR was/is open with appropriate units
+    private func formatPRDuration(_ pr: GitHubPullRequest) -> String {
+        let endTime: Date
+        if pr.state == "open" {
+            endTime = Date()
+        } else {
+            endTime = pr.mergedAt ?? Date()
+        }
+        
+        let delta = endTime.timeIntervalSince(pr.createdAt)
+        let totalMinutes = Int(delta / 60)
+        let days = Int(delta / 86400)
+        
+        if days >= 1 {
+            return "\(days)d"
+        } else if totalMinutes >= 60 {
+            return "\(totalMinutes / 60)h"
+        } else {
+            return "\(max(1, totalMinutes))m"
+        }
+    }
+    
+    /// Build header section with metadata
+    public func toHeaderSection() -> Section {
+        let section = Section()
+        
+        if let repo = repo {
+            section.add(TextBlock(text: repo, style: .italic))
+        }
+        
+        return section
+    }
+    
+    /// Build leaderboard section showing top contributors
+    public func toLeaderboardSection() -> Section {
+        let section = Section(header: Header(text: "🏆 Leaderboard", level: 2))
+        
+        guard !teamStats.isEmpty else { return section }
+        
+        // Sort by activity level (merged PRs desc, then username)
+        let sortedMembers = teamStats.sorted { first, second in
+            if first.value.mergedCount != second.value.mergedCount {
+                return first.value.mergedCount > second.value.mergedCount
+            }
+            return first.key < second.key
+        }
+        
+        // Filter to only members with activity
+        let activeMembers = sortedMembers.filter { $0.value.mergedCount > 0 }
+        
+        guard !activeMembers.isEmpty else { return section }
+        
+        // Build table
+        let columns = [
+            TableColumn(header: "Rank", align: .left),
+            TableColumn(header: "Username", align: .left),
+            TableColumn(header: "Open", align: .right),
+            TableColumn(header: "Merged", align: .right),
+        ]
+        
+        let medals = ["🥇", "🥈", "🥉"]
+        var rows: [TableRow] = []
+        for (idx, member) in activeMembers.enumerated() {
+            let rankDisplay = idx < 3 ? medals[idx] : "#\(idx+1)"
+            let username = String(member.key.prefix(15))
+            rows.append(TableRow(cells: [
+                rankDisplay,
+                username,
+                String(member.value.openCount),
+                String(member.value.mergedCount),
+            ]))
+        }
+        
+        section.add(Table(columns: columns, rows: rows, inCodeBlock: true))
+        return section
+    }
+    
+    /// Build project progress section with statistics table
+    public func toProjectProgressSection() -> Section {
+        let section = Section(header: Header(text: "Project Progress", level: 2))
+        
+        guard !projectStats.isEmpty else {
+            section.add(TextBlock(text: "No projects found", style: .italic))
+            return section
+        }
+        
+        // Build table
+        let columns = [
+            TableColumn(header: "Project", align: .left),
+            TableColumn(header: "Open", align: .right),
+            TableColumn(header: "Merged", align: .right),
+            TableColumn(header: "Total", align: .right),
+            TableColumn(header: "Progress", align: .left),
+            TableColumn(header: "Cost", align: .right),
+        ]
+        
+        var rows: [TableRow] = []
+        for projectName in projectStats.keys.sorted() {
+            let stats = projectStats[projectName]!
+            
+            // Create progress bar
+            let progressBar = stats.formatProgressBar()
+            
+            // Format cost
+            let costDisplay = stats.totalCostUSD > 0 ? Formatting.formatUSD(stats.totalCostUSD) : "-"
+            
+            rows.append(TableRow(cells: [
+                String(projectName.prefix(20)),
+                String(stats.inProgressTasks),
+                String(stats.completedTasks),
+                String(stats.totalTasks),
+                progressBar,
+                costDisplay,
+            ]))
+        }
+        
+        section.add(Table(columns: columns, rows: rows, inCodeBlock: true))
+        return section
+    }
+    
+    /// Build warnings section for projects needing attention
+    public func toWarningsSection(stalePRDays: Int = 7) -> Section {
+        let section = Section(header: Header(text: "⚠️ Needs Attention", level: 2))
+        
+        let projects = projectsNeedingAttention()
+        guard !projects.isEmpty else { return section }
+        
+        for stats in projects {
+            var projectItems: [ListItem] = []
+            
+            // Collect all open PRs with their status indicators
+            for pr in stats.openPRs {
+                var indicators: [String] = []
+                if pr.isStale(stalePRDays: stalePRDays) {
+                    indicators.append("stale")
+                }
+                let assignee = pr.firstAssignee ?? "unassigned"
+                
+                var statusParts = [formatPRDuration(pr), assignee]
+                statusParts.append(contentsOf: indicators)
+                let statusText = statusParts.joined(separator: ", ")
+                
+                if let url = pr.url ?? buildPRURL(prNumber: pr.number) {
+                    projectItems.append(ListItem(content: .link(Link(text: "#\(pr.number) (\(statusText))", url: url)), bullet: "•"))
+                } else {
+                    projectItems.append(ListItem(content: .text("#\(pr.number) (\(statusText))"), bullet: "•"))
+                }
+            }
+            
+            // Add open orphaned PRs
+            for pr in stats.orphanedPRs {
+                if pr.isOpen() {
+                    let statusText = "\(formatPRDuration(pr)), orphaned"
+                    if let url = pr.url ?? buildPRURL(prNumber: pr.number) {
+                        projectItems.append(ListItem(content: .link(Link(text: "#\(pr.number) (\(statusText))", url: url)), bullet: "•"))
+                    } else {
+                        projectItems.append(ListItem(content: .text("#\(pr.number) (\(statusText))"), bullet: "•"))
+                    }
+                }
+            }
+            
+            // Add warning if no open PRs but tasks remain
+            if stats.hasRemainingTasks {
+                projectItems.append(ListItem(content: .text("No open PRs (\(stats.pendingTasks) tasks remaining)"), bullet: "•"))
+            }
+            
+            if !projectItems.isEmpty {
+                section.add(TextBlock(text: stats.projectName, style: .bold))
+                section.add(ListBlock(items: projectItems))
+            }
+        }
+        
+        return section
+    }
+    
+    /// Format for Slack with complete report structure
+    public func formatForSlack(
+        showAssigneeStats: Bool = false,
+        stalePRDays: Int = 7
+    ) -> String {
+        let formatter = SlackReportFormatter()
+        var sections: [String] = []
+        
+        // Header section
+        let header = toHeaderSection()
+        if !header.isEmpty() {
+            sections.append(formatter.formatSection(header))
+        }
+        
+        // Leaderboard section (only if enabled)
+        if showAssigneeStats {
+            let leaderboard = toLeaderboardSection()
+            if !leaderboard.isEmpty() {
+                sections.append(formatter.formatSection(leaderboard))
+            }
+        }
+        
+        // Project progress section
+        sections.append(formatter.formatSection(toProjectProgressSection()))
+        
+        // Warnings section
+        let warnings = toWarningsSection(stalePRDays: stalePRDays)
+        if !warnings.isEmpty() {
+            sections.append(formatter.formatSection(warnings))
+        }
+        
+        // Generation time footer
+        if let generationTimeSeconds = generationTimeSeconds {
+            sections.append("_Elapsed time: \(String(format: "%.1f", generationTimeSeconds))s_")
+        }
+        
+        return sections.joined(separator: "\n\n")
+    }
 }
 
 // MARK: - AITask
 
-/// Domain model representing a single AI task for execution.
+/// Metadata for a single AI operation within a PR
+///
+/// Represents one AI task (e.g., code generation, PR summary, refinement)
+/// that contributes to a pull request.
 public struct AITask {
-    /// Task description from spec.md checklist
-    public let description: String
+    /// Task type: "PRCreation", "PRRefinement", "PRSummary", etc.
+    public let type: String
     
-    /// 8-character hash identifier for the task
-    public let taskHash: String
+    /// AI model used (e.g., "claude-sonnet-4", "claude-opus-4")
+    public let model: String
     
-    /// 1-based index in the spec.md file
-    public let index: Int
+    /// Cost for this specific AI operation
+    public let costUSD: Double
     
-    public init(description: String, taskHash: String, index: Int) {
-        self.description = description
-        self.taskHash = taskHash
-        self.index = index
+    /// When this AI task was executed
+    public let createdAt: Date
+    
+    /// Input tokens used
+    public let tokensInput: Int
+    
+    /// Output tokens generated
+    public let tokensOutput: Int
+    
+    /// Time taken for this operation
+    public let durationSeconds: Double
+    
+    public init(
+        type: String,
+        model: String,
+        costUSD: Double,
+        createdAt: Date,
+        tokensInput: Int = 0,
+        tokensOutput: Int = 0,
+        durationSeconds: Double = 0.0
+    ) {
+        self.type = type
+        self.model = model
+        self.costUSD = costUSD
+        self.createdAt = createdAt
+        self.tokensInput = tokensInput
+        self.tokensOutput = tokensOutput
+        self.durationSeconds = durationSeconds
+    }
+    
+    /// Parse from JSON dictionary
+    public static func fromDict(_ data: [String: Any]) -> AITask? {
+        guard let type = data["type"] as? String,
+              let model = data["model"] as? String,
+              let costUSD = data["cost_usd"] as? Double,
+              let createdAtString = data["created_at"] as? String else {
+            return nil
+        }
+        
+        let createdAt = parseISOTimestamp(createdAtString)
+        let tokensInput = data["tokens_input"] as? Int ?? 0
+        let tokensOutput = data["tokens_output"] as? Int ?? 0
+        let durationSeconds = data["duration_seconds"] as? Double ?? 0.0
+        
+        return AITask(
+            type: type,
+            model: model,
+            costUSD: costUSD,
+            createdAt: createdAt,
+            tokensInput: tokensInput,
+            tokensOutput: tokensOutput,
+            durationSeconds: durationSeconds
+        )
+    }
+    
+    /// Serialize to JSON dictionary
+    public func toDict() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        return [
+            "type": type,
+            "model": model,
+            "cost_usd": costUSD,
+            "created_at": dateFormatter.string(from: createdAt),
+            "tokens_input": tokensInput,
+            "tokens_output": tokensOutput,
+            "duration_seconds": durationSeconds,
+        ]
     }
 }
 
@@ -580,6 +868,9 @@ public struct TaskMetadata {
     /// Pull request number created for this task
     public let prNumber: Int
     
+    /// Assignee for this task (GitHub username)
+    public let assignee: String
+    
     /// Model usage breakdown (model name -> usage data)
     public let modelUsage: [String: [String: Any]]
     
@@ -589,6 +880,7 @@ public struct TaskMetadata {
         completedAt: Date,
         costUSD: Double,
         prNumber: Int,
+        assignee: String,
         modelUsage: [String: [String: Any]] = [:]
     ) {
         self.taskDescription = taskDescription
@@ -596,6 +888,7 @@ public struct TaskMetadata {
         self.completedAt = completedAt
         self.costUSD = costUSD
         self.prNumber = prNumber
+        self.assignee = assignee
         self.modelUsage = modelUsage
     }
     
@@ -610,6 +903,7 @@ public struct TaskMetadata {
             "completed_at": dateFormatter.string(from: completedAt),
             "cost_usd": costUSD,
             "pr_number": prNumber,
+            "assignee": assignee,
             "model_usage": modelUsage
         ]
     }
@@ -620,7 +914,8 @@ public struct TaskMetadata {
               let taskHash = dict["task_hash"] as? String,
               let completedAtString = dict["completed_at"] as? String,
               let costUSD = dict["cost_usd"] as? Double,
-              let prNumber = dict["pr_number"] as? Int else {
+              let prNumber = dict["pr_number"] as? Int,
+              let assignee = dict["assignee"] as? String else {
             return nil
         }
         
@@ -633,6 +928,7 @@ public struct TaskMetadata {
             completedAt: completedAt,
             costUSD: costUSD,
             prNumber: prNumber,
+            assignee: assignee,
             modelUsage: modelUsage
         )
     }

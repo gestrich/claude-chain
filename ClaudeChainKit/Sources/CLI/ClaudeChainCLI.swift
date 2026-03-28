@@ -9,6 +9,7 @@ public struct ClaudeChainCLI: ParsableCommand {
             PrepareCommand.self,
             FinalizeCommand.self,
             AutoStartCommand.self,
+            AutoStartSummaryCommand.self,
             StatisticsCommand.self,
             DiscoverCommand.self,
             DiscoverReadyCommand.self,

@@ -18,8 +18,10 @@ public func visualWidth(_ text: String) -> Int {
             width += 2
         }
         // Wide (W) and Fullwidth (F) characters using Unicode categories
+        // Exclude block characters (U+2580-U+259F) which should be width 1
         else if scalar.properties.isEmojiPresentation ||
-                scalar.properties.generalCategory == .otherSymbol ||
+                (scalar.properties.generalCategory == .otherSymbol && 
+                 !(value >= 0x2580 && value <= 0x259F)) || // Exclude block characters
                 (value >= 0x1100 && value <= 0x115F) || // Hangul Jamo
                 (value >= 0x2E80 && value <= 0x9FFF) || // CJK
                 (value >= 0xAC00 && value <= 0xD7AF) || // Hangul Syllables
@@ -30,7 +32,7 @@ public func visualWidth(_ text: String) -> Int {
                 (value >= 0xFFE0 && value <= 0xFFE6) {  // Fullwidth Forms
             width += 2
         }
-        // Neutral (N), Narrow (Na), Halfwidth (H)
+        // Neutral (N), Narrow (Na), Halfwidth (H), and block characters
         else {
             width += 1
         }
@@ -127,7 +129,7 @@ public class TableFormatter {
         var lines: [String] = []
         
         // Top border
-        let top = "┌" + colWidths.map { "─" + String(repeating: "─", count: $0 + 2) + "─" }.joined(separator: "┬") + "┐"
+        let top = "┌" + colWidths.map { String(repeating: "─", count: $0 + 2) }.joined(separator: "┬") + "┐"
         lines.append(top)
         
         // Header row

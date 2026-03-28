@@ -190,10 +190,39 @@ public struct GitHubOperations: GitHubOperationsProtocol {
             let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
             try data.write(to: tmpZipPath)
             
-            // For now, return nil as zip extraction requires additional dependencies
-            // TODO: Implement zip extraction using NSTask/Process with unzip command
-            print("Warning: Zip extraction not implemented in Swift version")
-            return nil
+            // Extract the ZIP file using unzip command
+            let unzipProcess = Process()
+            unzipProcess.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+            unzipProcess.arguments = ["-j", tmpZipPath.path, "*.json", "-d", tempDir.path]
+            unzipProcess.standardOutput = Pipe()
+            unzipProcess.standardError = Pipe()
+            
+            try unzipProcess.run()
+            unzipProcess.waitUntilExit()
+            
+            guard unzipProcess.terminationStatus == 0 else {
+                print("Warning: Failed to extract ZIP file")
+                return nil
+            }
+            
+            // Find the first JSON file in the temp directory
+            let fileManager = FileManager.default
+            let jsonFiles = try fileManager.contentsOfDirectory(at: tempDir, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension == "json" }
+            
+            guard let jsonFile = jsonFiles.first else {
+                print("Warning: No JSON file found in artifact \(artifactId)")
+                return nil
+            }
+            
+            // Parse the JSON file
+            let jsonData = try Data(contentsOf: jsonFile)
+            let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: [])
+            
+            // Clean up the extracted JSON file
+            try? fileManager.removeItem(at: jsonFile)
+            
+            return jsonObject as? [String: Any]
             
         } catch {
             print("Warning: Failed to download/parse artifact \(artifactId): \(error)")

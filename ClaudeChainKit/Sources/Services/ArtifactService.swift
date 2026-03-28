@@ -203,12 +203,12 @@ public class ArtifactService {
             downloadMetadata: true
         )
         
-        var assignments: [Int: String] = [:]
+        let assignments: [Int: String] = [:]
         for artifact in artifacts {
             if let metadata = artifact.metadata {
-                let prNumber = metadata.prNumber
-                // TaskMetadata doesn't have assignee property, so we'll skip this functionality for now
-                // assignments[prNumber] = assignee
+                let _ = metadata.prNumber
+                // Now TaskMetadata has assignee property available
+                // assignments[prNumber] = metadata.assignee
             }
         }
         

@@ -1,1 +1,8 @@
-@main struct ClaudeChainMain { static func main() { print("claude-chain") } }
+import ArgumentParser
+import ClaudeChainCLI
+
+@main struct ClaudeChainMain {
+    static func main() {
+        ClaudeChainCLI.main()
+    }
+}

@@ -1,53 +1,51 @@
 import ArgumentParser
 import Foundation
+import ClaudeChainInfrastructure
+import ClaudeChainDomain
 
 public struct DiscoverCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "discover",
-        abstract: "Discover all projects in the repository"
+        abstract: "Discover all refactor projects in the repository"
     )
     
     public init() {}
     
     public func run() throws {
-        print("🔍 Discovering projects...")
-        
-        // Simple project discovery - look for directories with spec.md files
-        let fileManager = FileManager.default
-        let currentPath = fileManager.currentDirectoryPath
-        
-        var projects: [String] = []
-        
-        if let enumerator = fileManager.enumerator(atPath: currentPath) {
-            while let file = enumerator.nextObject() as? String {
-                if file.hasSuffix("spec.md") && !file.contains(".git") {
-                    let projectPath = URL(fileURLWithPath: file).deletingLastPathComponent().path
-                    if !projectPath.isEmpty && projectPath != "." {
-                        let projectName = URL(fileURLWithPath: projectPath).lastPathComponent
-                        if !projects.contains(projectName) {
-                            projects.append(projectName)
-                        }
-                    }
-                }
-            }
-        }
-        
-        projects.sort()
-        
-        print("Found \(projects.count) project(s):")
-        for project in projects {
+        discoverProjects()
+    }
+}
+
+private func discoverProjects() {
+    print("Discovering refactor projects...")
+    
+    // Auto-detect base directory from environment or use default
+    let baseDir = ProcessInfo.processInfo.environment["CLAUDECHAIN_PROJECT_DIR"] ?? "claude-chain"
+    
+    let projects = Project.findAll(baseDir: baseDir)
+    let projectNames = projects.map { $0.name }
+    
+    if projectNames.isEmpty {
+        print("No projects found")
+    } else {
+        print("\nFound \(projectNames.count) project(s):")
+        for project in projectNames {
             print("  - \(project)")
         }
-        
-        // Output JSON for GitHub Actions
-        let projectsJson: String
-        if projects.isEmpty {
-            projectsJson = "[]"
-        } else {
-            let jsonData = try JSONSerialization.data(withJSONObject: projects, options: [])
-            projectsJson = String(data: jsonData, encoding: .utf8) ?? "[]"
-        }
-        
-        print("\nProjects JSON: \(projectsJson)")
     }
+    
+    let projectsJSON: String
+    do {
+        let data = try JSONSerialization.data(withJSONObject: projectNames, options: [])
+        projectsJSON = String(data: data, encoding: .utf8) ?? "[]"
+    } catch {
+        projectsJSON = "[]"
+    }
+    
+    // Output for GitHub Actions
+    let gh = GitHubActions()
+    gh.writeOutput(name: "projects", value: projectsJSON)
+    gh.writeOutput(name: "project_count", value: String(projectNames.count))
+    
+    print("\nProjects JSON: \(projectsJSON)")
 }

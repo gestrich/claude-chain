@@ -43,7 +43,7 @@ let package = Package(
             name: "ClaudeChainCLI",
             dependencies: [
                 "ClaudeChainDomain",
-                "ClaudeChainInfrastructure",
+                "ClaudeChainInfrastructure", 
                 "ClaudeChainServices",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],

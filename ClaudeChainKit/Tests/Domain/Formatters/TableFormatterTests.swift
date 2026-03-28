@@ -27,10 +27,10 @@ final class TableFormatterTests: XCTestCase {
     }
     
     func testVisualWidthUnicodeBlocks() {
-        // Unicode block characters are treated as double-width in this implementation
-        XCTAssertEqual(visualWidth("█"), 2)
-        XCTAssertEqual(visualWidth("░"), 2)
-        XCTAssertEqual(visualWidth("█████"), 10)
+        // Unicode block characters have width 1 (matching Python's unicodedata.east_asian_width)
+        XCTAssertEqual(visualWidth("█"), 1)
+        XCTAssertEqual(visualWidth("░"), 1)
+        XCTAssertEqual(visualWidth("█████"), 5)
     }
     
     func testVisualWidthEmptyString() {
