@@ -88,7 +88,7 @@ extension ReportFormatter {
         case let divider as Divider:
             return formatDivider(divider)
         default:
-            fatalError("Unknown element type: \(type(of: element))")
+            return "<!-- Unknown element type: \(type(of: element)) -->"
         }
     }
     
