@@ -1,0 +1,722 @@
+/// Data models for ClaudeChain operations
+import Foundation
+
+// MARK: - ActionResult
+
+/// Result of running an action script.
+public struct ActionResult {
+    /// Whether the script executed successfully (exit code 0 or script not found)
+    public let success: Bool
+    
+    /// Path to the script that was executed
+    public let scriptPath: String
+    
+    /// Standard output from the script
+    public let stdout: String
+    
+    /// Standard error from the script
+    public let stderr: String
+    
+    /// Exit code from the script (nil if script didn't exist)
+    public let exitCode: Int?
+    
+    /// Whether the script file existed
+    public let scriptExists: Bool
+    
+    public init(
+        success: Bool,
+        scriptPath: String,
+        stdout: String = "",
+        stderr: String = "",
+        exitCode: Int? = nil,
+        scriptExists: Bool = false
+    ) {
+        self.success = success
+        self.scriptPath = scriptPath
+        self.stdout = stdout
+        self.stderr = stderr
+        self.exitCode = exitCode
+        self.scriptExists = scriptExists
+    }
+    
+    /// Create result for when script doesn't exist (considered success).
+    public static func scriptNotFound(scriptPath: String) -> ActionResult {
+        return ActionResult(
+            success: true,
+            scriptPath: scriptPath,
+            stdout: "",
+            stderr: "",
+            exitCode: nil,
+            scriptExists: false
+        )
+    }
+    
+    /// Create result from script execution.
+    public static func fromExecution(
+        scriptPath: String,
+        exitCode: Int,
+        stdout: String,
+        stderr: String
+    ) -> ActionResult {
+        return ActionResult(
+            success: exitCode == 0,
+            scriptPath: scriptPath,
+            stdout: stdout,
+            stderr: stderr,
+            exitCode: exitCode,
+            scriptExists: true
+        )
+    }
+}
+
+// MARK: - BranchInfo
+
+/// Parsed ClaudeChain branch information.
+///
+/// Represents the components of a ClaudeChain branch name in the format:
+/// claude-chain-{project_name}-{task_hash}
+public struct BranchInfo {
+    /// Name of the project (e.g., "my-refactor", "auth-migration")
+    public let projectName: String
+    
+    /// 8-character hexadecimal task identifier (e.g., "a3f2b891")
+    public let taskHash: String
+    
+    /// Branch format version (currently always "hash")
+    public let formatVersion: String = "hash"
+    
+    public init(projectName: String, taskHash: String) {
+        self.projectName = projectName
+        self.taskHash = taskHash
+    }
+    
+    /// Parse a ClaudeChain branch name into its components.
+    ///
+    /// Expected format: claude-chain-{project_name}-{hash}
+    ///
+    /// The project name can contain hyphens, so we match greedily up to the
+    /// last hyphen before the hash. The hash must be exactly 8 lowercase
+    /// hexadecimal characters.
+    ///
+    /// - Parameter branch: Branch name to parse
+    /// - Returns: BranchInfo instance if branch matches pattern, nil otherwise
+    public static func fromBranchName(_ branch: String) -> BranchInfo? {
+        // Pattern: claude-chain-{project}-{hash}
+        // Project name can contain hyphens, so we match greedily up to the last hyphen
+        let pattern = #"^claude-chain-(.+)-([a-z0-9]+)$"#
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+        let range = NSRange(branch.startIndex..<branch.endIndex, in: branch)
+        
+        guard let match = regex?.firstMatch(in: branch, options: [], range: range),
+              let projectRange = Range(match.range(at: 1), in: branch),
+              let identifierRange = Range(match.range(at: 2), in: branch) else {
+            return nil
+        }
+        
+        let projectName = String(branch[projectRange])
+        let identifier = String(branch[identifierRange])
+        
+        // Hash format: 8 hexadecimal characters (lowercase)
+        if identifier.count == 8 && identifier.allSatisfy({ "0123456789abcdef".contains($0) }) {
+            return BranchInfo(projectName: projectName, taskHash: identifier)
+        }
+        
+        return nil
+    }
+}
+
+// MARK: - TaskStatus
+
+/// Status of a task in the spec.md file.
+///
+/// Used to track whether a task is pending, in progress, or completed.
+public enum TaskStatus: String, CaseIterable {
+    /// Task not started, no PR
+    case pending = "pending"
+    
+    /// Task has open PR
+    case inProgress = "in_progress"
+    
+    /// Task marked as done in spec (checkbox checked)
+    case completed = "completed"
+}
+
+// MARK: - TaskWithPR
+
+/// A task from spec.md linked to its associated PR (if any).
+///
+/// This model represents the relationship between a task defined in spec.md
+/// and the GitHub PR that implements it. Used for detailed statistics reporting
+/// to show task-level progress and identify orphaned PRs.
+public struct TaskWithPR: Equatable {
+    /// 8-character hash from spec task (stable identifier)
+    public let taskHash: String
+    
+    /// Task description text from spec.md
+    public let description: String
+    
+    /// Current task status (PENDING, IN_PROGRESS, COMPLETED)
+    public let status: TaskStatus
+    
+    /// Associated GitHub PR if one exists, nil otherwise
+    public let pr: GitHubPullRequest?
+    
+    public let costUSD: Double
+    
+    public init(
+        taskHash: String,
+        description: String,
+        status: TaskStatus,
+        pr: GitHubPullRequest? = nil,
+        costUSD: Double = 0.0
+    ) {
+        self.taskHash = taskHash
+        self.description = description
+        self.status = status
+        self.pr = pr
+        self.costUSD = costUSD
+    }
+    
+    /// Check if this task has an associated PR.
+    ///
+    /// - Returns: True if task has a PR, false otherwise
+    public var hasPR: Bool {
+        return pr != nil
+    }
+    
+    /// Get the PR number if available.
+    ///
+    /// - Returns: PR number or nil if no PR
+    public var prNumber: Int? {
+        return pr?.number
+    }
+    
+    /// Get the PR state if available.
+    ///
+    /// - Returns: PRState enum value or nil if no PR
+    /// - Throws: ConfigurationError if PR state is invalid
+    public var prState: PRState? {
+        guard let pr = pr else { return nil }
+        return try? PRState.fromString(pr.state)
+    }
+}
+
+// MARK: - Helper Functions
+
+/// Parse ISO 8601 timestamp, ensuring timezone-aware result
+///
+/// Handles both legacy format (naive) and new format (timezone-aware):
+/// - "2025-12-29T23:47:49.299060" → parsed with UTC timezone added
+/// - "2025-12-29T23:47:49.299060+00:00" → parsed as-is
+/// - "2025-12-29T23:47:49.299060Z" → parsed as-is
+///
+/// - Parameter timestampStr: ISO 8601 formatted timestamp string
+/// - Returns: Timezone-aware Date object (always has timezone info)
+public func parseISOTimestamp(_ timestampStr: String) -> Date {
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    
+    let cleanedString = timestampStr.replacingOccurrences(of: "Z", with: "+00:00")
+    
+    if let date = formatter.date(from: cleanedString) {
+        return date
+    }
+    
+    // Try without fractional seconds
+    formatter.formatOptions = [.withInternetDateTime]
+    if let date = formatter.date(from: cleanedString) {
+        return date
+    }
+    
+    // Fallback: parse as legacy format and add UTC timezone
+    let legacyFormatter = DateFormatter()
+    legacyFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+    legacyFormatter.timeZone = TimeZone(secondsFromGMT: 0)
+    
+    return legacyFormatter.date(from: timestampStr) ?? Date()
+}
+
+// MARK: - CapacityResult
+
+/// Result of project capacity check.
+///
+/// Capacity is determined by the project's maxOpenPRs setting (default: 1).
+public struct CapacityResult {
+    public let hasCapacity: Bool
+    public let openPRs: [[String: Any]]
+    public let projectName: String
+    public let maxOpenPRs: Int
+    public let assignees: [String]
+    public let reviewers: [String]
+    
+    public init(
+        hasCapacity: Bool,
+        openPRs: [[String: Any]],
+        projectName: String,
+        maxOpenPRs: Int = 1,
+        assignees: [String] = [],
+        reviewers: [String] = []
+    ) {
+        self.hasCapacity = hasCapacity
+        self.openPRs = openPRs
+        self.projectName = projectName
+        self.maxOpenPRs = maxOpenPRs
+        self.assignees = assignees
+        self.reviewers = reviewers
+    }
+    
+    /// Number of currently open PRs
+    public var openCount: Int {
+        return openPRs.count
+    }
+    
+    /// Generate formatted summary for GitHub Actions output
+    public func formatSummary() -> String {
+        var lines: [String] = ["## Capacity Check", ""]
+        
+        // Project header with status emoji
+        let statusEmoji = hasCapacity ? "✅" : "❌"
+        lines.append("### \(statusEmoji) **\(projectName)**")
+        lines.append("")
+        
+        // Capacity info
+        lines.append("**Max PRs Allowed:** \(maxOpenPRs)")
+        lines.append("**Currently Open:** \(openCount)/\(maxOpenPRs)")
+        lines.append("")
+        
+        // List open PRs with details
+        if !openPRs.isEmpty {
+            lines.append("**Open PRs:**")
+            for prInfo in openPRs {
+                let prNum = prInfo["pr_number"] as? Int ?? 0
+                let taskDesc = prInfo["task_description"] as? String ?? "Unknown task"
+                lines.append("- PR #\(prNum): \(taskDesc)")
+            }
+            lines.append("")
+        } else {
+            lines.append("**Open PRs:** None")
+            lines.append("")
+        }
+        
+        // Final decision
+        lines.append("---")
+        lines.append("")
+        if !hasCapacity {
+            lines.append("**Decision:** ⏸️ At capacity - waiting for PR to be reviewed")
+        } else {
+            if !assignees.isEmpty {
+                lines.append("**Decision:** ✅ Capacity available - assignees: **\(assignees.joined(separator: ", "))**")
+            } else {
+                lines.append("**Decision:** ✅ Capacity available - PR will be created without assignee")
+            }
+            if !reviewers.isEmpty {
+                lines.append("**Reviewers:** \(reviewers.joined(separator: ", "))")
+            }
+        }
+        
+        return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - PRReference
+
+/// Reference to a pull request for statistics
+///
+/// Lightweight model that stores just the information needed for
+/// statistics display, not the full PR details.
+public struct PRReference {
+    public let prNumber: Int
+    public let title: String
+    public let project: String
+    /// merged_at or created_at depending on context
+    public let timestamp: Date
+    
+    public init(prNumber: Int, title: String, project: String, timestamp: Date) {
+        self.prNumber = prNumber
+        self.title = title
+        self.project = project
+        self.timestamp = timestamp
+    }
+    
+    /// Format for display: '[project] #123: Title'
+    public func formatDisplay() -> String {
+        return "[\(project)] #\(prNumber): \(title)"
+    }
+}
+
+// MARK: - TeamMemberStats
+
+/// Statistics for a single team member
+public class TeamMemberStats {
+    public let username: String
+    /// Type-safe list of PR references
+    public var mergedPRs: [PRReference] = []
+    /// Type-safe list of PR references
+    public var openPRs: [PRReference] = []
+    
+    public init(username: String) {
+        self.username = username
+    }
+    
+    /// Number of merged PRs
+    public var mergedCount: Int {
+        return mergedPRs.count
+    }
+    
+    /// Number of open PRs
+    public var openCount: Int {
+        return openPRs.count
+    }
+    
+    /// Total number of PRs (merged + open)
+    public var totalCount: Int {
+        return mergedCount + openCount
+    }
+    
+    /// Add a merged PR to this member's stats
+    public func addMergedPR(_ pr: PRReference) {
+        mergedPRs.append(pr)
+    }
+    
+    /// Add an open PR to this member's stats
+    public func addOpenPR(_ pr: PRReference) {
+        openPRs.append(pr)
+    }
+}
+
+// MARK: - ProjectStats
+
+/// Statistics for a single project
+public class ProjectStats {
+    /// Name of the project
+    public let projectName: String
+    
+    /// Path to the spec.md file
+    public let specPath: String
+    
+    /// Total number of tasks in spec.md
+    public var totalTasks: Int = 0
+    
+    /// Number of completed tasks (checked off)
+    public var completedTasks: Int = 0
+    
+    /// Number of tasks with open PRs
+    public var inProgressTasks: Int = 0
+    
+    /// Number of tasks without PRs
+    public var pendingTasks: Int = 0
+    
+    /// Total AI cost for this project
+    public var totalCostUSD: Double = 0.0
+    
+    /// List of open PRs for this project
+    public var openPRs: [GitHubPullRequest] = []
+    
+    /// Number of PRs that are stale
+    public var stalePRCount: Int = 0
+    
+    /// Detailed list of tasks with their PR associations
+    public var tasks: [TaskWithPR] = []
+    
+    /// PRs whose task hashes don't match any current spec task
+    public var orphanedPRs: [GitHubPullRequest] = []
+    
+    public init(projectName: String, specPath: String) {
+        self.projectName = projectName
+        self.specPath = specPath
+    }
+    
+    /// Calculate completion percentage
+    public var completionPercentage: Double {
+        guard totalTasks > 0 else { return 0.0 }
+        return (Double(completedTasks) / Double(totalTasks)) * 100
+    }
+    
+    /// Check if project has remaining tasks but no open PRs.
+    ///
+    /// This indicates a project that may need attention - there's work
+    /// to be done but no PRs in progress.
+    ///
+    /// - Returns: True if pendingTasks > 0 and inProgressTasks == 0
+    public var hasRemainingTasks: Bool {
+        return pendingTasks > 0 && inProgressTasks == 0
+    }
+    
+    /// Generate Unicode progress bar
+    ///
+    /// - Parameter width: Number of characters for the bar
+    /// - Returns: String like "████████░░ 80%"
+    public func formatProgressBar(width: Int = 10) -> String {
+        guard totalTasks > 0 else {
+            return String(repeating: "░", count: width) + " 0%"
+        }
+        
+        let pct = completionPercentage
+        var filled = Int((pct / 100) * Double(width))
+        
+        // Show at least 1 filled block if there's any progress
+        if pct > 0 && filled == 0 {
+            filled = 1
+        }
+        
+        let empty = width - filled
+        let bar = String(repeating: "█", count: filled) + String(repeating: "░", count: empty)
+        return String(format: "%@ %.0f%%", bar, pct)
+    }
+    
+    /// Build summary section for this project.
+    ///
+    /// - Returns: Section containing project summary with progress bar
+    public func toSummarySection() -> Section {
+        let section = Section(header: Header(text: "📊 \(projectName)", level: 3))
+        
+        // Progress bar and completion info
+        section.add(TextBlock(text: "\(formatProgressBar()) · \(completedTasks)/\(totalTasks) complete"))
+        
+        // Compact status breakdown - only show non-zero counts
+        var statusParts = ["✅\(completedTasks)"]
+        if inProgressTasks > 0 {
+            statusParts.append("🔄\(inProgressTasks)")
+        }
+        if pendingTasks > 0 {
+            statusParts.append("⏸️\(pendingTasks)")
+        }
+        if totalCostUSD > 0 {
+            statusParts.append("💰\(Formatting.formatUSD(totalCostUSD))")
+        }
+        
+        section.add(TextBlock(text: statusParts.joined(separator: " · ")))
+        return section
+    }
+}
+
+// MARK: - StatisticsReport
+
+/// Aggregated statistics report for all projects and team members
+public class StatisticsReport {
+    /// username -> TeamMemberStats
+    public var teamStats: [String: TeamMemberStats] = [:]
+    
+    /// project_name -> ProjectStats
+    public var projectStats: [String: ProjectStats] = [:]
+    
+    public var generatedAt: Date?
+    
+    /// GitHub repository (owner/name)
+    public var repo: String?
+    
+    /// Time to generate report
+    public var generationTimeSeconds: Double?
+    
+    public init(repo: String? = nil) {
+        self.repo = repo
+    }
+    
+    /// Add team member statistics
+    public func addTeamMember(_ stats: TeamMemberStats) {
+        teamStats[stats.username] = stats
+    }
+    
+    /// Add project statistics
+    public func addProject(_ stats: ProjectStats) {
+        projectStats[stats.projectName] = stats
+    }
+    
+    /// Get projects that need attention.
+    ///
+    /// A project needs attention if:
+    /// - It has stale PRs (stalePRCount > 0), OR
+    /// - It has remaining tasks but no open PRs (hasRemainingTasks is true), OR
+    /// - It has open orphaned PRs (PRs whose tasks were removed from spec)
+    ///
+    /// Note: Merged orphaned PRs don't require attention (shown in workflow report only).
+    ///
+    /// - Returns: List of ProjectStats for projects needing attention, sorted by project name
+    public func projectsNeedingAttention() -> [ProjectStats] {
+        let needingAttention = projectStats.values.filter { stats in
+            let hasOpenOrphanedPRs = stats.orphanedPRs.contains { $0.isOpen() }
+            return stats.stalePRCount > 0 || stats.hasRemainingTasks || hasOpenOrphanedPRs
+        }
+        return needingAttention.sorted { $0.projectName < $1.projectName }
+    }
+}
+
+// MARK: - AITask
+
+/// Domain model representing a single AI task for execution.
+public struct AITask {
+    /// Task description from spec.md checklist
+    public let description: String
+    
+    /// 8-character hash identifier for the task
+    public let taskHash: String
+    
+    /// 1-based index in the spec.md file
+    public let index: Int
+    
+    public init(description: String, taskHash: String, index: Int) {
+        self.description = description
+        self.taskHash = taskHash
+        self.index = index
+    }
+}
+
+// MARK: - TaskMetadata
+
+/// Metadata about completed tasks for reporting and cost tracking.
+public struct TaskMetadata {
+    /// Task description
+    public let taskDescription: String
+    
+    /// Task hash for unique identification
+    public let taskHash: String
+    
+    /// When the task was completed
+    public let completedAt: Date
+    
+    /// Total cost for this task execution
+    public let costUSD: Double
+    
+    /// Pull request number created for this task
+    public let prNumber: Int
+    
+    /// Model usage breakdown (model name -> usage data)
+    public let modelUsage: [String: [String: Any]]
+    
+    public init(
+        taskDescription: String,
+        taskHash: String,
+        completedAt: Date,
+        costUSD: Double,
+        prNumber: Int,
+        modelUsage: [String: [String: Any]] = [:]
+    ) {
+        self.taskDescription = taskDescription
+        self.taskHash = taskHash
+        self.completedAt = completedAt
+        self.costUSD = costUSD
+        self.prNumber = prNumber
+        self.modelUsage = modelUsage
+    }
+    
+    /// Convert to dictionary for JSON serialization
+    public func toDict() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        return [
+            "task_description": taskDescription,
+            "task_hash": taskHash,
+            "completed_at": dateFormatter.string(from: completedAt),
+            "cost_usd": costUSD,
+            "pr_number": prNumber,
+            "model_usage": modelUsage
+        ]
+    }
+    
+    /// Create from dictionary (for JSON deserialization)
+    public static func fromDict(_ dict: [String: Any]) -> TaskMetadata? {
+        guard let taskDescription = dict["task_description"] as? String,
+              let taskHash = dict["task_hash"] as? String,
+              let completedAtString = dict["completed_at"] as? String,
+              let costUSD = dict["cost_usd"] as? Double,
+              let prNumber = dict["pr_number"] as? Int else {
+            return nil
+        }
+        
+        let completedAt = parseISOTimestamp(completedAtString)
+        let modelUsage = dict["model_usage"] as? [String: [String: Any]] ?? [:]
+        
+        return TaskMetadata(
+            taskDescription: taskDescription,
+            taskHash: taskHash,
+            completedAt: completedAt,
+            costUSD: costUSD,
+            prNumber: prNumber,
+            modelUsage: modelUsage
+        )
+    }
+}
+
+// MARK: - ProjectMetadata
+
+/// Metadata for a complete project, tracking all completed tasks.
+public struct ProjectMetadata {
+    /// Project name
+    public let projectName: String
+    
+    /// Project creation timestamp
+    public let createdAt: Date
+    
+    /// Last update timestamp
+    public var updatedAt: Date
+    
+    /// Total cost for all tasks in this project
+    public var totalCostUSD: Double
+    
+    /// List of completed task metadata
+    public var completedTasks: [TaskMetadata]
+    
+    public init(
+        projectName: String,
+        createdAt: Date = Date(),
+        updatedAt: Date = Date(),
+        totalCostUSD: Double = 0.0,
+        completedTasks: [TaskMetadata] = []
+    ) {
+        self.projectName = projectName
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.totalCostUSD = totalCostUSD
+        self.completedTasks = completedTasks
+    }
+    
+    /// Add a completed task and update totals
+    public mutating func addCompletedTask(_ task: TaskMetadata) {
+        completedTasks.append(task)
+        totalCostUSD += task.costUSD
+        updatedAt = Date()
+    }
+    
+    /// Convert to dictionary for JSON serialization
+    public func toDict() -> [String: Any] {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        return [
+            "project_name": projectName,
+            "created_at": dateFormatter.string(from: createdAt),
+            "updated_at": dateFormatter.string(from: updatedAt),
+            "total_cost_usd": totalCostUSD,
+            "completed_tasks": completedTasks.map { $0.toDict() }
+        ]
+    }
+    
+    /// Create from dictionary (for JSON deserialization)
+    public static func fromDict(_ dict: [String: Any]) -> ProjectMetadata? {
+        guard let projectName = dict["project_name"] as? String,
+              let createdAtString = dict["created_at"] as? String,
+              let updatedAtString = dict["updated_at"] as? String,
+              let totalCostUSD = dict["total_cost_usd"] as? Double else {
+            return nil
+        }
+        
+        let createdAt = parseISOTimestamp(createdAtString)
+        let updatedAt = parseISOTimestamp(updatedAtString)
+        
+        let completedTasks: [TaskMetadata]
+        if let tasksData = dict["completed_tasks"] as? [[String: Any]] {
+            completedTasks = tasksData.compactMap { TaskMetadata.fromDict($0) }
+        } else {
+            completedTasks = []
+        }
+        
+        return ProjectMetadata(
+            projectName: projectName,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
+            totalCostUSD: totalCostUSD,
+            completedTasks: completedTasks
+        )
+    }
+}
