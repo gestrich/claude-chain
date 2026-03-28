@@ -759,6 +759,337 @@ public class StatisticsReport {
         
         return sections.joined(separator: "\n\n")
     }
+    
+    /// Generate Block Kit JSON structure for Slack webhook
+    ///
+    /// - Parameters:
+    ///   - showAssigneeStats: Whether to include assignee leaderboard
+    ///   - runUrl: GitHub Actions run URL for footer
+    ///   - hideCompletedProjects: Whether to exclude completed projects
+    /// - Returns: Slack Block Kit payload dictionary
+    public func formatForSlackBlocks(
+        showAssigneeStats: Bool = false,
+        runUrl: String? = nil,
+        hideCompletedProjects: Bool = false
+    ) -> [String: Any] {
+        let formatter = SlackBlockKitFormatter(repo: repo ?? "")
+        var blocks: [[String: Any]] = []
+        
+        // Chains section header (matches leaderboard style)
+        blocks.append(contentsOf: formatter.formatHeaderBlocks())
+        
+        // Project progress blocks (skip fully completed projects)
+        for projectName in projectStats.keys.sorted() {
+            if let stats = projectStats[projectName] {
+                // Optionally skip completed projects (all tasks merged, no open PRs)
+                if hideCompletedProjects {
+                    let isCompleted = (
+                        stats.completedTasks == stats.totalTasks &&
+                        stats.totalTasks > 0 &&
+                        stats.openPRs.isEmpty
+                    )
+                    if isCompleted {
+                        continue
+                    }
+                }
+                
+                // Build open PRs list with age
+                var openPRs: [[String: Any]] = []
+                for pr in stats.openPRs {
+                    openPRs.append([
+                        "number": pr.number,
+                        "title": pr.taskDescription,
+                        "url": pr.url ?? buildPRURL(prNumber: pr.number) ?? "",
+                        "age_days": pr.daysOpen,
+                        "age_formatted": formatPRDuration(pr)
+                    ])
+                }
+                
+                blocks.append(contentsOf: formatter.formatProjectBlocks(
+                    projectName: projectName,
+                    merged: stats.completedTasks,
+                    total: stats.totalTasks,
+                    costUSD: stats.totalCostUSD,
+                    openPRs: openPRs.isEmpty ? nil : openPRs
+                ))
+            }
+        }
+        
+        // Leaderboard blocks (only if enabled) - after project progress
+        if showAssigneeStats {
+            let sortedMembers = teamStats.sorted { first, second in
+                if first.value.mergedCount != second.value.mergedCount {
+                    return first.value.mergedCount > second.value.mergedCount
+                }
+                return first.key < second.key
+            }
+            let activeMembers = sortedMembers.compactMap { (username, stats) -> [String: Any]? in
+                guard stats.mergedCount > 0 else { return nil }
+                return ["username": username, "merged": stats.mergedCount]
+            }
+            blocks.append(contentsOf: formatter.formatLeaderboardBlocks(entries: activeMembers))
+        }
+        
+        // Footer with link to GitHub Actions run (and elapsed time if available)
+        if let runUrl = runUrl {
+            let footerText = formatFooterText(runURL: runUrl, elapsedSeconds: generationTimeSeconds)
+            blocks.append(contextBlock(footerText))
+        }
+        
+        // Truncate to Slack's 50-block limit
+        let maxBlocks = 50
+        if blocks.count > maxBlocks {
+            let originalCount = blocks.count
+            let truncatedCount = originalCount - (maxBlocks - 1)
+            print("WARNING: Slack block count (\(originalCount)) exceeds \(maxBlocks)-block limit. \(truncatedCount) blocks truncated.")
+            blocks = Array(blocks.prefix(maxBlocks - 1))
+            blocks.append(contextBlock("⚠️ \(truncatedCount) blocks truncated due to Slack limit"))
+        }
+        
+        return formatter.buildMessage(blocks: blocks, fallbackText: "ClaudeChain Stats")
+    }
+    
+    /// Format leaderboard showing top contributors with rankings
+    ///
+    /// - Parameter forSlack: If true, use Slack mrkdwn format; otherwise GitHub markdown
+    /// - Returns: Formatted leaderboard string
+    public func formatLeaderboard(forSlack: Bool = false) -> String {
+        let section = toLeaderboardSection()
+        if section.isEmpty() {
+            return ""
+        }
+        
+        let formatter: ReportFormatter = forSlack ? SlackReportFormatter() : MarkdownReportFormatter()
+        return formatter.formatSection(section)
+    }
+    
+    /// Format warnings section for projects needing attention
+    ///
+    /// - Parameters:
+    ///   - forSlack: If true, use Slack mrkdwn format; otherwise GitHub markdown
+    ///   - stalePRDays: Threshold for stale PRs
+    /// - Returns: Formatted warnings section string
+    public func formatWarningsSection(forSlack: Bool = false, stalePRDays: Int = 7) -> String {
+        let section = toWarningsSection(stalePRDays: stalePRDays)
+        if section.isEmpty() {
+            return ""
+        }
+        
+        let formatter: ReportFormatter = forSlack ? SlackReportFormatter() : MarkdownReportFormatter()
+        return formatter.formatSection(section)
+    }
+    
+    /// Format detailed task view showing each task with its PR association
+    ///
+    /// - Parameter forSlack: If true, use Slack mrkdwn format; otherwise GitHub markdown
+    /// - Returns: Formatted project details string
+    public func formatProjectDetails(forSlack: Bool = false) -> String {
+        let section = toProjectDetailsSection()
+        let formatter: ReportFormatter = forSlack ? SlackReportFormatter() : MarkdownReportFormatter()
+        return formatter.formatSection(section)
+    }
+    
+    /// Export as JSON for programmatic access
+    ///
+    /// - Returns: JSON string representation of the report
+    public func toJSON() -> String {
+        var data: [String: Any] = [:]
+        
+        // Add metadata
+        if let generatedAt = generatedAt {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            data["generated_at"] = formatter.string(from: generatedAt)
+        } else {
+            data["generated_at"] = nil
+        }
+        data["repo"] = repo
+        
+        // Serialize project stats
+        var projects: [String: Any] = [:]
+        for (projectName, stats) in projectStats {
+            projects[projectName] = [
+                "total_tasks": stats.totalTasks,
+                "completed_tasks": stats.completedTasks,
+                "in_progress_tasks": stats.inProgressTasks,
+                "pending_tasks": stats.pendingTasks,
+                "completion_percentage": stats.completionPercentage
+            ]
+        }
+        data["projects"] = projects
+        
+        // Serialize team member stats
+        var teamMembers: [String: Any] = [:]
+        for (username, stats) in teamStats {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            
+            teamMembers[username] = [
+                "merged_prs": stats.mergedPRs.map { pr in
+                    [
+                        "pr_number": pr.prNumber,
+                        "title": pr.title,
+                        "project": pr.project,
+                        "timestamp": formatter.string(from: pr.timestamp)
+                    ]
+                },
+                "open_prs": stats.openPRs.map { pr in
+                    [
+                        "pr_number": pr.prNumber,
+                        "title": pr.title,
+                        "project": pr.project,
+                        "timestamp": formatter.string(from: pr.timestamp)
+                    ]
+                },
+                "merged_count": stats.mergedCount,
+                "open_count": stats.openCount
+            ]
+        }
+        data["team_members"] = teamMembers
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted])
+            return String(data: jsonData, encoding: .utf8) ?? "{}"
+        } catch {
+            print("Error serializing statistics to JSON: \(error)")
+            return "{}"
+        }
+    }
+    
+    /// Build detailed task view showing each task with its PR association
+    ///
+    /// - Returns: Section containing detailed task-PR mappings for all projects
+    private func toProjectDetailsSection() -> Section {
+        let section = Section()
+        
+        for projectName in projectStats.keys.sorted() {
+            if let stats = projectStats[projectName] {
+                // Project header with completion count
+                let headerText = "\(projectName) (\(stats.completedTasks)/\(stats.totalTasks) complete)"
+                let projectSection = Section(header: Header(text: headerText, level: 2))
+                
+                // Tasks section as a table
+                if !stats.tasks.isEmpty {
+                    projectSection.add(Header(text: "Tasks", level: 3))
+                    
+                    // Build table with columns: Checkbox, Task, PR, Status, Cost
+                    let columns = [
+                        TableColumn(header: "", align: .center),  // checkbox
+                        TableColumn(header: "Task", align: .left),
+                        TableColumn(header: "PR", align: .left),
+                        TableColumn(header: "Status", align: .left),
+                        TableColumn(header: "Cost", align: .right)
+                    ]
+                    
+                    var rows: [TableRow] = []
+                    var totalCost = 0.0
+                    for task in stats.tasks {
+                        let checkbox = task.status == .completed ? "✓" : ""
+                        // Truncate long descriptions
+                        let desc = task.description.count > 50 ? 
+                            String(task.description.prefix(50)) + "..." : 
+                            task.description
+                        
+                        let prInfoStr: String
+                        let status: String
+                        if task.hasPR, let pr = task.pr {
+                            let duration = formatPRDuration(pr)
+                            if pr.isMerged() {
+                                status = "Merged (\(duration))"
+                            } else if pr.isOpen() {
+                                status = "Open (\(duration))"
+                            } else {
+                                status = "Closed"
+                            }
+                            // For table cells, we need strings, not Link objects
+                            if let url = pr.url ?? buildPRURL(prNumber: pr.number) {
+                                prInfoStr = "[#\(pr.number)](\(url))"  // Markdown link format
+                            } else {
+                                prInfoStr = "#\(pr.number)"
+                            }
+                        } else {
+                            prInfoStr = "-"
+                            status = "-"
+                        }
+                        
+                        let costStr = task.costUSD > 0 ? String(format: "$%.2f", task.costUSD) : "-"
+                        totalCost += task.costUSD
+                        
+                        rows.append(TableRow(cells: [checkbox, desc, prInfoStr, status, costStr]))
+                    }
+                    
+                    // Add total row if there are costs
+                    if totalCost > 0 {
+                        rows.append(TableRow(cells: ["", "", "", "**Total**", String(format: "**$%.2f**", totalCost)]))
+                    }
+                    
+                    projectSection.add(Table(columns: columns, rows: rows))
+                }
+                
+                // Orphaned PRs section
+                if !stats.orphanedPRs.isEmpty {
+                    var orphanItems: [ListItem] = []
+                    for pr in stats.orphanedPRs {
+                        let duration = formatPRDuration(pr)
+                        let state: String
+                        if pr.isMerged() {
+                            state = "Merged, \(duration)"
+                        } else if pr.isOpen() {
+                            state = "Open, \(duration)"
+                        } else {
+                            state = "Closed"
+                        }
+                        orphanItems.append(ListItem(content: .text("PR #\(pr.number) (\(state)) - Task removed from spec"), bullet: "•"))
+                    }
+                    
+                    projectSection.add(Header(text: "Orphaned PRs", level: 3))
+                    projectSection.add(TextBlock(
+                        text: "> **Note:** Orphaned PRs are pull requests whose associated tasks have been " +
+                              "removed from the spec file.\n" +
+                              "> These may need manual review to determine if they should be closed or " +
+                              "if the task should be restored."
+                    ))
+                    projectSection.add(ListBlock(items: orphanItems))
+                }
+                
+                section.add(projectSection)
+            }
+        }
+        
+        return section
+    }
+}
+
+// MARK: - TeamMemberStats Extensions
+
+extension TeamMemberStats {
+    /// Format summary for this team member
+    ///
+    /// - Returns: Formatted summary string
+    public func formatSummary() -> String {
+        var lines: [String] = []
+        lines.append("### **\(username)**")
+        lines.append("")
+        lines.append("**Activity:** \(mergedCount) merged, \(openCount) open")
+        
+        if !mergedPRs.isEmpty {
+            lines.append("")
+            lines.append("**Merged PRs:**")
+            for pr in mergedPRs.sorted(by: { $0.timestamp > $1.timestamp }) {
+                lines.append("- \(pr.formatDisplay())")
+            }
+        }
+        
+        if !openPRs.isEmpty {
+            lines.append("")
+            lines.append("**Open PRs:**")
+            for pr in openPRs.sorted(by: { $0.timestamp > $1.timestamp }) {
+                lines.append("- \(pr.formatDisplay())")
+            }
+        }
+        
+        return lines.joined(separator: "\n")
+    }
 }
 
 // MARK: - AITask
