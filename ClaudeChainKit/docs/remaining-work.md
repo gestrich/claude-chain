@@ -72,11 +72,11 @@ All CLI commands have argument definitions but their `run()` methods are stubs t
 
 ## Missing Test Builders
 
-- [ ] **ArtifactBuilder / TaskMetadataBuilder** — Port from `tests/builders/artifact_builder.py`
+- [x] **ArtifactBuilder / TaskMetadataBuilder** — Port from `tests/builders/artifact_builder.py`
 
   Python has `TaskMetadataBuilder` and `ArtifactBuilder` with fluent interfaces used across multiple test files. No Swift equivalent exists. These are needed for comprehensive service-layer testing.
 
-- [ ] **Shared test fixtures (conftest.py)** — Port from `tests/conftest.py`
+- [x] **Shared test fixtures (conftest.py)** — Port from `tests/conftest.py`
 
   Python's `conftest.py` provides shared pytest fixtures used across test files. Swift has no equivalent shared test helpers beyond the existing `TestBuilders.swift` files.
 
@@ -106,19 +106,19 @@ All CLI commands have argument definitions but their `run()` methods are stubs t
 
 ## Test Coverage Gaps
 
-- [ ] **Git operations tests** — Add Swift tests for `ensureRefAvailable`, `detectChangedFiles`, `detectDeletedFiles`
+- [x] **Git operations tests** — Add Swift tests for `ensureRefAvailable`, `detectChangedFiles`, `detectDeletedFiles`
 
   Python tests extensively mock subprocess calls for these. Swift tests skip them due to environment dependencies. Consider using protocol-based DI for `Process` calls to enable testing without real git repos.
 
-- [ ] **GitHub operations test coverage analysis**
+- [x] **GitHub operations test coverage analysis**
 
   Python has `test_operations.py` with extensive mocking of `gh` CLI calls. A detailed comparison against Swift's `GitHubOperationsTests.swift` hasn't been completed to identify specific missing test cases.
 
-- [ ] **AutoStartService detailed review**
+- [x] **AutoStartService detailed review**
 
   This service file exists and appears fully ported, but no detailed line-by-line comparison was performed against the Python source. Test coverage is unknown.
 
-- [ ] **WorkflowService detailed review**
+- [x] **WorkflowService detailed review**
 
   Same as AutoStartService — file exists but no detailed comparison was performed. Test coverage is unknown.
 
@@ -126,7 +126,7 @@ All CLI commands have argument definitions but their `run()` methods are stubs t
 
 ## Source Code Items
 
-- [ ] **ReportFormatter.swift:91** — `fatalError` for unknown element types
+- [x] **ReportFormatter.swift:91** — `fatalError` for unknown element types
 
   Uses `fatalError("Unknown element type: \(type(of: element))")` which will crash at runtime. The Python equivalent raises `ValueError`. Consider throwing an error instead, or ensuring the type system makes this unreachable.
 
