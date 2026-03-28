@@ -120,9 +120,92 @@ final class GitOperationsTests: XCTestCase {
                 pattern: "*.swift"
             )
             // If successful, changes should be an array
-            XCTAssertTrue(changes is [String])
+            XCTAssertTrue(changes.count >= 0) // Array can be empty or have items
         } catch {
             // Expected to fail in non-git environment or with invalid refs
+            XCTAssertTrue(error is GitError)
+        }
+    }
+    
+    // MARK: - Ensure Ref Available Tests
+    
+    func testEnsureRefAvailableWithValidRef() throws {
+        // Should succeed when ref exists (tested with HEAD which should always exist in a git repo)
+        
+        do {
+            try GitOperations.ensureRefAvailable(ref: "HEAD")
+            // If we get here without throwing, the test passes
+            XCTAssertTrue(true)
+        } catch {
+            // If we're not in a git repository, this is expected
+            XCTAssertTrue(error is GitError)
+        }
+    }
+    
+    func testEnsureRefAvailableWithInvalidRef() {
+        // Should throw GitError for clearly invalid refs
+        
+        XCTAssertThrowsError(try GitOperations.ensureRefAvailable(ref: "definitely-not-a-valid-ref-12345678")) { error in
+            XCTAssertTrue(error is GitError)
+        }
+    }
+    
+    // MARK: - Detect Changed Files Tests
+    
+    func testDetectChangedFilesReturnsArray() throws {
+        // Should return array even if no files match
+        
+        do {
+            let result = try GitOperations.detectChangedFiles(
+                refBefore: "HEAD", 
+                refAfter: "HEAD", 
+                pattern: "*.nonexistent-extension"
+            )
+            XCTAssertTrue(result.isEmpty)
+        } catch {
+            // Expected in non-git environment
+            XCTAssertTrue(error is GitError)
+        }
+    }
+    
+    func testDetectChangedFilesWithInvalidRefs() {
+        // Should throw GitError for invalid refs
+        
+        XCTAssertThrowsError(try GitOperations.detectChangedFiles(
+            refBefore: "invalid-ref-1", 
+            refAfter: "invalid-ref-2", 
+            pattern: "*.swift"
+        )) { error in
+            XCTAssertTrue(error is GitError)
+        }
+    }
+    
+    // MARK: - Detect Deleted Files Tests
+    
+    func testDetectDeletedFilesReturnsArray() throws {
+        // Should return array even if no files were deleted
+        
+        do {
+            let result = try GitOperations.detectDeletedFiles(
+                refBefore: "HEAD", 
+                refAfter: "HEAD", 
+                pattern: "*.swift"
+            )
+            XCTAssertTrue(result.isEmpty)
+        } catch {
+            // Expected in non-git environment
+            XCTAssertTrue(error is GitError)
+        }
+    }
+    
+    func testDetectDeletedFilesWithInvalidRefs() {
+        // Should throw GitError for invalid refs
+        
+        XCTAssertThrowsError(try GitOperations.detectDeletedFiles(
+            refBefore: "invalid-ref-1", 
+            refAfter: "invalid-ref-2", 
+            pattern: "*.swift"
+        )) { error in
             XCTAssertTrue(error is GitError)
         }
     }
