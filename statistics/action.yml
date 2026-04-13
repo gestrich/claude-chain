@@ -39,10 +39,9 @@ inputs:
     required: false
     default: 'false'
   hide_completed_projects:
-    description: 'Hide fully completed projects from Slack output (default: false)'
+    description: 'Hide fully completed projects from Slack output (default: true)'
     required: false
-    default: 'false'
-
+    default: 'true'
 outputs:
   slack_message:
     description: 'Formatted message for Slack (mrkdwn format)'

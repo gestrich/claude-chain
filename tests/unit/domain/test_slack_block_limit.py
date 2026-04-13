@@ -14,9 +14,9 @@ def _make_project(name: str, total: int, completed: int) -> ProjectStats:
 
 
 class TestCompletedProjectsDefault:
-    """By default, completed projects should be included."""
+    """By default, completed projects are hidden."""
 
-    def test_completed_project_included_by_default(self):
+    def test_completed_project_excluded_by_default(self):
         report = StatisticsReport(repo="owner/repo")
         report.add_project(_make_project("done-project", total=5, completed=5))
         report.add_project(_make_project("active-project", total=5, completed=2))
@@ -25,33 +25,32 @@ class TestCompletedProjectsDefault:
         blocks_text = str(result["blocks"])
 
         assert "active-project" in blocks_text
-        assert "done-project" in blocks_text
+        assert "done-project" not in blocks_text
 
-    def test_completed_project_excluded_when_flag_false(self):
+    def test_completed_project_included_when_flag_false(self):
         report = StatisticsReport(repo="owner/repo")
         report.add_project(_make_project("done-project", total=5, completed=5))
         report.add_project(_make_project("active-project", total=5, completed=2))
 
-        result = report.format_for_slack_blocks(hide_completed_projects=True)
+        result = report.format_for_slack_blocks(hide_completed_projects=False)
         blocks_text = str(result["blocks"])
 
         assert "active-project" in blocks_text
-        assert "done-project" not in blocks_text
+        assert "done-project" in blocks_text
 
     def test_all_completed_hidden_still_returns_valid_payload(self):
         report = StatisticsReport(repo="owner/repo")
         report.add_project(_make_project("done1", total=3, completed=3))
         report.add_project(_make_project("done2", total=2, completed=2))
 
-        result = report.format_for_slack_blocks(hide_completed_projects=True)
-        # Should still return a valid payload (header at minimum)
+        result = report.format_for_slack_blocks()
         assert "blocks" in result
 
     def test_partially_completed_project_always_included(self):
         report = StatisticsReport(repo="owner/repo")
         report.add_project(_make_project("partial", total=5, completed=4))
 
-        result = report.format_for_slack_blocks(hide_completed_projects=True)
+        result = report.format_for_slack_blocks()
         blocks_text = str(result["blocks"])
         assert "partial" in blocks_text
 

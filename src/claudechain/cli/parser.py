@@ -84,8 +84,8 @@ def create_parser() -> argparse.ArgumentParser:
     )
     parser_statistics.add_argument(
         "--hide-completed-projects",
-        action="store_true",  # Flag presence = True, absence = False
-        help="Hide fully completed projects from Slack output (default: shown)"
+        action="store_true",
+        help="Hide fully completed projects from Slack output (default: true)"
     )
     parser_auto_start = subparsers.add_parser(
         "auto-start",
